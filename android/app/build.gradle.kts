@@ -7,6 +7,15 @@ android {
     namespace = "pt.taoofmac.gordpandroid"
     compileSdk = 35
 
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlin {
+        jvmToolchain(17)
+    }
+
     defaultConfig {
         applicationId = "pt.taoofmac.gordpandroid"
         minSdk = 29
