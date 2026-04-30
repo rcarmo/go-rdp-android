@@ -2,7 +2,7 @@ package pt.taoofmac.gordpandroid.capture
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.ImageFormat
+import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.Image
@@ -59,7 +59,7 @@ class ScreenCaptureManager(
         thread = HandlerThread("rdp-capture").also { it.start() }
         handler = Handler(thread!!.looper)
 
-        imageReader = ImageReader.newInstance(width, height, ImageFormat.RGBA_8888, 2).also { reader ->
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2).also { reader ->
             reader.setOnImageAvailableListener({ onImageAvailable(it) }, handler)
         }
 
