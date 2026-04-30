@@ -44,9 +44,21 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 	if err := sendTestMCSConnectInitial(conn); err != nil {
 		t.Fatal(err)
 	}
-	// The MVP server reads the MCS envelope then closes without response.
-	buf := make([]byte, 1)
-	_, _ = conn.Read(buf)
+	mcsRespTPKT, err := readTPKT(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcsPayload, err := parseX224Data(mcsRespTPKT)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcsInfo, err := parseMCSConnectResponse(mcsPayload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mcsInfo.ApplicationTag != mcsConnectResponseAppTag {
+		t.Fatalf("expected MCS connect response, got %#v", mcsInfo)
+	}
 
 	cancel()
 	select {

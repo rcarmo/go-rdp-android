@@ -17,7 +17,8 @@ Tasks:
 - TPKT/X.224 Connection Request parsing ✅
 - X.224 Connection Confirm response ✅
 - MCS Connect-Initial parsing (header/app tag) ✅
-- GCC Conference Create Response
+- MCS Connect-Response writing ✅ (minimal scaffold)
+- GCC Conference Create Response ✅ (minimal scaffold)
 - basic capability exchange
 - one-session state machine
 

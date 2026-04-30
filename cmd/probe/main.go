@@ -32,7 +32,11 @@ func main() {
 	if err := sendMCSConnectInitial(conn); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("sent minimal MCS Connect-Initial envelope")
+	mcsResp, err := readTPKT(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("MCS response: %x\n", mcsResp)
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
