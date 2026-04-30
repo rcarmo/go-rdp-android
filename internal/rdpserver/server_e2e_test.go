@@ -60,6 +60,32 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 		t.Fatalf("expected MCS connect response, got %#v", mcsInfo)
 	}
 
+	if err := sendTestMCSDomainPDU(conn, mcsErectDomainRequestApp, []byte{1, 0, 1, 0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sendTestMCSDomainPDU(conn, mcsAttachUserRequestApp, nil); err != nil {
+		t.Fatal(err)
+	}
+	attachResp, err := readTestMCSDomainPDU(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attachResp.Application != mcsAttachUserConfirmApp {
+		t.Fatalf("expected attach confirm, got %#v", attachResp)
+	}
+
+	joinBody := append(encodePERInteger16(defaultMCSUserID, defaultMCSUserID), encodePERInteger16(1003, 0)...)
+	if err := sendTestMCSDomainPDU(conn, mcsChannelJoinRequestApp, joinBody); err != nil {
+		t.Fatal(err)
+	}
+	joinResp, err := readTestMCSDomainPDU(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joinResp.Application != mcsChannelJoinConfirmApp {
+		t.Fatalf("expected channel join confirm, got %#v", joinResp)
+	}
+
 	cancel()
 	select {
 	case <-done:
@@ -83,4 +109,21 @@ func sendTestX224ConnectionRequest(conn net.Conn) error {
 func sendTestMCSConnectInitial(conn net.Conn) error {
 	// X.224 Data TPDU + minimal BER [APPLICATION 101] length 0.
 	return writeTPKT(conn, []byte{0x02, x224TypeData, 0x80, 0x7f, 0x65, 0x00})
+}
+
+func sendTestMCSDomainPDU(conn net.Conn, application int, body []byte) error {
+	mcs := append([]byte{byte(application << 2)}, body...)
+	return writeTPKT(conn, append([]byte{0x02, x224TypeData, 0x80}, mcs...))
+}
+
+func readTestMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
+	payload, err := readTPKT(conn)
+	if err != nil {
+		return nil, err
+	}
+	mcs, err := parseX224Data(payload)
+	if err != nil {
+		return nil, err
+	}
+	return parseMCSDomainPDU(mcs)
 }

@@ -37,6 +37,30 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("MCS response: %x\n", mcsResp)
+
+	if err := sendMCSDomainPDU(conn, 1, []byte{1, 0, 1, 0}); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("sent ErectDomainRequest")
+
+	if err := sendMCSDomainPDU(conn, 10, nil); err != nil {
+		log.Fatal(err)
+	}
+	attachResp, err := readTPKT(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("AttachUserConfirm: %x\n", attachResp)
+
+	joinBody := append(encodePERInteger16(1001, 1001), encodePERInteger16(1003, 0)...)
+	if err := sendMCSDomainPDU(conn, 14, joinBody); err != nil {
+		log.Fatal(err)
+	}
+	joinResp, err := readTPKT(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("ChannelJoinConfirm: %x\n", joinResp)
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
@@ -74,4 +98,15 @@ func sendX224ConnectionRequest(conn net.Conn) error {
 
 func sendMCSConnectInitial(conn net.Conn) error {
 	return writeTPKT(conn, []byte{0x02, 0xf0, 0x80, 0x7f, 0x65, 0x00})
+}
+
+func sendMCSDomainPDU(conn net.Conn, application int, body []byte) error {
+	mcs := append([]byte{byte(application << 2)}, body...)
+	return writeTPKT(conn, append([]byte{0x02, 0xf0, 0x80}, mcs...))
+}
+
+func encodePERInteger16(value, minimum uint16) []byte {
+	buf := make([]byte, 2)
+	binary.BigEndian.PutUint16(buf, value-minimum)
+	return buf
 }

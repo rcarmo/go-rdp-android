@@ -18,6 +18,9 @@ Tasks:
 - X.224 Connection Confirm response ✅
 - MCS Connect-Initial parsing (header/app tag) ✅
 - MCS Connect-Response writing ✅ (minimal scaffold)
+- MCS ErectDomainRequest handling ✅
+- MCS AttachUserRequest/Confirm handling ✅
+- MCS ChannelJoinRequest/Confirm handling ✅
 - GCC Conference Create Response ✅ (minimal scaffold)
 - basic capability exchange
 - one-session state machine

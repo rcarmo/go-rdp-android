@@ -105,7 +105,12 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	// The next phase is ErectDomainRequest / AttachUserRequest handling.
+	if err := handleMCSDomainSequence(conn); err != nil {
+		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
+		return
+	}
+	log.Printf("rdp MCS domain sequence finished for %s", conn.RemoteAddr())
+	// The next phase is Security Exchange / Client Info handling.
 }
 
 // Close stops the listener.
