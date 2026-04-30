@@ -16,8 +16,9 @@ See [docs/SPEC.md](docs/SPEC.md) for the design notes and feasibility analysis.
 Early scaffold:
 
 - Go server-core skeleton
+- initial TPKT/X.224 negotiation
 - Android/Kotlin app shell
-- foreground service and permission placeholders
+- foreground service and MediaProjection capture skeleton
 - AccessibilityService placeholder
 - GitHub Actions for Go and Android builds
 
