@@ -48,6 +48,11 @@ func (s *Server) Listen(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return s.Serve(ctx, ln)
+}
+
+// Serve accepts connections from an existing listener.
+func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.ln = ln
 	s.mu.Unlock()
@@ -68,6 +73,16 @@ func (s *Server) Listen(ctx context.Context) error {
 		}
 		go s.handleConn(conn)
 	}
+}
+
+// Addr returns the listener address if the server is running.
+func (s *Server) Addr() net.Addr {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.ln == nil {
+		return nil
+	}
+	return s.ln.Addr()
 }
 
 func (s *Server) handleConn(conn net.Conn) {
