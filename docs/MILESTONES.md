@@ -5,7 +5,7 @@
 - Project layout
 - Go RDP server skeleton
 - Android Kotlin shell
-- MediaProjection/ImageReader capture scaffold
+- MediaProjection/ImageReader capture scaffold ✅
 - AccessibilityService scaffold
 - GitHub Actions for Go and Android builds
 
@@ -14,9 +14,9 @@
 Goal: run a local Go process that accepts an RDP TCP connection and advances through the initial protocol phases.
 
 Tasks:
-- TPKT/X.224 Connection Request parsing
-- X.224 Connection Confirm response
-- MCS Connect-Initial parsing
+- TPKT/X.224 Connection Request parsing ✅
+- X.224 Connection Confirm response ✅
+- MCS Connect-Initial parsing (header/app tag) ✅
 - GCC Conference Create Response
 - basic capability exchange
 - one-session state machine

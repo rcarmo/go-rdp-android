@@ -78,7 +78,14 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, info.Cookie)
-	// The next phase is MCS Connect-Initial parsing and server response.
+
+	mcsInfo, err := readMCSConnectInitial(conn)
+	if err != nil {
+		log.Printf("rdp MCS Connect-Initial failed from %s: %v", conn.RemoteAddr(), err)
+		return
+	}
+	log.Printf("rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d", conn.RemoteAddr(), mcsInfo.ApplicationTag, mcsInfo.PayloadLength, mcsInfo.UserDataLength)
+	// The next phase is MCS Connect-Response + GCC Conference Create Response.
 }
 
 // Close stops the listener.

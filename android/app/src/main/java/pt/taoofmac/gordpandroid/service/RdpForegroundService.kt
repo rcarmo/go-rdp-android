@@ -32,7 +32,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
 
         if (hasProjection && data != null) {
             val metrics = currentDisplayMetrics()
-            captureManager?.start(resultCode, data, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi)
+            captureManager?.start(resultCode, data, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi, maxFps = 15)
         }
         return START_STICKY
     }
