@@ -4,7 +4,7 @@ package rdpserver
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log"
 	"net"
 	"sync"
 
@@ -72,7 +72,13 @@ func (s *Server) Listen(ctx context.Context) error {
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
-	_, _ = fmt.Fprintf(conn, "go-rdp-android: RDP server handshake not implemented yet\n")
+	info, err := performInitialHandshake(conn)
+	if err != nil {
+		log.Printf("rdp initial handshake failed from %s: %v", conn.RemoteAddr(), err)
+		return
+	}
+	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, info.Cookie)
+	// The next phase is MCS Connect-Initial parsing and server response.
 }
 
 // Close stops the listener.
