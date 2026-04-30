@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := help
 GO ?= go
+GH ?= gh
 PROJECT := go-rdp-android
 
 .PHONY: help
@@ -29,6 +30,37 @@ coverage: ## Run Go coverage
 .PHONY: android-build
 android-build: ## Build Android debug APK (requires Android SDK + Gradle)
 	cd android && gradle :app:assembleDebug
+
+.PHONY: ci
+ci: ci-status ## Show latest GitHub Actions run status
+
+.PHONY: ci-list
+ci-list: ## List recent GitHub Actions runs
+	$(GH) run list --limit 10
+
+.PHONY: ci-status
+ci-status: ## Show latest GitHub Actions run summary
+	$(GH) run view --json databaseId,status,conclusion,headSha,displayTitle,createdAt,updatedAt,url
+
+.PHONY: ci-jobs
+ci-jobs: ## Show jobs for the latest GitHub Actions run
+	$(GH) run view --json jobs --jq '.jobs[] | [.name, .status, (.conclusion // ""), .startedAt, .completedAt] | @tsv'
+
+.PHONY: ci-watch
+ci-watch: ## Watch latest GitHub Actions run until completion
+	$(GH) run watch
+
+.PHONY: ci-log
+ci-log: ## Show failed logs for the latest GitHub Actions run
+	$(GH) run view --log-failed
+
+.PHONY: ci-log-all
+ci-log-all: ## Show all logs for the latest GitHub Actions run
+	$(GH) run view --log
+
+.PHONY: ci-rerun
+ci-rerun: ## Rerun the latest failed GitHub Actions jobs
+	$(GH) run rerun --failed
 
 .PHONY: clean
 clean: ## Clean generated outputs
