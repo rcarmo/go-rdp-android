@@ -22,6 +22,8 @@ Tasks:
 - MCS AttachUserRequest/Confirm handling ✅
 - MCS ChannelJoinRequest/Confirm handling ✅
 - GCC Conference Create Response ✅ (minimal scaffold)
+- SendDataRequest parsing ✅
+- Security Exchange / Client Info parsing ✅ (minimal scaffold)
 - basic capability exchange
 - one-session state machine
 

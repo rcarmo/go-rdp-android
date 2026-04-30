@@ -86,6 +86,11 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 		t.Fatalf("expected channel join confirm, got %#v", joinResp)
 	}
 
+	clientInfo := []byte{secInfoPacket, 0, 0, 0, 1, 2, 3, 4}
+	if err := sendTestMCSDomainPDU(conn, mcsSendDataRequestApp, buildMCSSendDataRequest(defaultMCSUserID, 1003, clientInfo)); err != nil {
+		t.Fatal(err)
+	}
+
 	cancel()
 	select {
 	case <-done:

@@ -61,6 +61,12 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("ChannelJoinConfirm: %x\n", joinResp)
+
+	clientInfo := []byte{0x40, 0, 0, 0, 1, 2, 3, 4}
+	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, clientInfo)); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("sent minimal Client Info security PDU")
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
@@ -109,4 +115,22 @@ func encodePERInteger16(value, minimum uint16) []byte {
 	buf := make([]byte, 2)
 	binary.BigEndian.PutUint16(buf, value-minimum)
 	return buf
+}
+
+func buildMCSSendDataRequest(initiator, channelID uint16, data []byte) []byte {
+	body := encodePERInteger16(initiator, 1001)
+	body = append(body, encodePERInteger16(channelID, 0)...)
+	body = append(body, 0x70)
+	body = append(body, encodePERLength(len(data))...)
+	body = append(body, data...)
+	return body
+}
+
+func encodePERLength(length int) []byte {
+	if length > 0x7f {
+		buf := make([]byte, 2)
+		binary.BigEndian.PutUint16(buf, uint16(length)|0x8000)
+		return buf
+	}
+	return []byte{byte(length)}
 }

@@ -22,6 +22,7 @@ type domainPDU struct {
 	Application int
 	Initiator   uint16
 	ChannelID   uint16
+	Data        []byte
 }
 
 func handleMCSDomainSequence(conn net.Conn) error {
@@ -46,6 +47,10 @@ func handleMCSDomainSequence(conn net.Conn) error {
 			}
 		case mcsChannelJoinRequestApp:
 			if err := writeMCSChannelJoinConfirm(conn, pdu.Initiator, pdu.ChannelID); err != nil {
+				return err
+			}
+		case mcsSendDataRequestApp:
+			if _, err := parseSecurityPDU(pdu.Data); err != nil {
 				return err
 			}
 		default:
@@ -73,12 +78,21 @@ func parseMCSDomainPDU(data []byte) (*domainPDU, error) {
 	}
 	pdu := &domainPDU{Application: int(data[0] >> 2)}
 	body := data[1:]
-	if pdu.Application == mcsChannelJoinRequestApp {
+	switch pdu.Application {
+	case mcsChannelJoinRequestApp:
 		if len(body) < 4 {
 			return nil, fmt.Errorf("short ChannelJoinRequest")
 		}
 		pdu.Initiator = binary.BigEndian.Uint16(body[0:2]) + defaultMCSUserID
 		pdu.ChannelID = binary.BigEndian.Uint16(body[2:4])
+	case mcsSendDataRequestApp:
+		req, err := parseMCSSendDataRequest(body)
+		if err != nil {
+			return nil, err
+		}
+		pdu.Initiator = req.Initiator
+		pdu.ChannelID = req.ChannelID
+		pdu.Data = req.Data
 	}
 	return pdu, nil
 }
