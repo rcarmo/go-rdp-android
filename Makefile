@@ -22,6 +22,14 @@ check: vet test ## Run vet and tests
 build-go: ## Build Go mock/server packages
 	$(GO) build ./...
 
+.PHONY: run-mock
+run-mock: ## Run the desktop mock RDP server on :3390
+	$(GO) run ./cmd/mock-server
+
+.PHONY: probe
+probe: ## Probe a running mock server with TPKT/X.224/MCS handshake
+	$(GO) run ./cmd/probe -addr 127.0.0.1:3390
+
 .PHONY: coverage
 coverage: ## Run Go coverage
 	$(GO) test -coverprofile=coverage.out ./...

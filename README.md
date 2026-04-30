@@ -40,7 +40,23 @@ make test
 make build-go
 ```
 
-Android builds are expected to run via GitHub Actions once Gradle/Android SDK setup is available.
+Run the current handshake prototype locally:
+
+```bash
+# terminal 1
+make run-mock
+
+# terminal 2
+make probe
+```
+
+The probe exercises:
+
+```text
+TCP → TPKT → X.224 Connection Request/Confirm → minimal MCS Connect-Initial envelope
+```
+
+Android debug APKs are built by GitHub Actions and uploaded as workflow artifacts.
 
 ## Next major steps
 
