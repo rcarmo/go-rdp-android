@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">go-rdp-android</string>
+    <string name="accessibility_service_description">Allows go-rdp-android to inject remote pointer and keyboard actions.</string>
+</resources>

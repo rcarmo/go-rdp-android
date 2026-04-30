@@ -1,0 +1,24 @@
+# Go
+/bin/
+*.test
+coverage.out
+coverage.html
+
+# Android / Gradle
+.gradle/
+build/
+android/.gradle/
+android/build/
+android/app/build/
+local.properties
+*.apk
+*.aab
+*.aar
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
