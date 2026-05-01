@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -55,8 +56,48 @@ jobs:
           name: go-rdp-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
 
+  gomobile:
+    name: Go mobile AAR build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Initialize gomobile
+        run: gomobile init
+      - name: Build mobile AAR
+        run: make gomobile-bind
+      - name: Build APK with Go AAR
+        working-directory: android
+        run: gradle :app:assembleDebug
+      - name: Upload mobile AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-rdp-android-mobile-aar
+          path: android/app/libs/mobile.aar
+      - name: Upload Go-backed debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-rdp-android-go-backed-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
   android-emulator:
     name: Android emulator smoke
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
