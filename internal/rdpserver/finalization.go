@@ -40,7 +40,10 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU) error {
 			return writeShareDataPDU(conn, pduType2Control, buildControlPayload(controlActionCooperate))
 		}
 	case pduType2FontList:
-		return writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload())
+		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
+			return err
+		}
+		return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(64, 64, 0xff336699))
 	}
 	return nil
 }

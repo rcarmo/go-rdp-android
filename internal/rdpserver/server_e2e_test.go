@@ -134,6 +134,16 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 	if err := expectShareDataResponse(conn, pduType2FontMap); err != nil {
 		t.Fatal(err)
 	}
+	update, err := readShareDataResponse(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if update.PDUType2 != pduType2Update {
+		t.Fatalf("expected bitmap update, got type2=0x%02x", update.PDUType2)
+	}
+	if rects, err := parseBitmapUpdateHeader(update.Payload); err != nil || rects != 1 {
+		t.Fatalf("unexpected bitmap update rects=%d err=%v", rects, err)
+	}
 
 	cancel()
 	select {
@@ -183,15 +193,7 @@ func sendTestShareData(conn net.Conn, pduType2 uint8, payload []byte) error {
 }
 
 func expectShareDataResponse(conn net.Conn, pduType2 uint8) error {
-	resp, err := readTestMCSDomainPDU(conn)
-	if err != nil {
-		return err
-	}
-	share, err := parseShareControlPDU(resp.Data)
-	if err != nil {
-		return err
-	}
-	data, err := parseShareDataPDU(share)
+	data, err := readShareDataResponse(conn)
 	if err != nil {
 		return err
 	}
@@ -199,6 +201,18 @@ func expectShareDataResponse(conn net.Conn, pduType2 uint8) error {
 		return &unexpectedPDUTypeError{got: data.PDUType2, want: pduType2}
 	}
 	return nil
+}
+
+func readShareDataResponse(conn net.Conn) (*shareDataPDU, error) {
+	resp, err := readTestMCSDomainPDU(conn)
+	if err != nil {
+		return nil, err
+	}
+	share, err := parseShareControlPDU(resp.Data)
+	if err != nil {
+		return nil, err
+	}
+	return parseShareDataPDU(share)
 }
 
 type unexpectedPDUTypeError struct{ got, want uint8 }

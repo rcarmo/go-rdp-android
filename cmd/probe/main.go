@@ -95,6 +95,7 @@ func main() {
 		log.Fatal(err)
 	}
 	readAndPrint(conn, "Server FontMap")
+	readAndPrint(conn, "Server Bitmap Update")
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {

@@ -53,7 +53,7 @@ make probe
 The probe exercises:
 
 ```text
-TCP → TPKT → X.224 → MCS Connect → Domain/Channel Join → Client Info → Demand/Confirm Active
+TCP → TPKT → X.224 → MCS Connect → Domain/Channel Join → Client Info → Demand/Confirm Active → FontMap → Bitmap Update
 ```
 
 Android debug APKs are built by GitHub Actions and uploaded as workflow artifacts.
