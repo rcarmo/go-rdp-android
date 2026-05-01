@@ -58,7 +58,7 @@ class MainActivity : Activity() {
         val intent = Intent(this, RdpForegroundService::class.java).apply {
             putExtra(RdpForegroundService.EXTRA_TEST_PATTERN, true)
         }
-        startForegroundService(intent)
+        startService(intent)
     }
 
     private fun requestScreenCapture() {

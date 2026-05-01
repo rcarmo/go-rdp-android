@@ -29,11 +29,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(1, notification())
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
         val hasProjection = data != null && resultCode != 0
+        if (hasProjection) {
+            startForeground(1, notification())
+        }
         NativeRdpBridge.startServer(3390, hasProjection)
 
         when {
