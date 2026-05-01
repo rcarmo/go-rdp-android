@@ -58,6 +58,8 @@ TCP → TPKT → X.224 → MCS Connect → Domain/Channel Join → Client Info �
 
 Android debug APKs are built by GitHub Actions and uploaded as workflow artifacts.
 
+The current graphics path converts `frame.Source` RGBA/BGRA frames into TPKT-safe slow-path bitmap update tiles, with a solid-color fallback when no frame is available.
+
 ## Next major steps
 
 1. Extract/reuse protocol pieces from `rcarmo/go-rdp` into server-friendly packages.

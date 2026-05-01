@@ -29,6 +29,7 @@ Tasks:
 - Synchronize/Control/FontList finalization handling ✅ (minimal scaffold)
 - solid-color slow-path bitmap update ✅
 - initial frame.Source-to-bitmap conversion ✅
+- TPKT-safe frame tiling into bitmap update PDUs ✅
 - basic capability exchange
 - one-session state machine
 

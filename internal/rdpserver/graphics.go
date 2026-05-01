@@ -26,29 +26,50 @@ type bitmapRect struct {
 }
 
 func buildFrameBitmapUpdate(src frame.Frame) ([]byte, bool) {
-	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
+	updates, ok := buildFrameBitmapUpdates(src)
+	if !ok || len(updates) == 0 {
 		return nil, false
 	}
-	width := src.Width
-	if width > maxInitialBitmapUpdate {
-		width = maxInitialBitmapUpdate
-	}
-	height := src.Height
-	if height > maxInitialBitmapUpdate {
-		height = maxInitialBitmapUpdate
+	return updates[0], true
+}
+
+func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
+	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
+		return nil, false
 	}
 	stride := src.Stride
 	if stride <= 0 {
 		stride = src.Width * 4
 	}
-	if len(src.Data) < stride*height {
+	if len(src.Data) < stride*src.Height {
 		return nil, false
 	}
+	if src.Format != frame.PixelFormatRGBA8888 && src.Format != frame.PixelFormatBGRA8888 {
+		return nil, false
+	}
+
+	updates := make([][]byte, 0, ((src.Width+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate)*((src.Height+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate))
+	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
+		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
+		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
+			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
+			update, ok := buildFrameBitmapTile(src, stride, x, y, tileWidth, tileHeight)
+			if !ok {
+				return nil, false
+			}
+			updates = append(updates, update)
+		}
+	}
+	return updates, len(updates) > 0
+}
+
+func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) ([]byte, bool) {
 	data := make([]byte, width*height*4)
 	for y := 0; y < height; y++ {
-		row := src.Data[y*stride:]
+		rowOffset := (y0 + y) * stride
+		row := src.Data[rowOffset:]
 		for x := 0; x < width; x++ {
-			si := x * 4
+			si := (x0 + x) * 4
 			di := (y*width + x) * 4
 			if si+3 >= len(row) {
 				return nil, false
@@ -61,21 +82,26 @@ func buildFrameBitmapUpdate(src frame.Frame) ([]byte, bool) {
 				data[di+1] = row[si+1]
 				data[di+2] = row[si+0]
 				data[di+3] = row[si+3]
-			default:
-				return nil, false
 			}
 		}
 	}
 	return buildBitmapUpdate([]bitmapRect{{
-		Left:   0,
-		Top:    0,
-		Right:  uint16(width - 1),
-		Bottom: uint16(height - 1),
+		Left:   uint16(x0),
+		Top:    uint16(y0),
+		Right:  uint16(x0 + width - 1),
+		Bottom: uint16(y0 + height - 1),
 		Width:  uint16(width),
 		Height: uint16(height),
 		BPP:    bitmapBPP32,
 		Data:   data,
 	}}), true
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {

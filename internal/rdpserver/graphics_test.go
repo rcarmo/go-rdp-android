@@ -43,3 +43,36 @@ func TestBuildFrameBitmapUpdateRGBA(t *testing.T) {
 		t.Fatalf("unexpected BGRA bytes: %x", got)
 	}
 }
+
+func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
+	width, height := 200, 90
+	data := make([]byte, width*height*4)
+	for i := range data {
+		data[i] = byte(i)
+	}
+	updates, ok := buildFrameBitmapUpdates(frame.Frame{
+		Width:  width,
+		Height: height,
+		Stride: width * 4,
+		Format: frame.PixelFormatBGRA8888,
+		Data:   data,
+	})
+	if !ok {
+		t.Fatal("expected tiled frame conversion")
+	}
+	if len(updates) != 3 {
+		t.Fatalf("expected 3 horizontal tiles, got %d", len(updates))
+	}
+	for _, update := range updates {
+		rects, err := parseBitmapUpdateHeader(update)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rects != 1 {
+			t.Fatalf("expected one rect per update, got %d", rects)
+		}
+		if len(update) > 60000 {
+			t.Fatalf("update too large for safe TPKT envelope: %d", len(update))
+		}
+	}
+}

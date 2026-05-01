@@ -54,13 +54,22 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			if update, ok := buildFrameBitmapUpdate(fr); ok {
-				return writeShareDataPDU(conn, pduType2Update, update)
+			if updates, ok := buildFrameBitmapUpdates(fr); ok {
+				return writeBitmapUpdates(conn, updates)
 			}
 		default:
 		}
 	}
 	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
+}
+
+func writeBitmapUpdates(conn net.Conn, updates [][]byte) error {
+	for _, update := range updates {
+		if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func minPositive(v, max int) int {
