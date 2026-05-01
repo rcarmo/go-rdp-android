@@ -1,12 +1,17 @@
 package rdpserver
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
+)
 
 const (
 	pduType2Update = 0x02
 
-	updateTypeBitmap = 0x0001
-	bitmapBPP32      = 32
+	updateTypeBitmap       = 0x0001
+	bitmapBPP32            = 32
+	maxInitialBitmapUpdate = 96
 )
 
 type bitmapRect struct {
@@ -18,6 +23,59 @@ type bitmapRect struct {
 	Height uint16
 	BPP    uint16
 	Data   []byte
+}
+
+func buildFrameBitmapUpdate(src frame.Frame) ([]byte, bool) {
+	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
+		return nil, false
+	}
+	width := src.Width
+	if width > maxInitialBitmapUpdate {
+		width = maxInitialBitmapUpdate
+	}
+	height := src.Height
+	if height > maxInitialBitmapUpdate {
+		height = maxInitialBitmapUpdate
+	}
+	stride := src.Stride
+	if stride <= 0 {
+		stride = src.Width * 4
+	}
+	if len(src.Data) < stride*height {
+		return nil, false
+	}
+	data := make([]byte, width*height*4)
+	for y := 0; y < height; y++ {
+		row := src.Data[y*stride:]
+		for x := 0; x < width; x++ {
+			si := x * 4
+			di := (y*width + x) * 4
+			if si+3 >= len(row) {
+				return nil, false
+			}
+			switch src.Format {
+			case frame.PixelFormatBGRA8888:
+				copy(data[di:di+4], row[si:si+4])
+			case frame.PixelFormatRGBA8888:
+				data[di+0] = row[si+2]
+				data[di+1] = row[si+1]
+				data[di+2] = row[si+0]
+				data[di+3] = row[si+3]
+			default:
+				return nil, false
+			}
+		}
+	}
+	return buildBitmapUpdate([]bitmapRect{{
+		Left:   0,
+		Top:    0,
+		Right:  uint16(width - 1),
+		Bottom: uint16(height - 1),
+		Width:  uint16(width),
+		Height: uint16(height),
+		BPP:    bitmapBPP32,
+		Data:   data,
+	}}), true
 }
 
 func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {

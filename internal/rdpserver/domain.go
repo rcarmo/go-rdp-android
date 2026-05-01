@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
 const (
@@ -25,7 +27,7 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, width, height int) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, width, height int) error {
 	userID := uint16(defaultMCSUserID)
 	for i := 0; i < 32; i++ {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
@@ -57,7 +59,7 @@ func handleMCSDomainSequence(conn net.Conn, width, height int) error {
 						return err
 					}
 				case pduTypeData:
-					if err := handleShareDataPDU(conn, share); err != nil {
+					if err := handleShareDataPDU(conn, share, frames, width, height); err != nil {
 						return err
 					}
 				}

@@ -28,6 +28,7 @@ Tasks:
 - Client Confirm Active PDU parsing ✅
 - Synchronize/Control/FontList finalization handling ✅ (minimal scaffold)
 - solid-color slow-path bitmap update ✅
+- initial frame.Source-to-bitmap conversion ✅
 - basic capability exchange
 - one-session state machine
 

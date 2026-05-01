@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
 const (
@@ -20,7 +22,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, width, height int) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -43,9 +45,29 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU) error {
 		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
 			return err
 		}
-		return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(64, 64, 0xff336699))
+		return writeInitialBitmapUpdate(conn, frames, width, height)
 	}
 	return nil
+}
+
+func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height int) error {
+	if frames != nil {
+		select {
+		case fr := <-frames.Frames():
+			if update, ok := buildFrameBitmapUpdate(fr); ok {
+				return writeShareDataPDU(conn, pduType2Update, update)
+			}
+		default:
+		}
+	}
+	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
+}
+
+func minPositive(v, max int) int {
+	if v <= 0 || v > max {
+		return max
+	}
+	return v
 }
 
 func parseShareDataPDU(share *shareControlPDU) (*shareDataPDU, error) {
