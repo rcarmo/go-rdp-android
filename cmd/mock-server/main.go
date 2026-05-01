@@ -12,13 +12,19 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	if err := run(ctx, ":3390"); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	srv, err := rdpserver.New(rdpserver.Config{Addr: ":3390", Width: 1280, Height: 720}, nil, nil)
+func run(ctx context.Context, addr string) error {
+	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: 1280, Height: 720}, nil, nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	log.Println("listening on :3390 (protocol stub)")
+	log.Printf("listening on %s (protocol stub)", addr)
 	if err := srv.Listen(ctx); err != nil && ctx.Err() == nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }

@@ -41,8 +41,10 @@ smoke: ## Run mock server and probe it locally
 
 .PHONY: coverage
 coverage: ## Run Go coverage
-	$(GO) test -coverprofile=coverage.out ./...
+	mkdir -p .gotmp
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) test -coverprofile=coverage.out ./...
 	$(GO) tool cover -func=coverage.out
+	rm -rf .gotmp
 
 .PHONY: android-build
 android-build: ## Build Android debug APK (requires Android SDK + Gradle)
