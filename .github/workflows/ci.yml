@@ -6,6 +6,17 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      emulator_api_level:
+        description: Android emulator API level
+        required: false
+        default: '35'
+      emulator_go_backed:
+        description: Build and install Go-backed APK on emulator
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 permissions:
   contents: read
@@ -84,6 +95,8 @@ jobs:
           make check-apk-artifact | tee test-artifacts/android/apk-inspection.log
           cp android-build.log test-artifacts/android/
           unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/android/apk-contents.txt
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk test-artifacts/android/apk-summary.md
+          test -s test-artifacts/android/apk-summary.md
       - name: Upload Android build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -128,6 +141,8 @@ jobs:
         run: |
           make check-aar-artifact | tee test-artifacts/gomobile/aar-inspection.log
           unzip -l android/app/libs/mobile.aar >test-artifacts/gomobile/aar-contents.txt
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go aar android/app/libs/mobile.aar test-artifacts/gomobile/aar-summary.md
+          test -s test-artifacts/gomobile/aar-summary.md
       - name: Build APK with Go AAR
         working-directory: android
         run: gradle :app:assembleDebug | tee ../gomobile-android-build.log
@@ -136,6 +151,8 @@ jobs:
           make check-apk-artifact REQUIRE_GO_LIBS=1 | tee test-artifacts/gomobile/go-backed-apk-inspection.log
           cp gomobile-android-build.log test-artifacts/gomobile/
           unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/gomobile/go-backed-apk-contents.txt
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk test-artifacts/gomobile/go-backed-apk-summary.md
+          test -s test-artifacts/gomobile/go-backed-apk-summary.md
       - name: Upload gomobile build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -186,20 +203,9 @@ jobs:
             echo $? > freerdp-artifacts/exit-code.txt
           '
           set -e
-          cat > freerdp-artifacts/summary.md <<EOF
-          # FreeRDP compatibility probe
-
-          - Exit code: `$(cat freerdp-artifacts/exit-code.txt 2>/dev/null || echo unknown)`
-          - TCP/server log lines: `$(wc -l < freerdp-artifacts/mock-server.log 2>/dev/null || echo 0)`
-          - FreeRDP log lines: `$(wc -l < freerdp-artifacts/xfreerdp.log 2>/dev/null || echo 0)`
-          - Screenshot: `xfreerdp-root.png` when conversion succeeded
-
-          ## Last FreeRDP lines
-
-          ```text
-          $(tail -n 80 freerdp-artifacts/xfreerdp.log 2>/dev/null)
-          ```
-          EOF
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go freerdp-artifacts
+          test -s freerdp-artifacts/summary.md
+          test -s freerdp-artifacts/summary.json
           cat freerdp-artifacts/xfreerdp.log | tail -n 120 || true
           # Compatibility probe is informational until the server satisfies full real-client RDP.
           exit 0
@@ -216,6 +222,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -231,16 +240,33 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Build debug APK
         working-directory: android
-        run: gradle :app:assembleDebug
+        run: |
+          if [ "${{ inputs.emulator_go_backed || 'false' }}" = "true" ]; then
+            go install golang.org/x/mobile/cmd/gomobile@latest
+            echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+            gomobile init
+            cd .. && make gomobile-bind && cd android
+          fi
+          gradle :app:assembleDebug
       - name: Install and launch on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ inputs.emulator_api_level || '35' }}
           target: google_apis
           arch: x86_64
           profile: pixel_6
           disable-animations: true
           script: |
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-            adb shell am start -W -n pt.taoofmac.gordpandroid/.MainActivity
-            adb shell pidof pt.taoofmac.gordpandroid
+            mkdir -p emulator-artifacts
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
+            adb shell am start -W -n pt.taoofmac.gordpandroid/.MainActivity | tee emulator-artifacts/activity-start.txt
+            adb shell pidof pt.taoofmac.gordpandroid | tee emulator-artifacts/pidof.txt
+            adb shell dumpsys package pt.taoofmac.gordpandroid > emulator-artifacts/dumpsys-package.txt
+            adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt
+            adb logcat -d > emulator-artifacts/logcat.txt
+            adb exec-out screencap -p > emulator-artifacts/screenshot.png
+      - name: Upload emulator artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-artifacts
+          path: emulator-artifacts/**

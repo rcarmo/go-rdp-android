@@ -17,7 +17,10 @@ Everything below runs without a physical Android device.
 
 ## Manual-only CI
 
-- Android emulator smoke test (`workflow_dispatch` only): install debug APK, launch `MainActivity`, verify process startup.
+- Android emulator smoke test (`workflow_dispatch` only): install debug APK, launch `MainActivity`, verify process startup, collect logcat/dumpsys/screenshot artifacts.
+- Workflow inputs:
+  - `emulator_api_level` (default `35`)
+  - `emulator_go_backed` (`false` for normal APK, `true` to build/install the Go-backed APK)
 
 ## Blocked on a physical device
 
