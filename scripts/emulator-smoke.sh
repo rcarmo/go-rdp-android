@@ -19,11 +19,20 @@ if [ "$CAPTURE" = "true" ]; then
   height=${size_line#*x}
   : "${width:=1080}"
   : "${height:=2400}"
-  tap_x=$((width * 3 / 4))
-  tap_y=$((height * 9 / 10))
-  echo "wm_size=${width}x${height} consent_tap=${tap_x},${tap_y}" | tee emulator-artifacts/capture-consent.txt
+  dropdown_x=$((width / 2))
+  dropdown_y=$((height / 2))
+  entire_screen_x=$((width / 2))
+  entire_screen_y=$((height * 57 / 100))
+  start_x=$((width * 82 / 100))
+  start_y=$((height * 725 / 1000))
+  echo "wm_size=${width}x${height} dropdown_tap=${dropdown_x},${dropdown_y} entire_screen_tap=${entire_screen_x},${entire_screen_y} start_tap=${start_x},${start_y}" | tee emulator-artifacts/capture-consent.txt
   adb exec-out screencap -p > emulator-artifacts/mediaprojection-dialog.png || true
-  adb shell input tap "$tap_x" "$tap_y"
+  adb shell input tap "$dropdown_x" "$dropdown_y" || true
+  sleep 1
+  adb exec-out screencap -p > emulator-artifacts/mediaprojection-scope-menu.png || true
+  adb shell input tap "$entire_screen_x" "$entire_screen_y" || true
+  sleep 1
+  adb shell input tap "$start_x" "$start_y"
   sleep 12
 else
   adb shell am start -W -n "$ACTIVITY" --ez start_test_pattern true | tee emulator-artifacts/activity-start.txt
