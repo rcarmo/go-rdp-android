@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"log"
 	"net"
@@ -18,7 +22,7 @@ import (
 var traceOut atomic.Value
 
 type probeSummary struct {
-	BitmapUpdates int `json:"bitmap_updates"`
+	BitmapUpdates  int `json:"bitmap_updates"`
 	PacketsRead    int `json:"packets_read"`
 	PacketsWritten int `json:"packets_written"`
 }
@@ -30,6 +34,9 @@ func main() {
 	traceDir := flag.String("trace-dir", "", "directory for client/server packet hex traces")
 	summaryPath := flag.String("summary", "", "write JSON probe summary")
 	updates := flag.Int("updates", 1, "number of bitmap update packets to read after FontMap")
+	screenshotPath := flag.String("screenshot", "", "compose bitmap updates into a PNG screenshot")
+	screenshotWidth := flag.Int("screenshot-width", 320, "screenshot canvas width")
+	screenshotHeight := flag.Int("screenshot-height", 240, "screenshot canvas height")
 	flag.Parse()
 	if *traceDir != "" {
 		if err := os.MkdirAll(*traceDir, 0o755); err != nil {
@@ -119,9 +126,23 @@ func main() {
 		log.Fatal(err)
 	}
 	readAndPrint(conn, "Server FontMap")
+	var screenshot *image.RGBA
+	if *screenshotPath != "" {
+		screenshot = image.NewRGBA(image.Rect(0, 0, *screenshotWidth, *screenshotHeight))
+	}
 	for i := 0; i < *updates; i++ {
-		readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+		pkt := readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+		if screenshot != nil {
+			if err := applyBitmapUpdatePacket(screenshot, pkt); err != nil {
+				fmt.Fprintf(os.Stderr, "bitmap decode warning: %v\n", err)
+			}
+		}
 		summary.BitmapUpdates++
+	}
+	if screenshot != nil {
+		if err := writePNG(*screenshotPath, screenshot); err != nil {
+			log.Fatal(err)
+		}
 	}
 	if *summaryPath != "" {
 		data, err := json.MarshalIndent(summary, "", "  ")
@@ -225,12 +246,114 @@ func encodePERLength(length int) []byte {
 	return []byte{byte(length)}
 }
 
-func readAndPrint(conn net.Conn, label string) {
+func readAndPrint(conn net.Conn, label string) []byte {
 	pkt, err := readTPKT(conn)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("%s: %x\n", label, pkt)
+	return pkt
+}
+
+func applyBitmapUpdatePacket(dst *image.RGBA, pkt []byte) error {
+	if len(pkt) < 4 || pkt[0] != 0x02 || pkt[1] != 0xf0 || pkt[2] != 0x80 {
+		return fmt.Errorf("not an X.224 Data TPDU")
+	}
+	mcs := pkt[3:]
+	if len(mcs) < 2 || int(mcs[0]>>2) != 26 {
+		return fmt.Errorf("not an MCS SendDataIndication")
+	}
+	body := mcs[1:]
+	if len(body) < 6 || body[4] != 0x70 {
+		return fmt.Errorf("short SendDataIndication")
+	}
+	length, consumed, err := readPERLengthBytes(body[5:])
+	if err != nil {
+		return err
+	}
+	dataStart := 5 + consumed
+	if dataStart+length > len(body) {
+		return fmt.Errorf("SendDataIndication length %d exceeds available %d", length, len(body)-dataStart)
+	}
+	share := body[dataStart : dataStart+length]
+	if len(share) < 18 {
+		return fmt.Errorf("short Share Data PDU")
+	}
+	total := int(binary.LittleEndian.Uint16(share[0:2]))
+	if total > len(share) {
+		return fmt.Errorf("share length %d exceeds available %d", total, len(share))
+	}
+	if binary.LittleEndian.Uint16(share[2:4]) != 0x0017 {
+		return fmt.Errorf("not Share Data")
+	}
+	payload := share[6:total]
+	if len(payload) < 12 || payload[8] != 0x02 {
+		return fmt.Errorf("not a bitmap Update PDU")
+	}
+	return applyBitmapUpdate(dst, payload[12:])
+}
+
+func readPERLengthBytes(data []byte) (length, consumed int, err error) {
+	if len(data) == 0 {
+		return 0, 0, io.ErrUnexpectedEOF
+	}
+	if data[0]&0x80 == 0 {
+		return int(data[0]), 1, nil
+	}
+	if len(data) < 2 {
+		return 0, 0, io.ErrUnexpectedEOF
+	}
+	return (int(data[0]&0x7f) << 8) | int(data[1]), 2, nil
+}
+
+func applyBitmapUpdate(dst *image.RGBA, payload []byte) error {
+	if len(payload) < 4 {
+		return fmt.Errorf("short bitmap update")
+	}
+	if binary.LittleEndian.Uint16(payload[0:2]) != 0x0001 {
+		return fmt.Errorf("not a bitmap update")
+	}
+	rects := int(binary.LittleEndian.Uint16(payload[2:4]))
+	r := bytes.NewReader(payload[4:])
+	for i := 0; i < rects; i++ {
+		var left, top, right, bottom, width, height, bpp, flags, dataLen uint16
+		for _, v := range []*uint16{&left, &top, &right, &bottom, &width, &height, &bpp, &flags, &dataLen} {
+			if err := binary.Read(r, binary.LittleEndian, v); err != nil {
+				return err
+			}
+		}
+		data := make([]byte, dataLen)
+		if _, err := io.ReadFull(r, data); err != nil {
+			return err
+		}
+		if bpp != 32 || flags != 0 {
+			return fmt.Errorf("unsupported bitmap rect bpp=%d flags=0x%04x", bpp, flags)
+		}
+		if int(width)*int(height)*4 > len(data) {
+			return fmt.Errorf("short bitmap rect data")
+		}
+		_ = right
+		_ = bottom
+		for y := 0; y < int(height); y++ {
+			for x := 0; x < int(width); x++ {
+				si := (y*int(width) + x) * 4
+				dst.SetRGBA(int(left)+x, int(top)+y, color.RGBA{R: data[si+2], G: data[si+1], B: data[si], A: data[si+3]})
+			}
+		}
+	}
+	return nil
+}
+
+func writePNG(path string, img image.Image) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return png.Encode(f, img)
 }
 
 func sendShareData(conn net.Conn, pduType2 byte, payload []byte) error {

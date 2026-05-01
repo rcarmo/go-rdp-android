@@ -32,6 +32,18 @@ fi | tee -a emulator-artifacts/checks.txt
 
 adb exec-out screencap -p > emulator-artifacts/screenshot.png || true
 
+if [ "${EMULATOR_GO_BACKED:-false}" = "true" ]; then
+  adb forward tcp:3390 tcp:3390
+  go run ./cmd/probe \
+    -addr 127.0.0.1:3390 \
+    -updates 20 \
+    -screenshot emulator-artifacts/rdp-screenshot.png \
+    -summary emulator-artifacts/rdp-probe-summary.json \
+    > emulator-artifacts/rdp-probe.log 2>&1
+  test -s emulator-artifacts/rdp-screenshot.png
+  grep -q '"bitmap_updates": 20' emulator-artifacts/rdp-probe-summary.json
+fi
+
 grep -q 'startServer=ok' emulator-artifacts/checks.txt
 grep -q 'frame1=ok' emulator-artifacts/checks.txt
 grep -q 'fatal_exception=none' emulator-artifacts/checks.txt

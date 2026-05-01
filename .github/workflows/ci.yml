@@ -260,7 +260,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash scripts/emulator-smoke.sh
+          script: EMULATOR_GO_BACKED='${{ inputs.emulator_go_backed || 'false' }}' bash scripts/emulator-smoke.sh
       - name: Upload emulator artifacts
         if: always()
         uses: actions/upload-artifact@v4

@@ -60,8 +60,8 @@ func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
 	if !ok {
 		t.Fatal("expected tiled frame conversion")
 	}
-	if len(updates) != 3 {
-		t.Fatalf("expected 3 horizontal tiles, got %d", len(updates))
+	if len(updates) != 6 {
+		t.Fatalf("expected 6 PER-safe tiles, got %d", len(updates))
 	}
 	for _, update := range updates {
 		rects, err := parseBitmapUpdateHeader(update)
@@ -71,8 +71,8 @@ func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
 		if rects != 1 {
 			t.Fatalf("expected one rect per update, got %d", rects)
 		}
-		if len(update) > 60000 {
-			t.Fatalf("update too large for safe TPKT envelope: %d", len(update))
+		if len(update) > 32767 {
+			t.Fatalf("update too large for PER length envelope: %d", len(update))
 		}
 	}
 }

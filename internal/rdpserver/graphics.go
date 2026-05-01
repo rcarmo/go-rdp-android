@@ -11,7 +11,7 @@ const (
 
 	updateTypeBitmap       = 0x0001
 	bitmapBPP32            = 32
-	maxInitialBitmapUpdate = 96
+	maxInitialBitmapUpdate = 80
 )
 
 type bitmapRect struct {
