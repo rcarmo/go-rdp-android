@@ -63,8 +63,8 @@ class GomobileRdpBackend : RdpBackend {
 
     private fun loadClass(name: String): Class<*>? = runCatching { Class.forName(name) }.getOrNull()
 
-    private fun Array<Any>.intAt(index: Int): Int = (this[index] as Number).toInt()
-    private fun Array<Any>.boolAt(index: Int): Boolean = this[index] as Boolean
+    private fun Array<out Any?>.intAt(index: Int): Int = (this[index] as Number).toInt()
+    private fun Array<out Any?>.boolAt(index: Int): Boolean = this[index] as Boolean
 
     companion object {
         private const val TAG = "GoRdpAndroidGo"
