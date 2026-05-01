@@ -67,6 +67,17 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("sent minimal Client Info security PDU")
+	demand, err := readTPKT(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("DemandActive: %x\n", demand)
+
+	confirm := buildConfirmActivePDU(0x000103ea, 1001)
+	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, confirm)); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("sent minimal Confirm Active PDU")
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
@@ -133,4 +144,46 @@ func encodePERLength(length int) []byte {
 		return buf
 	}
 	return []byte{byte(length)}
+}
+
+func buildConfirmActivePDU(shareID uint32, userID uint16) []byte {
+	source := []byte("PROBE")
+	cap := capabilitySet(0x0001, generalCapability())
+	combinedCapsLen := 4 + len(cap)
+	totalLength := 6 + 4 + 2 + 2 + 2 + len(source) + combinedCapsLen
+	pdu := appendLE16(nil, uint16(totalLength))
+	pdu = appendLE16(pdu, 0x0013)
+	pdu = appendLE16(pdu, userID)
+	pdu = appendLE32(pdu, shareID)
+	pdu = appendLE16(pdu, 1002)
+	pdu = appendLE16(pdu, uint16(len(source)))
+	pdu = appendLE16(pdu, uint16(combinedCapsLen))
+	pdu = append(pdu, source...)
+	pdu = appendLE16(pdu, 1)
+	pdu = appendLE16(pdu, 0)
+	pdu = append(pdu, cap...)
+	return pdu
+}
+
+func capabilitySet(capType uint16, payload []byte) []byte {
+	out := appendLE16(nil, capType)
+	out = appendLE16(out, uint16(4+len(payload)))
+	out = append(out, payload...)
+	return out
+}
+
+func generalCapability() []byte {
+	out := make([]byte, 0, 22)
+	for _, v := range []uint16{1, 3, 0x0200, 0, 0, 0, 0, 0, 0, 0, 0} {
+		out = appendLE16(out, v)
+	}
+	return out
+}
+
+func appendLE16(dst []byte, v uint16) []byte {
+	return append(dst, byte(v), byte(v>>8))
+}
+
+func appendLE32(dst []byte, v uint32) []byte {
+	return append(dst, byte(v), byte(v>>8), byte(v>>16), byte(v>>24))
 }

@@ -25,7 +25,7 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn) error {
+func handleMCSDomainSequence(conn net.Conn, width, height int) error {
 	userID := uint16(defaultMCSUserID)
 	for i := 0; i < 32; i++ {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
@@ -50,8 +50,22 @@ func handleMCSDomainSequence(conn net.Conn) error {
 				return err
 			}
 		case mcsSendDataRequestApp:
-			if _, err := parseSecurityPDU(pdu.Data); err != nil {
+			if share, err := parseShareControlPDU(pdu.Data); err == nil {
+				if share.PDUType == pduTypeConfirmActive {
+					if _, err := parseConfirmActive(pdu.Data); err != nil {
+						return err
+					}
+				}
+				continue
+			}
+			sec, err := parseSecurityPDU(pdu.Data)
+			if err != nil {
 				return err
+			}
+			if sec.Flags&secInfoPacket != 0 {
+				if err := writeDemandActive(conn, width, height); err != nil {
+					return err
+				}
 			}
 		default:
 			return fmt.Errorf("unsupported MCS domain PDU application %d", pdu.Application)
@@ -85,7 +99,7 @@ func parseMCSDomainPDU(data []byte) (*domainPDU, error) {
 		}
 		pdu.Initiator = binary.BigEndian.Uint16(body[0:2]) + defaultMCSUserID
 		pdu.ChannelID = binary.BigEndian.Uint16(body[2:4])
-	case mcsSendDataRequestApp:
+	case mcsSendDataRequestApp, mcsSendDataIndicationApp:
 		req, err := parseMCSSendDataRequest(body)
 		if err != nil {
 			return nil, err

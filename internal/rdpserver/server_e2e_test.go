@@ -87,7 +87,26 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 	}
 
 	clientInfo := []byte{secInfoPacket, 0, 0, 0, 1, 2, 3, 4}
-	if err := sendTestMCSDomainPDU(conn, mcsSendDataRequestApp, buildMCSSendDataRequest(defaultMCSUserID, 1003, clientInfo)); err != nil {
+	if err := sendTestMCSDomainPDU(conn, mcsSendDataRequestApp, buildMCSSendDataRequest(defaultMCSUserID, globalChannelID, clientInfo)); err != nil {
+		t.Fatal(err)
+	}
+	demandResp, err := readTestMCSDomainPDU(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if demandResp.Application != mcsSendDataIndicationApp {
+		t.Fatalf("expected SendDataIndication with Demand Active, got %#v", demandResp)
+	}
+	share, err := parseShareControlPDU(demandResp.Data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if share.PDUType != pduTypeDemandActive {
+		t.Fatalf("expected Demand Active, got 0x%04x", share.PDUType)
+	}
+
+	confirm := buildTestConfirmActivePDU(defaultShareID, defaultMCSUserID)
+	if err := sendTestMCSDomainPDU(conn, mcsSendDataRequestApp, buildMCSSendDataRequest(defaultMCSUserID, globalChannelID, confirm)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,4 +150,37 @@ func readTestMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
 		return nil, err
 	}
 	return parseMCSDomainPDU(mcs)
+}
+
+func buildTestConfirmActivePDU(shareID uint32, userID uint16) []byte {
+	source := []byte("TEST")
+	cap := capabilitySet(capTypeGeneral, buildGeneralCapability())
+	combinedCapsLen := 4 + len(cap)
+	totalLength := 6 + 4 + 2 + 2 + 2 + len(source) + combinedCapsLen
+	buf := make([]byte, 0, totalLength)
+	pdu := appendShareControlHeader(buf, totalLength, pduTypeConfirmActive, userID)
+	pdu = appendLE32(pdu, shareID)
+	pdu = appendLE16(pdu, serverChannelID)
+	pdu = appendLE16(pdu, uint16(len(source)))
+	pdu = appendLE16(pdu, uint16(combinedCapsLen))
+	pdu = append(pdu, source...)
+	pdu = appendLE16(pdu, 1)
+	pdu = appendLE16(pdu, 0)
+	pdu = append(pdu, cap...)
+	return pdu
+}
+
+func appendShareControlHeader(dst []byte, totalLength int, pduType uint16, source uint16) []byte {
+	dst = appendLE16(dst, uint16(totalLength))
+	dst = appendLE16(dst, pduType)
+	dst = appendLE16(dst, source)
+	return dst
+}
+
+func appendLE16(dst []byte, v uint16) []byte {
+	return append(dst, byte(v), byte(v>>8))
+}
+
+func appendLE32(dst []byte, v uint32) []byte {
+	return append(dst, byte(v), byte(v>>8), byte(v>>16), byte(v>>24))
 }

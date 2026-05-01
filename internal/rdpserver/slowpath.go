@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	mcsSendDataRequestApp = 25
+	mcsSendDataRequestApp    = 25
+	mcsSendDataIndicationApp = 26
 
 	secExchangePacket = 0x0001
 	secInfoPacket     = 0x0040

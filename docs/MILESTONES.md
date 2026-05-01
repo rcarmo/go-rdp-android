@@ -24,6 +24,8 @@ Tasks:
 - GCC Conference Create Response ✅ (minimal scaffold)
 - SendDataRequest parsing ✅
 - Security Exchange / Client Info parsing ✅ (minimal scaffold)
+- Server Demand Active PDU ✅ (minimal capability scaffold)
+- Client Confirm Active PDU parsing ✅
 - basic capability exchange
 - one-session state machine
 
