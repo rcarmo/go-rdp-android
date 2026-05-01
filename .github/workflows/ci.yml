@@ -269,9 +269,12 @@ jobs:
             adb shell dumpsys package pt.taoofmac.gordpandroid > emulator-artifacts/dumpsys-package.txt
             adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt
             adb logcat -d > emulator-artifacts/logcat.txt
-            grep -E 'GoRdpAndroid|GoRdpAndroidService|backend=|frame#|FATAL EXCEPTION|AndroidRuntime' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
-            grep -q 'startServer' emulator-artifacts/logcat-filtered.txt
-            grep -q 'frame#1' emulator-artifacts/logcat-filtered.txt
+            grep -E 'GoRdpAndroid|GoRdpAndroidService|backend=|frame#|FATAL EXCEPTION|AndroidRuntime|ForegroundService|SecurityException|Exception' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
+            {
+              if grep -q 'startServer' emulator-artifacts/logcat-filtered.txt; then echo 'startServer=ok'; else echo 'startServer=missing'; fi
+              if grep -q 'frame#1' emulator-artifacts/logcat-filtered.txt; then echo 'frame1=ok'; else echo 'frame1=missing'; fi
+              if grep -q 'FATAL EXCEPTION' emulator-artifacts/logcat-filtered.txt; then echo 'fatal_exception=present'; else echo 'fatal_exception=none'; fi
+            } | tee emulator-artifacts/checks.txt
             adb exec-out screencap -p > emulator-artifacts/screenshot.png
       - name: Upload emulator artifacts
         uses: actions/upload-artifact@v4
