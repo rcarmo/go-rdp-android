@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -16,9 +17,19 @@ import (
 
 var traceOut atomic.Value
 
+type probeSummary struct {
+	BitmapUpdates int `json:"bitmap_updates"`
+	PacketsRead    int `json:"packets_read"`
+	PacketsWritten int `json:"packets_written"`
+}
+
+var summary probeSummary
+
 func main() {
 	addr := flag.String("addr", "127.0.0.1:3390", "RDP server address")
 	traceDir := flag.String("trace-dir", "", "directory for client/server packet hex traces")
+	summaryPath := flag.String("summary", "", "write JSON probe summary")
+	updates := flag.Int("updates", 1, "number of bitmap update packets to read after FontMap")
 	flag.Parse()
 	if *traceDir != "" {
 		if err := os.MkdirAll(*traceDir, 0o755); err != nil {
@@ -108,7 +119,19 @@ func main() {
 		log.Fatal(err)
 	}
 	readAndPrint(conn, "Server FontMap")
-	readAndPrint(conn, "Server Bitmap Update")
+	for i := 0; i < *updates; i++ {
+		readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+		summary.BitmapUpdates++
+	}
+	if *summaryPath != "" {
+		data, err := json.MarshalIndent(summary, "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile(*summaryPath, append(data, '\n'), 0o644); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
@@ -120,6 +143,7 @@ func readTPKT(r io.Reader) ([]byte, error) {
 	payload := make([]byte, length-4)
 	_, err := io.ReadFull(r, payload)
 	if err == nil {
+		summary.PacketsRead++
 		tracePacket("server", payload)
 	}
 	return payload, err
@@ -133,6 +157,7 @@ func writeTPKT(w io.Writer, payload []byte) error {
 	}
 	_, err := w.Write(payload)
 	if err == nil {
+		summary.PacketsWritten++
 		tracePacket("client", payload)
 	}
 	return err

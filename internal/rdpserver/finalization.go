@@ -28,6 +28,7 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 	if err != nil {
 		return err
 	}
+	tracef("share_data", "type2=0x%02x payload_len=%d", data.PDUType2, len(data.Payload))
 	switch data.PDUType2 {
 	case pduType2Synchronize:
 		return writeShareDataPDU(conn, pduType2Synchronize, buildSynchronizePayload())
@@ -58,12 +59,29 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		select {
 		case fr := <-frames.Frames():
 			if updates, ok := buildFrameBitmapUpdates(fr); ok {
-				return writeBitmapUpdates(conn, updates)
+				if err := writeBitmapUpdates(conn, updates); err != nil {
+					return err
+				}
+				go streamFrameUpdates(conn, frames)
+				return nil
 			}
 		default:
 		}
 	}
 	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
+}
+
+func streamFrameUpdates(conn net.Conn, frames frame.Source) {
+	for fr := range frames.Frames() {
+		updates, ok := buildFrameBitmapUpdates(fr)
+		if !ok {
+			continue
+		}
+		if err := writeBitmapUpdates(conn, updates); err != nil {
+			tracef("frame_stream_stop", "err=%v", err)
+			return
+		}
+	}
 }
 
 func writeBitmapUpdates(conn net.Conn, updates [][]byte) error {
@@ -100,6 +118,7 @@ func parseShareDataPDU(share *shareControlPDU) (*shareDataPDU, error) {
 }
 
 func writeShareDataPDU(conn net.Conn, pduType2 uint8, payload []byte) error {
+	tracef("share_data_write", "type2=0x%02x payload_len=%d", pduType2, len(payload))
 	data := buildShareDataPDU(pduType2, payload)
 	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, data)
 	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)

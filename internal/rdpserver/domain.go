@@ -41,6 +41,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			return err
 		}
 
+		tracef("mcs_domain_pdu", "application=%d initiator=%d channel=%d data_len=%d", pdu.Application, pdu.Initiator, pdu.ChannelID, len(pdu.Data))
 		switch pdu.Application {
 		case mcsErectDomainRequestApp:
 			// No response for ErectDomainRequest.
@@ -120,12 +121,14 @@ func parseMCSDomainPDU(data []byte) (*domainPDU, error) {
 }
 
 func writeMCSAttachUserConfirm(conn net.Conn, initiator uint16) error {
+	tracef("mcs_attach_user_confirm", "initiator=%d", initiator)
 	body := []byte{0} // result: rt-successful
 	body = append(body, encodePERInteger16(initiator, defaultMCSUserID)...)
 	return writeMCSDomainPDU(conn, mcsAttachUserConfirmApp, body)
 }
 
 func writeMCSChannelJoinConfirm(conn net.Conn, initiator, channelID uint16) error {
+	tracef("mcs_channel_join_confirm", "initiator=%d channel=%d", initiator, channelID)
 	body := []byte{0} // result: rt-successful
 	body = append(body, encodePERInteger16(initiator, defaultMCSUserID)...)
 	body = append(body, encodePERInteger16(channelID, 0)...)

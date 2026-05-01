@@ -45,6 +45,8 @@ Run the current handshake prototype locally:
 ```bash
 # terminal 1
 make run-mock
+# or use animated synthetic frames:
+make run-mock-pattern
 
 # terminal 2
 make probe

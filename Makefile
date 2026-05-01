@@ -29,6 +29,10 @@ build-go: ## Build Go mock/server packages
 run-mock: ## Run the desktop mock RDP server on :3390
 	$(GO) run ./cmd/mock-server
 
+.PHONY: run-mock-pattern
+run-mock-pattern: ## Run the mock server with animated test-pattern frames
+	GO_RDP_ANDROID_TRACE=1 $(GO) run ./cmd/mock-server -test-pattern -width 320 -height 240 -fps 5
+
 .PHONY: probe
 probe: ## Probe a running mock server with TPKT/X.224/MCS handshake
 	$(GO) run ./cmd/probe -addr 127.0.0.1:3390

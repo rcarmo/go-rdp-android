@@ -65,6 +65,9 @@ func readTPKT(r io.Reader) ([]byte, error) {
 	}
 	payload := make([]byte, length-4)
 	_, err := io.ReadFull(r, payload)
+	if err == nil {
+		tracef("tpkt_read", "payload_len=%d", len(payload))
+	}
 	return payload, err
 }
 
@@ -79,6 +82,9 @@ func writeTPKT(w io.Writer, payload []byte) error {
 		return err
 	}
 	_, err := w.Write(payload)
+	if err == nil {
+		tracef("tpkt_write", "payload_len=%d", len(payload))
+	}
 	return err
 }
 
@@ -124,5 +130,6 @@ func writeConnectionConfirm(conn net.Conn, dstRef uint16, selectedProtocol uint3
 	x224 := []byte{li, x224TypeConnectionConfirm, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint16(x224[2:4], dstRef)
 	x224 = append(x224, neg...)
+	tracef("x224_confirm", "dst_ref=%d selected_protocol=0x%08x", dstRef, selectedProtocol)
 	return writeTPKT(conn, x224)
 }

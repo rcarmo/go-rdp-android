@@ -5,6 +5,7 @@ Everything below runs without a physical Android device.
 ## Default CI gates
 
 - Go vet/build/test with coverage threshold (`make coverage COVERAGE_MIN=75.0`).
+- Go race tests and short parser fuzz smoke.
 - Mock server + probe TCP smoke test.
 - Protocol packet trace artifact from the probe (`mock-probe-artifacts`), including client/server hex dumps and logs.
 - Normal Android debug APK build and APK structure inspection, with build/inspection logs uploaded.
@@ -12,7 +13,7 @@ Everything below runs without a physical Android device.
 - Generated AAR Java API signature verification (`make check-aar-api`).
 - Generated AAR native library/content inspection (`make check-aar-artifact`), with AAR contents uploaded.
 - Go-backed APK build against `mobile.aar` and native library/content inspection, with APK contents uploaded.
-- FreeRDP compatibility probe log and screenshot capture (`freerdp-compat-probe`). This job is informational/non-blocking until the mock server fully satisfies real clients.
+- FreeRDP compatibility probe log, summary and screenshot capture (`freerdp-compat-probe`) against a mock server with animated test-pattern frames. This job is informational/non-blocking until the mock server fully satisfies real clients.
 
 ## Manual-only CI
 

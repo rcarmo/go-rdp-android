@@ -37,17 +37,30 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p test-artifacts/mock-probe/protocol-trace
-          go run ./cmd/mock-server >test-artifacts/mock-probe/mock-server.log 2>&1 &
+          GO_RDP_ANDROID_TRACE=1 go run ./cmd/mock-server >test-artifacts/mock-probe/mock-server.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/mock-probe/mock-server.log' EXIT
           sleep 2
-          go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace >test-artifacts/mock-probe/probe.log 2>&1
+          go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace -summary test-artifacts/mock-probe/probe-summary.json >test-artifacts/mock-probe/probe.log 2>&1
           find test-artifacts/mock-probe/protocol-trace -type f | sort >test-artifacts/mock-probe/protocol-trace/index.txt
       - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mock-probe-artifacts
           path: test-artifacts/mock-probe/**
+
+  go-race-fuzz:
+    name: Go race and fuzz smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - name: Race tests
+        run: go test -race ./...
+      - name: Fuzz parser smoke
+        run: go test ./internal/rdpserver -run=Fuzz -fuzz=FuzzParseX224Data -fuzztime=10s
 
   android:
     name: Android debug build
@@ -157,7 +170,7 @@ jobs:
         run: |
           set -u
           mkdir -p freerdp-artifacts
-          go run ./cmd/mock-server >freerdp-artifacts/mock-server.log 2>&1 &
+          GO_RDP_ANDROID_TRACE=1 go run ./cmd/mock-server -test-pattern -width 320 -height 240 -fps 5 >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 2
@@ -173,6 +186,20 @@ jobs:
             echo $? > freerdp-artifacts/exit-code.txt
           '
           set -e
+          cat > freerdp-artifacts/summary.md <<EOF
+          # FreeRDP compatibility probe
+
+          - Exit code: `$(cat freerdp-artifacts/exit-code.txt 2>/dev/null || echo unknown)`
+          - TCP/server log lines: `$(wc -l < freerdp-artifacts/mock-server.log 2>/dev/null || echo 0)`
+          - FreeRDP log lines: `$(wc -l < freerdp-artifacts/xfreerdp.log 2>/dev/null || echo 0)`
+          - Screenshot: `xfreerdp-root.png` when conversion succeeded
+
+          ## Last FreeRDP lines
+
+          ```text
+          $(tail -n 80 freerdp-artifacts/xfreerdp.log 2>/dev/null)
+          ```
+          EOF
           cat freerdp-artifacts/xfreerdp.log | tail -n 120 || true
           # Compatibility probe is informational until the server satisfies full real-client RDP.
           exit 0

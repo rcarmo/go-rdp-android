@@ -57,6 +57,7 @@ func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
 			if !ok {
 				return nil, false
 			}
+			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bytes=%d", x, y, tileWidth, tileHeight, len(update))
 			updates = append(updates, update)
 		}
 	}

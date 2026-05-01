@@ -9,7 +9,7 @@ import (
 func TestRunStopsWhenContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- run(ctx, "127.0.0.1:0") }()
+	go func() { done <- run(ctx, "127.0.0.1:0", 320, 240, false, 0) }()
 	time.Sleep(50 * time.Millisecond)
 	cancel()
 	select {
@@ -23,7 +23,7 @@ func TestRunStopsWhenContextCanceled(t *testing.T) {
 }
 
 func TestRunRejectsInvalidConfig(t *testing.T) {
-	if err := run(context.Background(), "bad address with spaces"); err == nil {
+	if err := run(context.Background(), "bad address with spaces", 320, 240, false, 0); err == nil {
 		t.Fatal("expected listen error")
 	}
 }
