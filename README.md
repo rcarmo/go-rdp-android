@@ -58,7 +58,7 @@ TCP → TPKT → X.224 → MCS Connect → Domain/Channel Join → Client Info �
 
 Android debug APKs are built by GitHub Actions and uploaded as workflow artifacts.
 
-The current graphics path converts `frame.Source` RGBA/BGRA frames into TPKT-safe slow-path bitmap update tiles, with a solid-color fallback when no frame is available.
+The current graphics path converts `frame.Source` RGBA/BGRA frames into TPKT-safe slow-path bitmap update tiles, with a solid-color fallback when no frame is available. Slow-path keyboard, Unicode, and mouse input PDUs are decoded into the internal `input.Sink` interface for the future Android Accessibility bridge.
 
 ## Next major steps
 

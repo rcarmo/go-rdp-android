@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	"github.com/rcarmo/go-rdp-android/internal/input"
 )
 
 const (
@@ -22,7 +23,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, width, height int) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -46,6 +47,8 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 			return err
 		}
 		return writeInitialBitmapUpdate(conn, frames, width, height)
+	case pduType2Input:
+		return dispatchSlowPathInput(data.Payload, sink)
 	}
 	return nil
 }

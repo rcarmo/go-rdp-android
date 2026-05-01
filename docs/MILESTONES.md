@@ -30,6 +30,7 @@ Tasks:
 - solid-color slow-path bitmap update ✅
 - initial frame.Source-to-bitmap conversion ✅
 - TPKT-safe frame tiling into bitmap update PDUs ✅
+- slow-path keyboard/mouse input decoding ✅
 - basic capability exchange
 - one-session state machine
 
