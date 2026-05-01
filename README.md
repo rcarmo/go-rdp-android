@@ -48,6 +48,9 @@ make run-mock
 
 # terminal 2
 make probe
+
+# or run both as a local smoke test
+make smoke
 ```
 
 The probe exercises:

@@ -24,6 +24,14 @@ jobs:
         run: go test ./... -count=1
       - name: Build Go packages
         run: go build ./...
+      - name: End-to-end mock/probe smoke test
+        run: |
+          set -euo pipefail
+          go run ./cmd/mock-server >mock-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true; cat mock-server.log' EXIT
+          sleep 2
+          go run ./cmd/probe
 
   android:
     name: Android debug build

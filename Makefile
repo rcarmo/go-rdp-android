@@ -30,6 +30,15 @@ run-mock: ## Run the desktop mock RDP server on :3390
 probe: ## Probe a running mock server with TPKT/X.224/MCS handshake
 	$(GO) run ./cmd/probe -addr 127.0.0.1:3390
 
+.PHONY: smoke
+smoke: ## Run mock server and probe it locally
+	@set -eu; \
+	$(GO) run ./cmd/mock-server >mock-server.log 2>&1 & \
+	pid=$$!; \
+	trap 'kill $$pid 2>/dev/null || true; cat mock-server.log; rm -f mock-server.log' EXIT; \
+	sleep 2; \
+	$(GO) run ./cmd/probe
+
 .PHONY: coverage
 coverage: ## Run Go coverage
 	$(GO) test -coverprofile=coverage.out ./...
