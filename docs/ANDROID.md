@@ -15,6 +15,8 @@ The stub in `NativeRdpBridge.kt` should be replaced by a gomobile-generated AAR 
 
 The Android shell now prefers a gomobile-generated Go backend when `android/app/libs/mobile.aar` is present. If the AAR is absent, it falls back to a logging backend so CI and UI work can continue.
 
+CI includes an Android emulator smoke test that installs the debug APK and launches `MainActivity`. This is not a replacement for physical-device validation of MediaProjection/Accessibility, but it catches packaging/runtime launch failures before device testing is available.
+
 Build the Go AAR and app with:
 
 ```bash
