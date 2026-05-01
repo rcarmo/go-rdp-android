@@ -81,6 +81,8 @@ jobs:
         run: gomobile init
       - name: Build mobile AAR
         run: make gomobile-bind
+      - name: Verify mobile AAR API
+        run: make check-aar-api
       - name: Build APK with Go AAR
         working-directory: android
         run: gradle :app:assembleDebug

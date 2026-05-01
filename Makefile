@@ -58,6 +58,12 @@ gomobile-bind: ## Build mobile.aar from the Go mobile package
 	mkdir -p android/app/libs
 	$(GOMOBILE) bind -target=android -androidapi 29 -o $(MOBILE_AAR) ./mobile
 
+.PHONY: check-aar-api
+check-aar-api: ## Verify generated gomobile AAR Java API shape
+	mkdir -p .gotmp
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-aar-api.go $(MOBILE_AAR)
+	rm -rf .gotmp
+
 .PHONY: android-build
 android-build: ## Build Android debug APK (requires Android SDK + Gradle)
 	cd android && gradle :app:assembleDebug
