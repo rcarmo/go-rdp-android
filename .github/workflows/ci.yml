@@ -95,6 +95,7 @@ jobs:
           make check-apk-artifact | tee test-artifacts/android/apk-inspection.log
           cp android-build.log test-artifacts/android/
           unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/android/apk-contents.txt
+          mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk test-artifacts/android/apk-summary.md
           test -s test-artifacts/android/apk-summary.md
       - name: Upload Android build artifacts
@@ -141,6 +142,7 @@ jobs:
         run: |
           make check-aar-artifact | tee test-artifacts/gomobile/aar-inspection.log
           unzip -l android/app/libs/mobile.aar >test-artifacts/gomobile/aar-contents.txt
+          mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go aar android/app/libs/mobile.aar test-artifacts/gomobile/aar-summary.md
           test -s test-artifacts/gomobile/aar-summary.md
       - name: Build APK with Go AAR
@@ -151,6 +153,7 @@ jobs:
           make check-apk-artifact REQUIRE_GO_LIBS=1 | tee test-artifacts/gomobile/go-backed-apk-inspection.log
           cp gomobile-android-build.log test-artifacts/gomobile/
           unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/gomobile/go-backed-apk-contents.txt
+          mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk test-artifacts/gomobile/go-backed-apk-summary.md
           test -s test-artifacts/gomobile/go-backed-apk-summary.md
       - name: Upload gomobile build artifacts
@@ -203,6 +206,7 @@ jobs:
             echo $? > freerdp-artifacts/exit-code.txt
           '
           set -e
+          mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go freerdp-artifacts
           test -s freerdp-artifacts/summary.md
           test -s freerdp-artifacts/summary.json
