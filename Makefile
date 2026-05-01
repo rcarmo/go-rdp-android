@@ -1,7 +1,9 @@
 .DEFAULT_GOAL := help
 GO ?= go
 GH ?= gh
+GOMOBILE ?= gomobile
 PROJECT := go-rdp-android
+MOBILE_AAR := android/app/libs/mobile.aar
 
 .PHONY: help
 help: ## Show this help
@@ -46,9 +48,22 @@ coverage: ## Run Go coverage
 	$(GO) tool cover -func=coverage.out
 	rm -rf .gotmp
 
+.PHONY: gomobile-init
+gomobile-init: ## Install/init gomobile tooling
+	$(GO) install golang.org/x/mobile/cmd/gomobile@latest
+	$(GOMOBILE) init
+
+.PHONY: gomobile-bind
+gomobile-bind: ## Build mobile.aar from the Go mobile package
+	mkdir -p android/app/libs
+	$(GOMOBILE) bind -target=android -androidapi 29 -o $(MOBILE_AAR) ./mobile
+
 .PHONY: android-build
 android-build: ## Build Android debug APK (requires Android SDK + Gradle)
 	cd android && gradle :app:assembleDebug
+
+.PHONY: android-build-go
+android-build-go: gomobile-bind android-build ## Build gomobile AAR and Android debug APK
 
 .PHONY: ci
 ci: ci-status ## Show latest GitHub Actions run status

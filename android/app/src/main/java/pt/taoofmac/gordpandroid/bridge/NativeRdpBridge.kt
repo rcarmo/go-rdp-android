@@ -1,56 +1,49 @@
 package pt.taoofmac.gordpandroid.bridge
 
 import android.util.Log
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 import pt.taoofmac.gordpandroid.input.RdpAccessibilityService
 
 /**
- * Temporary Kotlin stub.
- *
- * This is the seam where a gomobile-generated Go binding should be wired in.
- * The methods and data shapes here intentionally mirror the planned Go API.
+ * Android-facing bridge. It prefers the gomobile-generated Go backend when
+ * `mobile.aar` is present under `android/app/libs/`, and falls back to a
+ * logging implementation so the app remains buildable in CI before the AAR is generated.
  */
-object NativeRdpBridge {
-    private val running = AtomicBoolean(false)
-    private val frameCount = AtomicLong(0)
+object NativeRdpBridge : RdpInputCallbacks {
+    private val backend: RdpBackend by lazy {
+        val go = GomobileRdpBackend()
+        if (go.available) go else LoggingRdpBackend()
+    }
 
     fun startServer(port: Int, hasProjection: Boolean) {
-        if (running.compareAndSet(false, true)) {
-            frameCount.set(0)
-            Log.i("GoRdpAndroid", "startServer(port=$port, hasProjection=$hasProjection) [stub]")
-        } else {
-            Log.i("GoRdpAndroid", "startServer ignored; already running [stub]")
-        }
+        backend.setInputCallbacks(this)
+        backend.startServer(port)
+        Log.i(TAG, "startServer(port=$port, hasProjection=$hasProjection, backend=${backend.name})")
     }
 
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {
-        if (!running.get()) return
-        val count = frameCount.incrementAndGet()
-        if (count == 1L || count % 120 == 0L) {
-            Log.i("GoRdpAndroid", "frame#$count ${width}x$height pixelStride=$pixelStride rowStride=$rowStride bytes=${data.size} [stub]")
-        }
+        backend.submitFrame(width, height, pixelStride, rowStride, data)
     }
 
-    fun onPointerMove(x: Int, y: Int) {
+    override fun onPointerMove(x: Int, y: Int) {
         RdpAccessibilityService.handlePointerMove(x, y)
     }
 
-    fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean) {
+    override fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean) {
         RdpAccessibilityService.handlePointerButton(x, y, buttons, down)
     }
 
-    fun onKey(scancode: Int, down: Boolean) {
+    override fun onKey(scancode: Int, down: Boolean) {
         RdpAccessibilityService.handleKey(scancode, down)
     }
 
-    fun onUnicode(codepoint: Int) {
+    override fun onUnicode(codepoint: Int) {
         RdpAccessibilityService.handleUnicode(codepoint)
     }
 
     fun stopServer() {
-        if (running.compareAndSet(true, false)) {
-            Log.i("GoRdpAndroid", "stopServer(frames=${frameCount.get()}) [stub]")
-        }
+        backend.stopServer()
+        Log.i(TAG, "stopServer(backend=${backend.name})")
     }
+
+    private const val TAG = "GoRdpAndroid"
 }

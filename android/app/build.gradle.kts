@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.dependencies
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -23,4 +25,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+}
+
+dependencies {
+    implementation(fileTree("libs") { include("*.aar") })
 }

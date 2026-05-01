@@ -1,0 +1,18 @@
+package pt.taoofmac.gordpandroid.bridge
+
+interface RdpInputCallbacks {
+    fun onPointerMove(x: Int, y: Int)
+    fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean)
+    fun onKey(scancode: Int, down: Boolean)
+    fun onUnicode(codepoint: Int)
+}
+
+interface RdpBackend {
+    val name: String
+    val available: Boolean
+
+    fun setInputCallbacks(callbacks: RdpInputCallbacks)
+    fun startServer(port: Int)
+    fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray)
+    fun stopServer()
+}

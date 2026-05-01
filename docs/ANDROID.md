@@ -13,6 +13,15 @@ The Android app is currently a Kotlin shell around a future Go binding.
 
 The stub in `NativeRdpBridge.kt` should be replaced by a gomobile-generated AAR exposing the Go server core.
 
+The Android shell now prefers a gomobile-generated Go backend when `android/app/libs/mobile.aar` is present. If the AAR is absent, it falls back to a logging backend so CI and UI work can continue.
+
+Build the Go AAR and app with:
+
+```bash
+make gomobile-init   # first time, installs/initializes gomobile
+make android-build-go
+```
+
 Current Go mobile-facing API scaffold lives in `mobile/bridge.go`:
 
 ```go
@@ -36,4 +45,6 @@ type InputHandler interface {
 func SetInputHandler(handler InputHandler)
 ```
 
-The Kotlin stub now includes matching callback landing points in `NativeRdpBridge` and `RdpAccessibilityService`. Pointer button down for the primary button is currently mapped to a tap gesture; pointer move, key and Unicode callbacks are logged until richer Accessibility injection is implemented.
+`NativeRdpBridge` now routes to `GomobileRdpBackend` via reflection when the generated `mobile.Mobile` classes exist, otherwise to `LoggingRdpBackend`. The reflection shim keeps the app buildable before gomobile artifacts are generated while still wiring the runtime path to Go once `mobile.aar` is bundled.
+
+`RdpAccessibilityService` includes matching callback landing points. Pointer button down for the primary button is currently mapped to a tap gesture; pointer move, key and Unicode callbacks are logged until richer Accessibility injection is implemented.
