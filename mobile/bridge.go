@@ -53,8 +53,9 @@ func (s *Server) Start(port int) error {
 	s.ctx = ctx
 	s.cancel = cancel
 	s.server = srv
-	s.done = make(chan error, 1)
-	go func() { s.done <- srv.Listen(ctx) }()
+	done := make(chan error, 1)
+	s.done = done
+	go func() { done <- srv.Listen(ctx) }()
 	return nil
 }
 
