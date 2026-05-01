@@ -23,14 +23,14 @@ type Server struct {
 	done   chan error
 	server *rdpserver.Server
 	frames *FrameQueue
-	input  *noopInputSink
+	input  *mobileInputSink
 }
 
 // NewServer creates a mobile bridge server instance.
 func NewServer() *Server {
 	return &Server{
 		frames: NewFrameQueue(2),
-		input:  &noopInputSink{},
+		input:  &mobileInputSink{},
 	}
 }
 
@@ -104,6 +104,11 @@ func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []b
 	})
 }
 
+// SetInputHandler installs the callback target for decoded RDP input events.
+func (s *Server) SetInputHandler(handler InputHandler) {
+	s.input.SetHandler(handler)
+}
+
 // Addr returns the active listen address, or an empty string if the server is stopped.
 func (s *Server) Addr() string {
 	s.mu.Lock()
@@ -124,6 +129,9 @@ func StopServer() error { return defaultServer.Stop() }
 func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error {
 	return defaultServer.SubmitFrame(width, height, pixelStride, rowStride, data)
 }
+
+// SetInputHandler installs the callback target on the default singleton server.
+func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handler) }
 
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {
@@ -180,11 +188,55 @@ func (q *FrameQueue) Close() error {
 	return nil
 }
 
-type noopInputSink struct{}
+// InputHandler is implemented by the gomobile/Kotlin side to receive decoded RDP input.
+type InputHandler interface {
+	PointerMove(x int, y int)
+	PointerButton(x int, y int, buttons int, down bool)
+	Key(scancode int, down bool)
+	Unicode(codepoint int)
+}
 
-func (noopInputSink) PointerMove(x, y int) error { return nil }
-func (noopInputSink) PointerButton(x, y int, buttons input.ButtonState, down bool) error {
+type mobileInputSink struct {
+	mu      sync.RWMutex
+	handler InputHandler
+}
+
+func (s *mobileInputSink) SetHandler(handler InputHandler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.handler = handler
+}
+
+func (s *mobileInputSink) getHandler() InputHandler {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.handler
+}
+
+func (s *mobileInputSink) PointerMove(x, y int) error {
+	if handler := s.getHandler(); handler != nil {
+		handler.PointerMove(x, y)
+	}
 	return nil
 }
-func (noopInputSink) Key(scancode uint16, down bool) error { return nil }
-func (noopInputSink) Unicode(r rune) error                 { return nil }
+
+func (s *mobileInputSink) PointerButton(x, y int, buttons input.ButtonState, down bool) error {
+	if handler := s.getHandler(); handler != nil {
+		handler.PointerButton(x, y, int(buttons), down)
+	}
+	return nil
+}
+
+func (s *mobileInputSink) Key(scancode uint16, down bool) error {
+	if handler := s.getHandler(); handler != nil {
+		handler.Key(int(scancode), down)
+	}
+	return nil
+}
+
+func (s *mobileInputSink) Unicode(r rune) error {
+	if handler := s.getHandler(); handler != nil {
+		handler.Unicode(int(r))
+	}
+	return nil
+}

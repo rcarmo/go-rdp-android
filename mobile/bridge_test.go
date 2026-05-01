@@ -41,6 +41,75 @@ func TestFrameQueueValidationAndClose(t *testing.T) {
 	}
 }
 
+type recordingMobileInputHandler struct {
+	moves   [][2]int
+	buttons []struct {
+		x, y    int
+		buttons int
+		down    bool
+	}
+	keys []struct {
+		scancode int
+		down     bool
+	}
+	unicode []int
+}
+
+func (h *recordingMobileInputHandler) PointerMove(x int, y int) {
+	h.moves = append(h.moves, [2]int{x, y})
+}
+func (h *recordingMobileInputHandler) PointerButton(x int, y int, buttons int, down bool) {
+	h.buttons = append(h.buttons, struct {
+		x, y    int
+		buttons int
+		down    bool
+	}{x: x, y: y, buttons: buttons, down: down})
+}
+func (h *recordingMobileInputHandler) Key(scancode int, down bool) {
+	h.keys = append(h.keys, struct {
+		scancode int
+		down     bool
+	}{scancode: scancode, down: down})
+}
+func (h *recordingMobileInputHandler) Unicode(codepoint int) {
+	h.unicode = append(h.unicode, codepoint)
+}
+
+func TestMobileInputHandler(t *testing.T) {
+	srv := NewServer()
+	handler := &recordingMobileInputHandler{}
+	srv.SetInputHandler(handler)
+	if err := srv.input.PointerMove(10, 20); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.input.PointerButton(10, 20, 1, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.input.Key(0x1e, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.input.Unicode('A'); err != nil {
+		t.Fatal(err)
+	}
+	if len(handler.moves) != 1 || handler.moves[0] != ([2]int{10, 20}) {
+		t.Fatalf("unexpected moves: %#v", handler.moves)
+	}
+	if len(handler.buttons) != 1 || handler.buttons[0].buttons != 1 || !handler.buttons[0].down {
+		t.Fatalf("unexpected buttons: %#v", handler.buttons)
+	}
+	if len(handler.keys) != 1 || handler.keys[0].scancode != 0x1e || !handler.keys[0].down {
+		t.Fatalf("unexpected keys: %#v", handler.keys)
+	}
+	if len(handler.unicode) != 1 || handler.unicode[0] != 'A' {
+		t.Fatalf("unexpected unicode: %#v", handler.unicode)
+	}
+
+	srv.SetInputHandler(nil)
+	if err := srv.input.PointerMove(1, 2); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	srv := NewServer()
 	if err := srv.Start(0); err != nil {

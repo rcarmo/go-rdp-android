@@ -3,6 +3,7 @@ package pt.taoofmac.gordpandroid.bridge
 import android.util.Log
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import pt.taoofmac.gordpandroid.input.RdpAccessibilityService
 
 /**
  * Temporary Kotlin stub.
@@ -29,6 +30,22 @@ object NativeRdpBridge {
         if (count == 1L || count % 120 == 0L) {
             Log.i("GoRdpAndroid", "frame#$count ${width}x$height pixelStride=$pixelStride rowStride=$rowStride bytes=${data.size} [stub]")
         }
+    }
+
+    fun onPointerMove(x: Int, y: Int) {
+        RdpAccessibilityService.handlePointerMove(x, y)
+    }
+
+    fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean) {
+        RdpAccessibilityService.handlePointerButton(x, y, buttons, down)
+    }
+
+    fun onKey(scancode: Int, down: Boolean) {
+        RdpAccessibilityService.handleKey(scancode, down)
+    }
+
+    fun onUnicode(codepoint: Int) {
+        RdpAccessibilityService.handleUnicode(codepoint)
     }
 
     fun stopServer() {
