@@ -4,6 +4,7 @@ GH ?= gh
 GOMOBILE ?= gomobile
 PROJECT := go-rdp-android
 MOBILE_AAR := android/app/libs/mobile.aar
+COVERAGE_MIN ?= 75.0
 
 .PHONY: help
 help: ## Show this help
@@ -42,10 +43,11 @@ smoke: ## Run mock server and probe it locally
 	$(GO) run ./cmd/probe
 
 .PHONY: coverage
-coverage: ## Run Go coverage
+coverage: ## Run Go coverage and enforce COVERAGE_MIN
 	mkdir -p .gotmp
 	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) test -coverprofile=coverage.out ./...
-	$(GO) tool cover -func=coverage.out
+	$(GO) tool cover -func=coverage.out | tee coverage.func.txt
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-coverage.go coverage.func.txt $(COVERAGE_MIN)
 	rm -rf .gotmp
 
 .PHONY: gomobile-init
@@ -62,6 +64,22 @@ gomobile-bind: ## Build mobile.aar from the Go mobile package
 check-aar-api: ## Verify generated gomobile AAR Java API shape
 	mkdir -p .gotmp
 	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-aar-api.go $(MOBILE_AAR)
+	rm -rf .gotmp
+
+.PHONY: check-aar-artifact
+check-aar-artifact: ## Verify generated gomobile AAR contents
+	mkdir -p .gotmp
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go aar $(MOBILE_AAR)
+	rm -rf .gotmp
+
+.PHONY: check-apk-artifact
+check-apk-artifact: ## Verify debug APK contents; set REQUIRE_GO_LIBS=1 for Go-backed APK
+	mkdir -p .gotmp
+	@if [ "$(REQUIRE_GO_LIBS)" = "1" ]; then \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk --require-go-libs; \
+	else \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk; \
+	fi
 	rm -rf .gotmp
 
 .PHONY: android-build

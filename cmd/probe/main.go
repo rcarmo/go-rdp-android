@@ -2,17 +2,30 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
+	"sync/atomic"
 	"time"
 )
 
+var traceOut atomic.Value
+
 func main() {
 	addr := flag.String("addr", "127.0.0.1:3390", "RDP server address")
+	traceDir := flag.String("trace-dir", "", "directory for client/server packet hex traces")
 	flag.Parse()
+	if *traceDir != "" {
+		if err := os.MkdirAll(*traceDir, 0o755); err != nil {
+			log.Fatal(err)
+		}
+		traceOut.Store(*traceDir)
+	}
 
 	conn, err := net.DialTimeout("tcp", *addr, 3*time.Second)
 	if err != nil {
@@ -106,6 +119,9 @@ func readTPKT(r io.Reader) ([]byte, error) {
 	length := int(binary.BigEndian.Uint16(header[2:4]))
 	payload := make([]byte, length-4)
 	_, err := io.ReadFull(r, payload)
+	if err == nil {
+		tracePacket("server", payload)
+	}
 	return payload, err
 }
 
@@ -116,8 +132,28 @@ func writeTPKT(w io.Writer, payload []byte) error {
 		return err
 	}
 	_, err := w.Write(payload)
+	if err == nil {
+		tracePacket("client", payload)
+	}
 	return err
 }
+
+func tracePacket(direction string, payload []byte) {
+	v := traceOut.Load()
+	if v == nil {
+		return
+	}
+	dir, ok := v.(string)
+	if !ok || dir == "" {
+		return
+	}
+	name := filepath.Join(dir, fmt.Sprintf("%03d-%s.hex", nextTraceID(), direction))
+	_ = os.WriteFile(name, []byte(hex.Dump(payload)), 0o644)
+}
+
+var traceCounter uint64
+
+func nextTraceID() uint64 { return atomic.AddUint64(&traceCounter, 1) }
 
 func sendX224ConnectionRequest(conn net.Conn) error {
 	neg := make([]byte, 8)

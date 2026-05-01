@@ -21,8 +21,15 @@ jobs:
           go-version: '1.25.x'
       - name: Go vet
         run: go vet ./...
-      - name: Go tests
-        run: go test ./... -count=1
+      - name: Go coverage
+        run: make coverage COVERAGE_MIN=75.0
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: |
+            coverage.out
+            coverage.func.txt
       - name: Build Go packages
         run: go build ./...
       - name: End-to-end mock/probe smoke test
@@ -32,7 +39,13 @@ jobs:
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true; cat mock-server.log' EXIT
           sleep 2
-          go run ./cmd/probe
+          mkdir -p protocol-trace
+          go run ./cmd/probe -trace-dir protocol-trace
+      - name: Upload protocol trace
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-probe-protocol-trace
+          path: protocol-trace/*.hex
 
   android:
     name: Android debug build
@@ -50,6 +63,8 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: gradle :app:assembleDebug
+      - name: Inspect debug APK
+        run: make check-apk-artifact
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -83,9 +98,13 @@ jobs:
         run: make gomobile-bind
       - name: Verify mobile AAR API
         run: make check-aar-api
+      - name: Inspect mobile AAR
+        run: make check-aar-artifact
       - name: Build APK with Go AAR
         working-directory: android
         run: gradle :app:assembleDebug
+      - name: Inspect Go-backed APK
+        run: make check-apk-artifact REQUIRE_GO_LIBS=1
       - name: Upload mobile AAR
         uses: actions/upload-artifact@v4
         with:
@@ -96,6 +115,42 @@ jobs:
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+
+  freerdp-compat:
+    name: FreeRDP compatibility probe
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - name: Install FreeRDP tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y freerdp2-x11 xvfb || sudo apt-get install -y freerdp3-x11 xvfb
+      - name: Probe mock server with xfreerdp
+        run: |
+          set -u
+          mkdir -p freerdp-artifacts
+          go run ./cmd/mock-server >freerdp-artifacts/mock-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 2
+          set +e
+          timeout 20s xvfb-run -a xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >freerdp-artifacts/xfreerdp.log 2>&1
+          code=$?
+          set -e
+          echo "$code" > freerdp-artifacts/exit-code.txt
+          cat freerdp-artifacts/xfreerdp.log | tail -n 120
+          # Compatibility probe is informational until the server satisfies full real-client RDP.
+          exit 0
+      - name: Upload FreeRDP probe logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: freerdp-compat-probe
+          path: freerdp-artifacts/*
 
   android-emulator:
     name: Android emulator smoke
