@@ -9,6 +9,7 @@ import pt.taoofmac.gordpandroid.input.RdpAccessibilityService
  * logging implementation so the app remains buildable in CI before the AAR is generated.
  */
 object NativeRdpBridge : RdpInputCallbacks {
+    private var frameCount: Long = 0
     private val backend: RdpBackend by lazy {
         val go = GomobileRdpBackend()
         if (go.available) go else LoggingRdpBackend()
@@ -21,6 +22,10 @@ object NativeRdpBridge : RdpInputCallbacks {
     }
 
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {
+        frameCount += 1
+        if (frameCount == 1L || frameCount % 120L == 0L) {
+            Log.i(TAG, "frame#$frameCount ${width}x$height pixelStride=$pixelStride rowStride=$rowStride bytes=${data.size} backend=${backend.name}")
+        }
         backend.submitFrame(width, height, pixelStride, rowStride, data)
     }
 

@@ -54,4 +54,6 @@ func SetInputHandler(handler InputHandler)
 
 `NativeRdpBridge` now routes to `GomobileRdpBackend` via reflection when the generated `mobile.Mobile` classes exist, otherwise to `LoggingRdpBackend`. The reflection shim keeps the app buildable before gomobile artifacts are generated while still wiring the runtime path to Go once `mobile.aar` is bundled.
 
+For CI/emulator testing, `MainActivity` accepts `--ez start_test_pattern true`, which starts `RdpForegroundService` without MediaProjection and submits synthetic frames through `NativeRdpBridge`. CI asserts that `startServer` and `frame#1` appear in logcat.
+
 `RdpAccessibilityService` includes matching callback landing points. Pointer button down for the primary button is currently mapped to a tap gesture; pointer move, key and Unicode callbacks are logged until richer Accessibility injection is implemented.

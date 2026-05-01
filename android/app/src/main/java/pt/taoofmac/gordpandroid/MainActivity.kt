@@ -17,8 +17,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val autoStartTestPattern = intent?.getBooleanExtra(EXTRA_START_TEST_PATTERN, false) == true
         val status = TextView(this).apply {
-            text = "Native Android RDP server prototype\n\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service"
+            text = "Native Android RDP server prototype\n\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nCI/debug: test-pattern mode can start without MediaProjection."
             textSize = 16f
         }
         val accessibility = Button(this).apply {
@@ -28,6 +29,10 @@ class MainActivity : Activity() {
         val capture = Button(this).apply {
             text = "Grant Screen Capture"
             setOnClickListener { requestScreenCapture() }
+        }
+        val testPattern = Button(this).apply {
+            text = "Start Test Pattern Server"
+            setOnClickListener { startTestPatternService() }
         }
         val stop = Button(this).apply {
             text = "Stop RDP Service"
@@ -40,8 +45,20 @@ class MainActivity : Activity() {
             addView(status)
             addView(accessibility)
             addView(capture)
+            addView(testPattern)
             addView(stop)
         })
+
+        if (autoStartTestPattern) {
+            startTestPatternService()
+        }
+    }
+
+    private fun startTestPatternService() {
+        val intent = Intent(this, RdpForegroundService::class.java).apply {
+            putExtra(RdpForegroundService.EXTRA_TEST_PATTERN, true)
+        }
+        startForegroundService(intent)
     }
 
     private fun requestScreenCapture() {
@@ -59,5 +76,9 @@ class MainActivity : Activity() {
             }
             startForegroundService(intent)
         }
+    }
+
+    companion object {
+        const val EXTRA_START_TEST_PATTERN = "start_test_pattern"
     }
 }

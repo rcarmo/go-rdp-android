@@ -263,11 +263,15 @@ jobs:
           script: |
             mkdir -p emulator-artifacts
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
-            adb shell am start -W -n pt.taoofmac.gordpandroid/.MainActivity | tee emulator-artifacts/activity-start.txt
+            adb shell am start -W -n pt.taoofmac.gordpandroid/.MainActivity --ez start_test_pattern true | tee emulator-artifacts/activity-start.txt
+            sleep 8
             adb shell pidof pt.taoofmac.gordpandroid | tee emulator-artifacts/pidof.txt
             adb shell dumpsys package pt.taoofmac.gordpandroid > emulator-artifacts/dumpsys-package.txt
             adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt
             adb logcat -d > emulator-artifacts/logcat.txt
+            grep -E 'GoRdpAndroid|GoRdpAndroidService|backend=|frame#|FATAL EXCEPTION|AndroidRuntime' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
+            grep -q 'startServer' emulator-artifacts/logcat-filtered.txt
+            grep -q 'frame#1' emulator-artifacts/logcat-filtered.txt
             adb exec-out screencap -p > emulator-artifacts/screenshot.png
       - name: Upload emulator artifacts
         uses: actions/upload-artifact@v4
