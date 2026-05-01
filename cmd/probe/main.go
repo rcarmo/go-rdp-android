@@ -78,6 +78,23 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("sent minimal Confirm Active PDU")
+
+	if err := sendShareData(conn, 0x1f, synchronizePayload()); err != nil {
+		log.Fatal(err)
+	}
+	readAndPrint(conn, "Server Synchronize")
+	if err := sendShareData(conn, 0x14, controlPayload(0x0004)); err != nil {
+		log.Fatal(err)
+	}
+	readAndPrint(conn, "Server Control Cooperate")
+	if err := sendShareData(conn, 0x14, controlPayload(0x0001)); err != nil {
+		log.Fatal(err)
+	}
+	readAndPrint(conn, "Server Control Granted")
+	if err := sendShareData(conn, 0x27, []byte{0, 0, 0, 0, 3, 0, 0x32, 0}); err != nil {
+		log.Fatal(err)
+	}
+	readAndPrint(conn, "Server FontMap")
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
@@ -144,6 +161,46 @@ func encodePERLength(length int) []byte {
 		return buf
 	}
 	return []byte{byte(length)}
+}
+
+func readAndPrint(conn net.Conn, label string) {
+	pkt, err := readTPKT(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s: %x\n", label, pkt)
+}
+
+func sendShareData(conn net.Conn, pduType2 byte, payload []byte) error {
+	pdu := buildShareDataPDU(pduType2, payload)
+	return sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, pdu))
+}
+
+func buildShareDataPDU(pduType2 byte, payload []byte) []byte {
+	totalLength := 18 + len(payload)
+	out := appendLE16(nil, uint16(totalLength))
+	out = appendLE16(out, 0x0017)
+	out = appendLE16(out, 1001)
+	out = appendLE32(out, 0x000103ea)
+	out = append(out, 0, 1)
+	out = appendLE16(out, uint16(4+len(payload)))
+	out = append(out, pduType2, 0)
+	out = appendLE16(out, 0)
+	out = append(out, payload...)
+	return out
+}
+
+func synchronizePayload() []byte {
+	out := appendLE16(nil, 1)
+	out = appendLE16(out, 1002)
+	return out
+}
+
+func controlPayload(action uint16) []byte {
+	out := appendLE16(nil, action)
+	out = appendLE16(out, 0)
+	out = appendLE32(out, 0)
+	return out
 }
 
 func buildConfirmActivePDU(shareID uint32, userID uint16) []byte {

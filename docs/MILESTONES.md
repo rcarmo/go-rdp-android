@@ -26,6 +26,7 @@ Tasks:
 - Security Exchange / Client Info parsing ✅ (minimal scaffold)
 - Server Demand Active PDU ✅ (minimal capability scaffold)
 - Client Confirm Active PDU parsing ✅
+- Synchronize/Control/FontList finalization handling ✅ (minimal scaffold)
 - basic capability exchange
 - one-session state machine
 

@@ -110,6 +110,31 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := sendTestShareData(conn, pduType2Synchronize, buildSynchronizePayload()); err != nil {
+		t.Fatal(err)
+	}
+	if err := expectShareDataResponse(conn, pduType2Synchronize); err != nil {
+		t.Fatal(err)
+	}
+	if err := sendTestShareData(conn, pduType2Control, buildControlPayload(controlActionCooperate)); err != nil {
+		t.Fatal(err)
+	}
+	if err := expectShareDataResponse(conn, pduType2Control); err != nil {
+		t.Fatal(err)
+	}
+	if err := sendTestShareData(conn, pduType2Control, buildControlPayload(controlActionRequestControl)); err != nil {
+		t.Fatal(err)
+	}
+	if err := expectShareDataResponse(conn, pduType2Control); err != nil {
+		t.Fatal(err)
+	}
+	if err := sendTestShareData(conn, pduType2FontList, []byte{0, 0, 0, 0, 3, 0, 0x32, 0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := expectShareDataResponse(conn, pduType2FontMap); err != nil {
+		t.Fatal(err)
+	}
+
 	cancel()
 	select {
 	case <-done:
@@ -151,6 +176,34 @@ func readTestMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
 	}
 	return parseMCSDomainPDU(mcs)
 }
+
+func sendTestShareData(conn net.Conn, pduType2 uint8, payload []byte) error {
+	pdu := buildShareDataPDU(pduType2, payload)
+	return sendTestMCSDomainPDU(conn, mcsSendDataRequestApp, buildMCSSendDataRequest(defaultMCSUserID, globalChannelID, pdu))
+}
+
+func expectShareDataResponse(conn net.Conn, pduType2 uint8) error {
+	resp, err := readTestMCSDomainPDU(conn)
+	if err != nil {
+		return err
+	}
+	share, err := parseShareControlPDU(resp.Data)
+	if err != nil {
+		return err
+	}
+	data, err := parseShareDataPDU(share)
+	if err != nil {
+		return err
+	}
+	if data.PDUType2 != pduType2 {
+		return &unexpectedPDUTypeError{got: data.PDUType2, want: pduType2}
+	}
+	return nil
+}
+
+type unexpectedPDUTypeError struct{ got, want uint8 }
+
+func (e *unexpectedPDUTypeError) Error() string { return "unexpected share data PDU type" }
 
 func buildTestConfirmActivePDU(shareID uint32, userID uint16) []byte {
 	source := []byte("TEST")

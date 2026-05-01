@@ -51,8 +51,13 @@ func handleMCSDomainSequence(conn net.Conn, width, height int) error {
 			}
 		case mcsSendDataRequestApp:
 			if share, err := parseShareControlPDU(pdu.Data); err == nil {
-				if share.PDUType == pduTypeConfirmActive {
+				switch share.PDUType {
+				case pduTypeConfirmActive:
 					if _, err := parseConfirmActive(pdu.Data); err != nil {
+						return err
+					}
+				case pduTypeData:
+					if err := handleShareDataPDU(conn, share); err != nil {
 						return err
 					}
 				}

@@ -15,6 +15,7 @@ const (
 	pduType2Synchronize = 0x1f
 	pduType2Control     = 0x14
 	pduType2FontList    = 0x27
+	pduType2FontMap     = 0x28
 
 	capTypeGeneral = 0x0001
 	capTypeBitmap  = 0x0002
