@@ -22,30 +22,32 @@ jobs:
       - name: Go vet
         run: go vet ./...
       - name: Go coverage
-        run: make coverage COVERAGE_MIN=75.0
-      - name: Upload coverage profile
+        run: |
+          mkdir -p test-artifacts/go
+          make coverage COVERAGE_MIN=75.0 | tee test-artifacts/go/coverage.log
+          cp coverage.out coverage.func.txt test-artifacts/go/
+      - name: Upload Go test artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: go-coverage
-          path: |
-            coverage.out
-            coverage.func.txt
+          name: go-test-artifacts
+          path: test-artifacts/go/**
       - name: Build Go packages
         run: go build ./...
       - name: End-to-end mock/probe smoke test
         run: |
           set -euo pipefail
-          go run ./cmd/mock-server >mock-server.log 2>&1 &
+          mkdir -p test-artifacts/mock-probe/protocol-trace
+          go run ./cmd/mock-server >test-artifacts/mock-probe/mock-server.log 2>&1 &
           server_pid=$!
-          trap 'kill $server_pid 2>/dev/null || true; cat mock-server.log' EXIT
+          trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/mock-probe/mock-server.log' EXIT
           sleep 2
-          mkdir -p protocol-trace
-          go run ./cmd/probe -trace-dir protocol-trace
-      - name: Upload protocol trace
+          go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace >test-artifacts/mock-probe/probe.log 2>&1
+          find test-artifacts/mock-probe/protocol-trace -type f | sort >test-artifacts/mock-probe/protocol-trace/index.txt
+      - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mock-probe-protocol-trace
-          path: protocol-trace/*.hex
+          name: mock-probe-artifacts
+          path: test-artifacts/mock-probe/**
 
   android:
     name: Android debug build
@@ -62,9 +64,18 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         working-directory: android
-        run: gradle :app:assembleDebug
+        run: gradle :app:assembleDebug | tee ../android-build.log
       - name: Inspect debug APK
-        run: make check-apk-artifact
+        run: |
+          mkdir -p test-artifacts/android
+          make check-apk-artifact | tee test-artifacts/android/apk-inspection.log
+          cp android-build.log test-artifacts/android/
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/android/apk-contents.txt
+      - name: Upload Android build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-artifacts
+          path: test-artifacts/android/**
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -97,14 +108,26 @@ jobs:
       - name: Build mobile AAR
         run: make gomobile-bind
       - name: Verify mobile AAR API
-        run: make check-aar-api
+        run: |
+          mkdir -p test-artifacts/gomobile
+          make check-aar-api | tee test-artifacts/gomobile/aar-api.log
       - name: Inspect mobile AAR
-        run: make check-aar-artifact
+        run: |
+          make check-aar-artifact | tee test-artifacts/gomobile/aar-inspection.log
+          unzip -l android/app/libs/mobile.aar >test-artifacts/gomobile/aar-contents.txt
       - name: Build APK with Go AAR
         working-directory: android
-        run: gradle :app:assembleDebug
+        run: gradle :app:assembleDebug | tee ../gomobile-android-build.log
       - name: Inspect Go-backed APK
-        run: make check-apk-artifact REQUIRE_GO_LIBS=1
+        run: |
+          make check-apk-artifact REQUIRE_GO_LIBS=1 | tee test-artifacts/gomobile/go-backed-apk-inspection.log
+          cp gomobile-android-build.log test-artifacts/gomobile/
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk >test-artifacts/gomobile/go-backed-apk-contents.txt
+      - name: Upload gomobile build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gomobile-build-artifacts
+          path: test-artifacts/gomobile/**
       - name: Upload mobile AAR
         uses: actions/upload-artifact@v4
         with:
@@ -129,8 +152,8 @@ jobs:
       - name: Install FreeRDP tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y freerdp2-x11 xvfb || sudo apt-get install -y freerdp3-x11 xvfb
-      - name: Probe mock server with xfreerdp
+          sudo apt-get install -y freerdp2-x11 xvfb x11-apps imagemagick || sudo apt-get install -y freerdp3-x11 xvfb x11-apps imagemagick
+      - name: Probe mock server with xfreerdp and capture X11 screenshot
         run: |
           set -u
           mkdir -p freerdp-artifacts
@@ -139,11 +162,18 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 2
           set +e
-          timeout 20s xvfb-run -a xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >freerdp-artifacts/xfreerdp.log 2>&1
-          code=$?
+          xvfb-run -a bash -c '
+            set +e
+            timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >freerdp-artifacts/xfreerdp.log 2>&1 &
+            rdp_pid=$!
+            sleep 8
+            xwd -root -silent -out freerdp-artifacts/xfreerdp-root.xwd 2>freerdp-artifacts/xwd.log
+            (convert freerdp-artifacts/xfreerdp-root.xwd freerdp-artifacts/xfreerdp-root.png || magick freerdp-artifacts/xfreerdp-root.xwd freerdp-artifacts/xfreerdp-root.png) >freerdp-artifacts/convert.log 2>&1
+            wait $rdp_pid
+            echo $? > freerdp-artifacts/exit-code.txt
+          '
           set -e
-          echo "$code" > freerdp-artifacts/exit-code.txt
-          cat freerdp-artifacts/xfreerdp.log | tail -n 120
+          cat freerdp-artifacts/xfreerdp.log | tail -n 120 || true
           # Compatibility probe is informational until the server satisfies full real-client RDP.
           exit 0
       - name: Upload FreeRDP probe logs
