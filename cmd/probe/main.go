@@ -20,6 +20,7 @@ import (
 )
 
 var traceOut atomic.Value
+var dumpPackets atomic.Bool
 
 type probeSummary struct {
 	BitmapUpdates  int `json:"bitmap_updates"`
@@ -37,7 +38,9 @@ func main() {
 	screenshotPath := flag.String("screenshot", "", "compose bitmap updates into a PNG screenshot")
 	screenshotWidth := flag.Int("screenshot-width", 320, "screenshot canvas width")
 	screenshotHeight := flag.Int("screenshot-height", 240, "screenshot canvas height")
+	dump := flag.Bool("dump-packets", true, "print full packet hex dumps")
 	flag.Parse()
+	dumpPackets.Store(*dump)
 	if *traceDir != "" {
 		if err := os.MkdirAll(*traceDir, 0o755); err != nil {
 			log.Fatal(err)
@@ -251,7 +254,11 @@ func readAndPrint(conn net.Conn, label string) []byte {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s: %x\n", label, pkt)
+	if dumpPackets.Load() {
+		fmt.Printf("%s: %x\n", label, pkt)
+	} else {
+		fmt.Printf("%s: %d bytes\n", label, len(pkt))
+	}
 	return pkt
 }
 

@@ -18,6 +18,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val autoStartTestPattern = intent?.getBooleanExtra(EXTRA_START_TEST_PATTERN, false) == true
+        val autoStartCapture = intent?.getBooleanExtra(EXTRA_START_CAPTURE, false) == true
         val status = TextView(this).apply {
             text = "Native Android RDP server prototype\n\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nCI/debug: test-pattern mode can start without MediaProjection."
             textSize = 16f
@@ -52,6 +53,9 @@ class MainActivity : Activity() {
         if (autoStartTestPattern) {
             startTestPatternService()
         }
+        if (autoStartCapture) {
+            status.post { requestScreenCapture() }
+        }
     }
 
     private fun startTestPatternService() {
@@ -80,5 +84,6 @@ class MainActivity : Activity() {
 
     companion object {
         const val EXTRA_START_TEST_PATTERN = "start_test_pattern"
+        const val EXTRA_START_CAPTURE = "start_capture"
     }
 }

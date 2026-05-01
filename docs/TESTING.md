@@ -17,7 +17,7 @@ Everything below runs without a physical Android device.
 
 ## Manual-only CI
 
-- Android emulator smoke test (`workflow_dispatch` only): install debug APK, launch `MainActivity` with `start_test_pattern=true`, verify process startup, verify bridge startup and first synthetic frame in logcat, and for Go-backed runs use `adb forward` plus `cmd/probe` to connect over RDP and save `rdp-screenshot.png` from bitmap updates. The job collects logcat, dumpsys, emulator screenshot, RDP probe summary, and RDP screenshot artifacts.
+- Android emulator smoke test (`workflow_dispatch` only): install debug APK, launch `MainActivity` with `start_test_pattern=true`, verify process startup, verify bridge startup and first synthetic frame in logcat, and for Go-backed runs use `adb forward` plus `cmd/probe` to connect over RDP and save `rdp-screenshot.png` from bitmap updates. Optional `emulator_capture=true` requests MediaProjection and captures the emulator display rather than the synthetic test pattern. The job collects logcat, dumpsys, emulator screenshot, RDP probe summary, and RDP screenshot artifacts.
 - Workflow inputs:
   - `emulator_api_level` (default `35`)
   - `emulator_go_backed` (`false` for normal APK, `true` to build/install the Go-backed APK)
