@@ -6,10 +6,10 @@ mkdir -p emulator-artifacts
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
 adb shell am start -W -n pt.taoofmac.gordpandroid/.MainActivity --ez start_test_pattern true | tee emulator-artifacts/activity-start.txt
 sleep 8
-adb shell pidof pt.taoofmac.gordpandroid | tee emulator-artifacts/pidof.txt
-adb shell dumpsys package pt.taoofmac.gordpandroid > emulator-artifacts/dumpsys-package.txt
-adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt
-adb logcat -d > emulator-artifacts/logcat.txt
+adb shell pidof pt.taoofmac.gordpandroid | tee emulator-artifacts/pidof.txt || true
+adb shell dumpsys package pt.taoofmac.gordpandroid > emulator-artifacts/dumpsys-package.txt || true
+adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt || true
+adb logcat -d > emulator-artifacts/logcat.txt || true
 grep -E 'GoRdpAndroid|GoRdpAndroidService|backend=|frame#|FATAL EXCEPTION|AndroidRuntime|ForegroundService|SecurityException|Exception' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
 
 if grep -q 'startServer' emulator-artifacts/logcat-filtered.txt; then
@@ -30,7 +30,7 @@ else
   echo 'fatal_exception=none'
 fi | tee -a emulator-artifacts/checks.txt
 
-adb exec-out screencap -p > emulator-artifacts/screenshot.png
+adb exec-out screencap -p > emulator-artifacts/screenshot.png || true
 
 grep -q 'startServer=ok' emulator-artifacts/checks.txt
 grep -q 'frame1=ok' emulator-artifacts/checks.txt
