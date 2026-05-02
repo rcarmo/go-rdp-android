@@ -116,19 +116,40 @@ if [ "$GO_BACKED" = "true" ]; then
   if [ "$CAPTURE" = "true" ]; then
     adb shell input keyevent HOME || true
     sleep 3
-    capture_rdp_scene home "$updates"
-
-    adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt || true
-    sleep 3
-    capture_rdp_scene settings "$updates"
-
-    adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt || true
-    sleep 8
-    capture_rdp_scene browser "$updates"
-
+    adb exec-out screencap -p > emulator-artifacts/android-home.png || true
+    cat > emulator-artifacts/scene-plan.json <<'JSON'
+[
+  {
+    "name": "settings",
+    "command": "adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt && sleep 3 && adb exec-out screencap -p > emulator-artifacts/android-settings.png",
+    "wait_ms": 200,
+    "max_updates": 420
+  },
+  {
+    "name": "browser",
+    "command": "adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt && sleep 8 && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
+    "wait_ms": 200,
+    "max_updates": 420
+  }
+]
+JSON
+    go run ./cmd/probe \
+      -addr 127.0.0.1:3390 \
+      -screenshot-width "$width" \
+      -screenshot-height "$height" \
+      -warmup-updates "$updates" \
+      -warmup-screenshot emulator-artifacts/rdp-home.png \
+      -scene-plan emulator-artifacts/scene-plan.json \
+      -artifact-dir emulator-artifacts \
+      -scene-idle-timeout-ms 1500 \
+      -scene-max-updates "$updates" \
+      -summary emulator-artifacts/rdp-probe-summary.json \
+      -dump-packets=false \
+      > emulator-artifacts/rdp-probe.log 2>&1
+    test -s emulator-artifacts/rdp-home.png
+    test -s emulator-artifacts/rdp-settings.png
+    test -s emulator-artifacts/rdp-browser.png
     cp emulator-artifacts/rdp-browser.png emulator-artifacts/rdp-screenshot.png
-    cp emulator-artifacts/rdp-browser-summary.json emulator-artifacts/rdp-probe-summary.json
-    cp emulator-artifacts/rdp-browser-probe.log emulator-artifacts/rdp-probe.log
   else
     capture_rdp_scene screenshot "$updates"
     cp emulator-artifacts/rdp-screenshot-summary.json emulator-artifacts/rdp-probe-summary.json

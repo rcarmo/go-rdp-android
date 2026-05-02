@@ -70,7 +70,7 @@ Immediate findings:
 Performance workstreams:
 
 1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods. Status: implemented for post-initial stream frames using per-tile hashes; unit coverage verifies unchanged frames emit no updates and one-pixel changes emit one tile.
-2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: not started.
+2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`; pending emulator CI validation.
 3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: not started.
 4. **Optional downscale mode** for low-bandwidth viewing. Status: not started.
 5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: not started.

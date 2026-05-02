@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync/atomic"
 	"time"
@@ -23,25 +24,48 @@ var traceOut atomic.Value
 var dumpPackets atomic.Bool
 
 type probeSummary struct {
-	BitmapUpdates        int     `json:"bitmap_updates"`
-	PacketsRead          int     `json:"packets_read"`
-	PacketsWritten       int     `json:"packets_written"`
-	BytesRead            int64   `json:"bytes_read"`
-	BytesWritten         int64   `json:"bytes_written"`
-	BitmapPayloadBytes   int64   `json:"bitmap_payload_bytes"`
-	BitmapRectangles     int     `json:"bitmap_rectangles"`
-	BitmapPixels         int64   `json:"bitmap_pixels"`
-	DurationMs           int64   `json:"duration_ms"`
-	HandshakeMs          int64   `json:"handshake_ms"`
-	BitmapReadMs         int64   `json:"bitmap_read_ms"`
-	FirstBitmapMs        int64   `json:"first_bitmap_ms"`
-	ReadThroughputMbps   float64 `json:"read_throughput_mbps"`
-	BitmapThroughputMbps float64 `json:"bitmap_throughput_mbps"`
-	AverageUpdateBytes   float64 `json:"average_update_bytes"`
-	AverageUpdateMs      float64 `json:"average_update_ms"`
-	ScreenshotWidth      int     `json:"screenshot_width,omitempty"`
-	ScreenshotHeight     int     `json:"screenshot_height,omitempty"`
-	ScreenshotPath       string  `json:"screenshot_path,omitempty"`
+	BitmapUpdates        int                 `json:"bitmap_updates"`
+	PacketsRead          int                 `json:"packets_read"`
+	PacketsWritten       int                 `json:"packets_written"`
+	BytesRead            int64               `json:"bytes_read"`
+	BytesWritten         int64               `json:"bytes_written"`
+	BitmapPayloadBytes   int64               `json:"bitmap_payload_bytes"`
+	BitmapRectangles     int                 `json:"bitmap_rectangles"`
+	BitmapPixels         int64               `json:"bitmap_pixels"`
+	DurationMs           int64               `json:"duration_ms"`
+	HandshakeMs          int64               `json:"handshake_ms"`
+	BitmapReadMs         int64               `json:"bitmap_read_ms"`
+	FirstBitmapMs        int64               `json:"first_bitmap_ms"`
+	ReadThroughputMbps   float64             `json:"read_throughput_mbps"`
+	BitmapThroughputMbps float64             `json:"bitmap_throughput_mbps"`
+	AverageUpdateBytes   float64             `json:"average_update_bytes"`
+	AverageUpdateMs      float64             `json:"average_update_ms"`
+	ScreenshotWidth      int                 `json:"screenshot_width,omitempty"`
+	ScreenshotHeight     int                 `json:"screenshot_height,omitempty"`
+	ScreenshotPath       string              `json:"screenshot_path,omitempty"`
+	Scenes               []probeSceneSummary `json:"scenes,omitempty"`
+}
+
+type probeScenePlan struct {
+	Name       string `json:"name"`
+	Command    string `json:"command,omitempty"`
+	WaitMs     int    `json:"wait_ms,omitempty"`
+	MaxUpdates int    `json:"max_updates,omitempty"`
+}
+
+type probeSceneSummary struct {
+	Name               string  `json:"name"`
+	Command            string  `json:"command,omitempty"`
+	Updates            int     `json:"updates"`
+	BytesRead          int64   `json:"bytes_read"`
+	BitmapPayloadBytes int64   `json:"bitmap_payload_bytes"`
+	BitmapRectangles   int     `json:"bitmap_rectangles"`
+	BitmapPixels       int64   `json:"bitmap_pixels"`
+	DurationMs         int64   `json:"duration_ms"`
+	FirstUpdateMs      int64   `json:"first_update_ms,omitempty"`
+	IdleTimeoutMs      int     `json:"idle_timeout_ms"`
+	ThroughputMbps     float64 `json:"throughput_mbps"`
+	ScreenshotPath     string  `json:"screenshot_path"`
 }
 
 var summary probeSummary
@@ -56,6 +80,12 @@ func main() {
 	screenshotWidth := flag.Int("screenshot-width", 320, "screenshot canvas width")
 	screenshotHeight := flag.Int("screenshot-height", 240, "screenshot canvas height")
 	dump := flag.Bool("dump-packets", true, "print full packet hex dumps")
+	warmupUpdates := flag.Int("warmup-updates", 0, "number of initial bitmap updates to consume before scene commands")
+	warmupScreenshot := flag.String("warmup-screenshot", "", "write screenshot after warmup updates")
+	scenePlanPath := flag.String("scene-plan", "", "JSON scene plan for single-session navigation/capture")
+	artifactDir := flag.String("artifact-dir", ".", "directory for scene screenshots")
+	sceneIdleTimeout := flag.Int("scene-idle-timeout-ms", 1500, "scene capture stops after this read-idle timeout")
+	sceneMaxUpdates := flag.Int("scene-max-updates", 420, "maximum bitmap updates to read per scene")
 	flag.Parse()
 	dumpPackets.Store(*dump)
 	if *traceDir != "" {
@@ -156,30 +186,49 @@ func main() {
 		screenshot = image.NewRGBA(image.Rect(0, 0, *screenshotWidth, *screenshotHeight))
 	}
 	bitmapStarted := time.Now()
-	for i := 0; i < *updates; i++ {
-		pkt := readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
-		if i == 0 {
-			summary.FirstBitmapMs = time.Since(started).Milliseconds()
+	if *scenePlanPath != "" {
+		if screenshot == nil {
+			screenshot = image.NewRGBA(image.Rect(0, 0, *screenshotWidth, *screenshotHeight))
 		}
-		if screenshot != nil {
-			stats, err := applyBitmapUpdatePacket(screenshot, pkt)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "bitmap decode warning: %v\n", err)
-			} else {
-				summary.BitmapPayloadBytes += int64(stats.Bytes)
-				summary.BitmapRectangles += stats.Rectangles
-				summary.BitmapPixels += int64(stats.Pixels)
+		if *warmupUpdates > 0 {
+			if err := readBitmapUpdates(conn, *warmupUpdates, screenshot); err != nil {
+				log.Fatal(err)
 			}
 		}
-		summary.BitmapUpdates++
-	}
-	summary.BitmapReadMs = time.Since(bitmapStarted).Milliseconds()
-	if screenshot != nil {
-		if err := writePNG(*screenshotPath, screenshot); err != nil {
+		if *warmupScreenshot != "" {
+			if err := writePNG(*warmupScreenshot, screenshot); err != nil {
+				log.Fatal(err)
+			}
+		}
+		if err := runScenePlan(conn, *scenePlanPath, *artifactDir, screenshot, *sceneIdleTimeout, *sceneMaxUpdates); err != nil {
 			log.Fatal(err)
+		}
+	} else {
+		for i := 0; i < *updates; i++ {
+			pkt := readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+			if i == 0 {
+				summary.FirstBitmapMs = time.Since(started).Milliseconds()
+			}
+			if screenshot != nil {
+				stats, err := applyBitmapUpdatePacket(screenshot, pkt)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "bitmap decode warning: %v\n", err)
+				} else {
+					summary.BitmapPayloadBytes += int64(stats.Bytes)
+					summary.BitmapRectangles += stats.Rectangles
+					summary.BitmapPixels += int64(stats.Pixels)
+				}
+			}
+			summary.BitmapUpdates++
+		}
+		if screenshot != nil {
+			if err := writePNG(*screenshotPath, screenshot); err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 	summary.DurationMs = time.Since(started).Milliseconds()
+	summary.BitmapReadMs = time.Since(bitmapStarted).Milliseconds()
 	if summary.DurationMs > 0 {
 		summary.ReadThroughputMbps = mbps(summary.BytesRead, summary.DurationMs)
 	}
@@ -199,6 +248,103 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+}
+
+func readBitmapUpdates(conn net.Conn, count int, screenshot *image.RGBA) error {
+	for i := 0; i < count; i++ {
+		pkt := readAndPrint(conn, fmt.Sprintf("Warmup Bitmap Update %d", i+1))
+		stats, err := applyBitmapUpdatePacket(screenshot, pkt)
+		if err != nil {
+			return err
+		}
+		summary.BitmapUpdates++
+		summary.BitmapPayloadBytes += int64(stats.Bytes)
+		summary.BitmapRectangles += stats.Rectangles
+		summary.BitmapPixels += int64(stats.Pixels)
+	}
+	return nil
+}
+
+func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGBA, idleTimeoutMs, defaultMaxUpdates int) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var scenes []probeScenePlan
+	if err := json.Unmarshal(data, &scenes); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(artifactDir, 0o755); err != nil {
+		return err
+	}
+	for _, scene := range scenes {
+		if scene.Name == "" {
+			return fmt.Errorf("scene without name")
+		}
+		if scene.Command != "" {
+			cmd := exec.Command("sh", "-c", scene.Command)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("scene %s command failed: %w", scene.Name, err)
+			}
+		}
+		if scene.WaitMs > 0 {
+			time.Sleep(time.Duration(scene.WaitMs) * time.Millisecond)
+		}
+		maxUpdates := scene.MaxUpdates
+		if maxUpdates <= 0 {
+			maxUpdates = defaultMaxUpdates
+		}
+		shot := filepath.Join(artifactDir, "rdp-"+scene.Name+".png")
+		sceneSummary, err := captureScene(conn, scene, screenshot, shot, idleTimeoutMs, maxUpdates)
+		if err != nil {
+			return err
+		}
+		summary.Scenes = append(summary.Scenes, sceneSummary)
+	}
+	return nil
+}
+
+func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, shot string, idleTimeoutMs, maxUpdates int) (probeSceneSummary, error) {
+	started := time.Now()
+	beforeBytes := summary.BytesRead
+	firstUpdateMs := int64(0)
+	out := probeSceneSummary{Name: scene.Name, Command: scene.Command, IdleTimeoutMs: idleTimeoutMs, ScreenshotPath: shot}
+	for out.Updates < maxUpdates {
+		_ = conn.SetReadDeadline(time.Now().Add(time.Duration(idleTimeoutMs) * time.Millisecond))
+		pkt, err := readTPKT(conn)
+		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+				break
+			}
+			return out, err
+		}
+		if firstUpdateMs == 0 {
+			firstUpdateMs = time.Since(started).Milliseconds()
+		}
+		stats, err := applyBitmapUpdatePacket(screenshot, pkt)
+		if err != nil {
+			return out, err
+		}
+		out.Updates++
+		out.BitmapPayloadBytes += int64(stats.Bytes)
+		out.BitmapRectangles += stats.Rectangles
+		out.BitmapPixels += int64(stats.Pixels)
+		summary.BitmapUpdates++
+		summary.BitmapPayloadBytes += int64(stats.Bytes)
+		summary.BitmapRectangles += stats.Rectangles
+		summary.BitmapPixels += int64(stats.Pixels)
+	}
+	_ = conn.SetReadDeadline(time.Time{})
+	out.DurationMs = time.Since(started).Milliseconds()
+	out.FirstUpdateMs = firstUpdateMs
+	out.BytesRead = summary.BytesRead - beforeBytes
+	out.ThroughputMbps = mbps(out.BytesRead, out.DurationMs)
+	if err := writePNG(shot, screenshot); err != nil {
+		return out, err
+	}
+	return out, nil
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
