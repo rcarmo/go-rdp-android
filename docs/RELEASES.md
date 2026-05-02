@@ -8,7 +8,7 @@ The repository uses tag suffixes to select CI/CD depth.
 | --- | --- | --- |
 | `*-ux` | Full UX validation | Runs the Go-backed Android emulator MediaProjection flow, scripted input validation, RDP screenshot capture, Gherkin validation, and Playwright PDF report generation. |
 | `*-build` | Build validation/artifact production | Runs normal build/test jobs and uploads build artifacts/APKs/AARs. Emulator UX is not run by default. |
-| `vX.X.X` | Release APK | Runs normal build/test jobs and should be used for release APK artifact publication. Version should match `VERSION`, Android `versionName`, and package metadata. |
+| `vX.X.X` | Release APK | Runs normal build/test jobs, Go-backed emulator UX validation, and Playwright PDF report generation. Release files include APK artifacts plus `go-rdp-android-vX.X.X-ux-report.pdf`. Version should match `VERSION`, Android `versionName`, and package metadata. |
 
 Examples:
 
