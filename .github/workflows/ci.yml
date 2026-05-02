@@ -103,11 +103,30 @@ jobs:
           sleep 2
           go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace -summary test-artifacts/mock-probe/probe-summary.json >test-artifacts/mock-probe/probe.log 2>&1
           find test-artifacts/mock-probe/protocol-trace -type f | sort >test-artifacts/mock-probe/protocol-trace/index.txt
+      - name: Authentication smoke test
+        run: |
+          set -euo pipefail
+          mkdir -p test-artifacts/auth
+          mkdir -p .gotmp
+          GOTMPDIR="$PWD/.gotmp" go run ./cmd/mock-server -addr 127.0.0.1:3398 -username rui -password secret >test-artifacts/auth/mock-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/auth/mock-server.log' EXIT
+          sleep 2
+          GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password secret -summary test-artifacts/auth/probe-good-summary.json >test-artifacts/auth/probe-good.log 2>&1
+          set +e
+          GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password wrong -summary test-artifacts/auth/probe-bad-summary.json >test-artifacts/auth/probe-bad.log 2>&1
+          bad_status=$?
+          set -e
+          echo "$bad_status" > test-artifacts/auth/probe-bad-exit-code.txt
+          test "$bad_status" -ne 0
+          grep -q 'auth failed' test-artifacts/auth/mock-server.log
       - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mock-probe-artifacts
-          path: test-artifacts/mock-probe/**
+          path: |
+            test-artifacts/mock-probe/**
+            test-artifacts/auth/**
 
   go-race-fuzz:
     name: Go race and fuzz smoke

@@ -249,11 +249,19 @@ or through gomobile:
 mobile.SetCredentials("user", "pass")
 ```
 
+The mock server can require credentials:
+
+```bash
+go run ./cmd/mock-server -username user -password pass
+```
+
 Probe credentials can be sent with:
 
 ```bash
 go run ./cmd/probe -username user -password pass
 ```
+
+CI includes an authentication smoke test that proves good credentials complete the probe while bad credentials fail and log `auth failed` on the server.
 
 This is not NLA/CredSSP. It is an app-level authentication scaffold that gives the server a credential decision point while TLS, standard RDP security exchange, and eventual NLA/CredSSP support are implemented.
 
