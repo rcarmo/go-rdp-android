@@ -49,3 +49,28 @@ ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 ```
 
 This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, and eventually compressed bitmap or RDPGFX-style updates.
+
+## Baseline: 2026-05-02 emulator run
+
+Manual workflow run `25245076441` captured home, Settings, and browser scenes via MediaProjection and RDP. Each scene used the exact 420-update full-frame count instead of the earlier 450-update over-capture.
+
+| Scene | Updates | Payload | Total duration | Bitmap read | First bitmap | Bitmap throughput |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Home | 420 | 10,368,000 bytes | 1968 ms | 908 ms | 877 ms | 91.35 Mbps |
+| Settings | 420 | 10,368,000 bytes | 673 ms | 456 ms | 343 ms | 181.89 Mbps |
+| Browser | 420 | 10,368,000 bytes | 467 ms | 321 ms | 173 ms | 258.39 Mbps |
+
+Immediate findings:
+
+- One uncompressed full-resolution frame costs about **10.4 MB** on the wire.
+- A full frame is **420 separate slow-path bitmap PDUs** at the current 80x80 tile size.
+- The first scene after capture startup is slower; later scenes are dominated by bitmap transfer/composition.
+- Exact full-frame update counting removes 30 unnecessary update reads compared with the earlier 450-update probe default.
+
+Next optimization candidates:
+
+1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods.
+2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot.
+3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them.
+4. **Optional downscale mode** for low-bandwidth viewing.
+5. **Compression/RDPGFX** once the slow-path baseline is stable.
