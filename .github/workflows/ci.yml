@@ -345,3 +345,68 @@ jobs:
         with:
           name: android-emulator-artifacts
           path: emulator-artifacts/**
+
+
+  release-files:
+    name: Stage release files
+    if: ${{ startsWith(github.ref_name, 'v') }}
+    needs: [gomobile, android-emulator]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Download release APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: go-rdp-android-go-backed-debug-apk
+          path: downloaded/go-backed-apk
+      - name: Download release UX report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: go-rdp-android-release-ux-report
+          path: downloaded/ux-report
+      - name: Generate release notes and stage files
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-files
+          apk=$(find downloaded/go-backed-apk -type f -name '*.apk' | head -1)
+          pdf=$(find downloaded/ux-report -type f -name '*.pdf' | head -1)
+          test -s "$apk"
+          test -s "$pdf"
+          cp "$apk" "release-files/go-rdp-android-${TAG}.apk"
+          cp "$pdf" "release-files/go-rdp-android-${TAG}-ux-report.pdf"
+
+          previous=$(git tag --sort=-v:refname 'v[0-9]*' | grep -v "^${TAG}$" | head -1 || true)
+          {
+            echo "# go-rdp-android ${TAG}"
+            echo
+            echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "## Release files"
+            echo
+            echo "- go-rdp-android-${TAG}.apk"
+            echo "- go-rdp-android-${TAG}-ux-report.pdf"
+            echo
+            if [ -n "$previous" ]; then
+              echo "## Commits since ${previous}"
+              range="${previous}..${TAG}"
+            else
+              echo "## Commits"
+              range="${TAG}"
+            fi
+            echo
+            git log --no-merges --date=short --pretty=format:'- `%h` %ad %s ([commit](https://github.com/%REPO%/commit/%H))' "$range" | sed "s|%REPO%|${REPO}|g"
+            echo
+          } > "release-files/go-rdp-android-${TAG}-release-notes.md"
+
+          ls -lh release-files
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-rdp-android-release-files
+          path: release-files/*

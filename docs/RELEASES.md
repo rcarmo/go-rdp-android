@@ -8,7 +8,7 @@ The repository uses tag suffixes to select CI/CD depth.
 | --- | --- | --- |
 | `*-ux` | Full UX validation | Runs the Go-backed Android emulator MediaProjection flow, scripted input validation, RDP screenshot capture, Gherkin validation, and Playwright PDF report generation. |
 | `*-build` | Build validation/artifact production | Runs normal build/test jobs and uploads build artifacts/APKs/AARs. Emulator UX is not run by default. |
-| `vX.X.X` | Release APK | First prunes pre-existing GitHub Actions artifacts from prior inter-release/non-release runs, then runs normal build/test jobs, Go-backed emulator UX validation, and Playwright PDF report generation. Release files include APK artifacts plus `go-rdp-android-vX.X.X-ux-report.pdf`. Version should match `VERSION`, Android `versionName`, and package metadata. |
+| `vX.X.X` | Release APK | First prunes pre-existing GitHub Actions artifacts from prior inter-release/non-release runs, then runs normal build/test jobs, Go-backed emulator UX validation, Playwright PDF report generation, and final release-file staging. Release files include `go-rdp-android-vX.X.X.apk`, `go-rdp-android-vX.X.X-ux-report.pdf`, and `go-rdp-android-vX.X.X-release-notes.md`. Version should match `VERSION`, Android `versionName`, and package metadata. |
 
 Examples:
 
@@ -28,6 +28,16 @@ git push origin v0.1.0
 Release tags (`vX.X.X`) run a `release-cleanup` gate before artifact-producing jobs. It deletes previous GitHub Actions artifacts for the repository so release APKs, AARs, logs, screenshots, and the UX PDF are not mixed with stale artifacts from `main`, `*-build`, `*-ux`, or manual workflow runs.
 
 This cleanup only runs for release tags. Non-release CI keeps its normal artifacts for debugging.
+
+## Release files and notes
+
+Release tags (`vX.X.X`) produce a consolidated `go-rdp-android-release-files` artifact containing:
+
+- `go-rdp-android-vX.X.X.apk`
+- `go-rdp-android-vX.X.X-ux-report.pdf`
+- `go-rdp-android-vX.X.X-release-notes.md`
+
+Release notes are generated from Git history and list commits since the previous `v*` release tag, with GitHub commit links. For the first release, notes list commits reachable from the release tag.
 
 ## Current identifiers
 
