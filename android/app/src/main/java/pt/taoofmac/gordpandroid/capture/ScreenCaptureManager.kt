@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid.capture
+package io.carmo.go.rdp.android.capture
 
 import android.content.Context
 import android.content.Intent

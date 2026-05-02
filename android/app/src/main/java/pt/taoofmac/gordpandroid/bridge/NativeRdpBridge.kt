@@ -1,7 +1,7 @@
-package pt.taoofmac.gordpandroid.bridge
+package io.carmo.go.rdp.android.bridge
 
 import android.util.Log
-import pt.taoofmac.gordpandroid.input.RdpAccessibilityService
+import io.carmo.go.rdp.android.input.RdpAccessibilityService
 
 /**
  * Android-facing bridge. It prefers the gomobile-generated Go backend when

@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid.service
+package io.carmo.go.rdp.android.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,8 +11,8 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
-import pt.taoofmac.gordpandroid.bridge.NativeRdpBridge
-import pt.taoofmac.gordpandroid.capture.ScreenCaptureManager
+import io.carmo.go.rdp.android.bridge.NativeRdpBridge
+import io.carmo.go.rdp.android.capture.ScreenCaptureManager
 
 class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     private var captureManager: ScreenCaptureManager? = null

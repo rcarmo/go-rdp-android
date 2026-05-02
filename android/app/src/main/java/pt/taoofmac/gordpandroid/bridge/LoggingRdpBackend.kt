@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid.bridge
+package io.carmo.go.rdp.android.bridge
 
 import android.util.Log
 import java.util.concurrent.atomic.AtomicBoolean

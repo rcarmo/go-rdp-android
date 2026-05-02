@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid.input
+package io.carmo.go.rdp.android.input
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

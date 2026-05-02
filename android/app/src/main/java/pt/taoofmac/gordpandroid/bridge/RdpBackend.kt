@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid.bridge
+package io.carmo.go.rdp.android.bridge
 
 interface RdpInputCallbacks {
     fun onPointerMove(x: Int, y: Int)

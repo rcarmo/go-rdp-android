@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "pt.taoofmac.gordpandroid"
+    namespace = "io.carmo.go.rdp.android"
     compileSdk = 35
 
     compileOptions {
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "pt.taoofmac.gordpandroid"
+        applicationId = "io.carmo.go.rdp.android"
         minSdk = 29
         targetSdk = 35
         versionCode = 1

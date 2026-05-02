@@ -3,7 +3,7 @@ set -euo pipefail
 
 mkdir -p emulator-artifacts
 
-PACKAGE=pt.taoofmac.gordpandroid
+PACKAGE=io.carmo.go.rdp.android
 ACTIVITY="$PACKAGE/.MainActivity"
 GO_BACKED="${EMULATOR_GO_BACKED:-false}"
 CAPTURE="${EMULATOR_CAPTURE:-false}"

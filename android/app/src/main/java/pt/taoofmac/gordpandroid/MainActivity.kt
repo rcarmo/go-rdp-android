@@ -1,4 +1,4 @@
-package pt.taoofmac.gordpandroid
+package io.carmo.go.rdp.android
 
 import android.app.Activity
 import android.content.Context
@@ -9,7 +9,7 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import pt.taoofmac.gordpandroid.service.RdpForegroundService
+import io.carmo.go.rdp.android.service.RdpForegroundService
 
 class MainActivity : Activity() {
     private val projectionRequestCode = 1001
