@@ -166,6 +166,14 @@ fi
   if [ -f emulator-artifacts/rdp-capture-plan.txt ]; then
     sed 's/^/- /' emulator-artifacts/rdp-capture-plan.txt
   fi
+  if grep -q 'captureStats' emulator-artifacts/logcat-filtered.txt 2>/dev/null; then
+    echo
+    echo '## Capture pacing/backpressure'
+    echo
+    echo '```text'
+    grep 'captureStats' emulator-artifacts/logcat-filtered.txt | tail -n 5
+    echo '```'
+  fi
   echo
   for summary in emulator-artifacts/rdp-*-summary.json emulator-artifacts/rdp-probe-summary.json; do
     [ -f "$summary" ] || continue

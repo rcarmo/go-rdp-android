@@ -17,8 +17,11 @@ import android.util.Log
 /**
  * MediaProjection-backed frame source.
  *
- * Frames are throttled before copying from ImageReader so the future Go bridge
- * does not get overwhelmed by full-rate display updates on high-refresh devices.
+ * Frames are throttled before copying from ImageReader so the Go bridge does
+ * not get overwhelmed by full-rate display updates on high-refresh devices.
+ * The throttle is adaptive: if bridge submission takes longer than the target
+ * interval, capture slows down; if submission is cheap, it gradually returns to
+ * the configured target FPS.
  */
 class ScreenCaptureManager(
     private val context: Context,
@@ -34,15 +37,29 @@ class ScreenCaptureManager(
     private var virtualDisplay: VirtualDisplay? = null
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
-    private var minFrameIntervalMs: Long = 66 // ~15 FPS initially
-    private var lastFrameAtMs: Long = 0
+    private var targetFrameIntervalMs: Long = 66 // ~15 FPS initially
+    private var adaptiveFrameIntervalMs: Long = 66
+    private var lastFrameCompletedAtMs: Long = 0
     private var stopping = false
+    private var submittedFrames: Long = 0
+    private var throttledFrames: Long = 0
+    private var copiedBytes: Long = 0
+    private var totalSubmitMs: Long = 0
+    private var maxSubmitMs: Long = 0
+    private var lastStatsLogMs: Long = 0
 
     fun start(resultCode: Int, data: Intent, width: Int, height: Int, densityDpi: Int, maxFps: Int = 15) {
         stop()
         stopping = false
-        minFrameIntervalMs = if (maxFps <= 0) 0 else (1000L / maxFps.coerceAtLeast(1))
-        lastFrameAtMs = 0
+        targetFrameIntervalMs = if (maxFps <= 0) 0 else (1000L / maxFps.coerceAtLeast(1))
+        adaptiveFrameIntervalMs = targetFrameIntervalMs
+        lastFrameCompletedAtMs = 0
+        submittedFrames = 0
+        throttledFrames = 0
+        copiedBytes = 0
+        totalSubmitMs = 0
+        maxSubmitMs = 0
+        lastStatsLogMs = SystemClock.elapsedRealtime()
 
         val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         projection = manager.getMediaProjection(resultCode, data).also { mp ->
@@ -73,11 +90,12 @@ class ScreenCaptureManager(
             null,
             handler,
         )
-        Log.i("GoRdpAndroid", "Screen capture started ${width}x$height density=$densityDpi maxFps=$maxFps")
+        Log.i(TAG, "Screen capture started ${width}x$height density=$densityDpi maxFps=$maxFps targetIntervalMs=$targetFrameIntervalMs")
     }
 
     fun stop() {
         stopping = true
+        logStats(force = true)
         virtualDisplay?.release()
         virtualDisplay = null
         imageReader?.close()
@@ -94,16 +112,55 @@ class ScreenCaptureManager(
         val image = reader.acquireLatestImage() ?: return
         image.use { img ->
             val now = SystemClock.elapsedRealtime()
-            if (minFrameIntervalMs > 0 && now - lastFrameAtMs < minFrameIntervalMs) {
+            if (adaptiveFrameIntervalMs > 0 && lastFrameCompletedAtMs > 0 && now - lastFrameCompletedAtMs < adaptiveFrameIntervalMs) {
+                throttledFrames += 1
+                logStats(force = false)
                 return
             }
-            lastFrameAtMs = now
 
             val plane: Image.Plane = img.planes.firstOrNull() ?: return
             val buffer = plane.buffer
             val data = ByteArray(buffer.remaining())
             buffer.get(data)
+            copiedBytes += data.size.toLong()
+
+            val submitStarted = SystemClock.elapsedRealtime()
             listener.onFrame(img.width, img.height, plane.pixelStride, plane.rowStride, data)
+            val submitMs = SystemClock.elapsedRealtime() - submitStarted
+            submittedFrames += 1
+            totalSubmitMs += submitMs
+            if (submitMs > maxSubmitMs) maxSubmitMs = submitMs
+            adjustBackpressure(submitMs)
+            lastFrameCompletedAtMs = SystemClock.elapsedRealtime()
+            logStats(force = false)
         }
+    }
+
+    private fun adjustBackpressure(submitMs: Long) {
+        if (targetFrameIntervalMs <= 0) return
+        val maxInterval = (targetFrameIntervalMs * 4).coerceAtLeast(targetFrameIntervalMs)
+        adaptiveFrameIntervalMs = when {
+            submitMs > adaptiveFrameIntervalMs -> (submitMs * 2).coerceAtMost(maxInterval)
+            adaptiveFrameIntervalMs > targetFrameIntervalMs && submitMs * 3 < adaptiveFrameIntervalMs ->
+                (adaptiveFrameIntervalMs - targetFrameIntervalMs / 2).coerceAtLeast(targetFrameIntervalMs)
+            else -> adaptiveFrameIntervalMs
+        }
+    }
+
+    private fun logStats(force: Boolean) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && submittedFrames % 120L != 0L && now - lastStatsLogMs < 10_000L) return
+        if (submittedFrames == 0L && throttledFrames == 0L) return
+        lastStatsLogMs = now
+        val avgSubmitMs = if (submittedFrames == 0L) 0 else totalSubmitMs / submittedFrames
+        Log.i(
+            TAG,
+            "captureStats submitted=$submittedFrames throttled=$throttledFrames copiedBytes=$copiedBytes " +
+                "avgSubmitMs=$avgSubmitMs maxSubmitMs=$maxSubmitMs adaptiveIntervalMs=$adaptiveFrameIntervalMs targetIntervalMs=$targetFrameIntervalMs",
+        )
+    }
+
+    companion object {
+        private const val TAG = "GoRdpAndroidCapture"
     }
 }
