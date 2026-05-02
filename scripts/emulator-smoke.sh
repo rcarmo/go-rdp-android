@@ -155,6 +155,16 @@ EOF
     "max_updates": $updates
   },
   {
+    "name": "browser",
+    "command": "sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
+    "actions": [
+      { "type": "key-home", "delay_ms": 200 },
+      { "type": "tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
+    ],
+    "wait_ms": 200,
+    "max_updates": $updates
+  },
+  {
     "name": "mouse-target",
     "command": "adb shell input mouse tap $mouse_target_x $mouse_target_y && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-mouse-target.png",
     "wait_ms": 200,
@@ -163,16 +173,6 @@ EOF
   {
     "name": "notifications",
     "command": "adb shell input keyevent HOME && sleep 1 && adb shell input touchscreen swipe $swipe_x $swipe_start_y $swipe_x $swipe_end_y 600 && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-notifications.png",
-    "wait_ms": 200,
-    "max_updates": $updates
-  },
-  {
-    "name": "browser",
-    "command": "sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
-    "actions": [
-      { "type": "key-home", "delay_ms": 200 },
-      { "type": "tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
-    ],
     "wait_ms": 200,
     "max_updates": $updates
   }
