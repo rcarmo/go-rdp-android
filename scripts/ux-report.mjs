@@ -112,7 +112,7 @@ function evidenceForScenario(scenario, checks, inputPlan, summary) {
     addCheck('Mouse tap step passed', checks.includes('mouse_target_tap=ok'));
     addCheck('Mouse coordinates recorded', /^mouse=/m.test(inputPlan), inputPlan.match(/^mouse=.*$/m)?.[0] || '');
     addShot('RDP mouse target', 'rdp-mouse-target.png');
-    addShot('Android mouse target', 'android-input-mouse-target.png');
+    addShot('Android mouse target', 'android-mouse-target.png');
     if (sceneByName['mouse-target']) metrics.push(['mouse-target updates', sceneByName['mouse-target'].updates]);
   } else if (name.includes('notifications')) {
     addCheck('Touch swipe step passed', checks.includes('touch_notification_swipe=ok'));
