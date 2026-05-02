@@ -329,7 +329,8 @@ func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, s
 		}
 		stats, err := applyBitmapUpdatePacket(screenshot, pkt)
 		if err != nil {
-			return out, err
+			fmt.Fprintf(os.Stderr, "scene %s bitmap decode warning: %v\n", scene.Name, err)
+			break
 		}
 		out.Updates++
 		out.BitmapPayloadBytes += int64(stats.Bytes)
