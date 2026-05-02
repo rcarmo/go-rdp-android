@@ -67,11 +67,11 @@ Immediate findings:
 - The first scene after capture startup is slower; later scenes are dominated by bitmap transfer/composition.
 - Exact full-frame update counting removes 30 unnecessary update reads compared with the earlier 450-update probe default.
 
-Next optimization candidates:
+Performance workstreams:
 
-1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods.
-2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot.
-3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them.
-4. **Optional downscale mode** for low-bandwidth viewing.
-5. **Compression/RDPGFX** once the slow-path baseline is stable.
-6. **H.264/AVC video path** using Android hardware encoding where possible. This should be tracked separately from bitmap/RDPGFX work because it changes the capture pipeline from `ImageReader` RGBA frames toward encoder surfaces or RGBA-to-encoder conversion, and it requires client/protocol capability negotiation for video-oriented graphics updates.
+1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods. Status: implemented for post-initial stream frames using per-tile hashes; unit coverage verifies unchanged frames emit no updates and one-pixel changes emit one tile.
+2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: not started.
+3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: not started.
+4. **Optional downscale mode** for low-bandwidth viewing. Status: not started.
+5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: not started.
+6. **H.264/AVC video path** using Android hardware encoding where possible. Status: not started. This should be tracked separately from bitmap/RDPGFX work because it changes the capture pipeline from `ImageReader` RGBA frames toward encoder surfaces or RGBA-to-encoder conversion, and it requires client/protocol capability negotiation for video-oriented graphics updates.

@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	controlActionRequestControl  = 0x0001
-	controlActionGrantedControl  = 0x0002
-	controlActionCooperate       = 0x0004
+	controlActionRequestControl = 0x0001
+	controlActionGrantedControl = 0x0002
+	controlActionCooperate      = 0x0004
 )
 
 type shareDataPDU struct {
@@ -58,11 +58,12 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			if updates, ok := buildFrameBitmapUpdates(fr); ok {
+			cache := newBitmapTileCache()
+			if updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, false); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}
-				go streamFrameUpdates(conn, frames)
+				go streamFrameUpdates(conn, frames, cache)
 				return nil
 			}
 		default:
@@ -71,10 +72,13 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
 }
 
-func streamFrameUpdates(conn net.Conn, frames frame.Source) {
+func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache) {
+	if cache == nil {
+		cache = newBitmapTileCache()
+	}
 	for fr := range frames.Frames() {
-		updates, ok := buildFrameBitmapUpdates(fr)
-		if !ok {
+		updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, true)
+		if !ok || len(updates) == 0 {
 			continue
 		}
 		if err := writeBitmapUpdates(conn, updates); err != nil {
@@ -132,7 +136,7 @@ func buildShareDataPDU(pduType2 uint8, payload []byte) []byte {
 	out = append(out, 0x01) // STREAM_LOW
 	out = appendLE16Bytes(out, uint16(4+len(payload)))
 	out = append(out, pduType2)
-	out = append(out, 0x00) // compressedType
+	out = append(out, 0x00)       // compressedType
 	out = appendLE16Bytes(out, 0) // compressedLength
 	out = append(out, payload...)
 	return out
@@ -153,9 +157,9 @@ func buildControlPayload(action uint16) []byte {
 
 func buildFontMapPayload() []byte {
 	out := appendLE16Bytes(nil, 0) // numberEntries
-	out = appendLE16Bytes(out, 0) // totalNumEntries
-	out = appendLE16Bytes(out, 3) // FONTMAP_FIRST | FONTMAP_LAST
-	out = appendLE16Bytes(out, 4) // entrySize
+	out = appendLE16Bytes(out, 0)  // totalNumEntries
+	out = appendLE16Bytes(out, 3)  // FONTMAP_FIRST | FONTMAP_LAST
+	out = appendLE16Bytes(out, 4)  // entrySize
 	return out
 }
 

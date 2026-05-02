@@ -44,6 +44,33 @@ func TestBuildFrameBitmapUpdateRGBA(t *testing.T) {
 	}
 }
 
+func TestBuildFrameBitmapUpdatesDirtyTileCache(t *testing.T) {
+	width, height := 160, 80
+	data := make([]byte, width*height*4)
+	for i := range data {
+		data[i] = byte(i)
+	}
+	fr := frame.Frame{Width: width, Height: height, Stride: width * 4, Format: frame.PixelFormatBGRA8888, Data: data}
+	cache := newBitmapTileCache()
+	updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, false)
+	if !ok || len(updates) != 2 {
+		t.Fatalf("expected initial two-tile frame, got ok=%v updates=%d", ok, len(updates))
+	}
+	updates, ok = buildFrameBitmapUpdatesWithCache(fr, cache, true)
+	if !ok || len(updates) != 0 {
+		t.Fatalf("expected unchanged frame to produce no dirty updates, got ok=%v updates=%d", ok, len(updates))
+	}
+
+	changed := append([]byte(nil), data...)
+	// Pixel x=100 lands in the second 80x80 tile.
+	changed[(100*4)+0] ^= 0xff
+	fr.Data = changed
+	updates, ok = buildFrameBitmapUpdatesWithCache(fr, cache, true)
+	if !ok || len(updates) != 1 {
+		t.Fatalf("expected one dirty tile after one-pixel change, got ok=%v updates=%d", ok, len(updates))
+	}
+}
+
 func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
 	width, height := 200, 90
 	data := make([]byte, width*height*4)

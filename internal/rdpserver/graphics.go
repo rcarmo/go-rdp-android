@@ -2,6 +2,7 @@ package rdpserver
 
 import (
 	"encoding/binary"
+	"hash/fnv"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
@@ -25,6 +26,21 @@ type bitmapRect struct {
 	Data   []byte
 }
 
+type bitmapTileCache struct {
+	hashes map[bitmapTileKey]uint64
+}
+
+type bitmapTileKey struct {
+	x      int
+	y      int
+	width  int
+	height int
+}
+
+func newBitmapTileCache() *bitmapTileCache {
+	return &bitmapTileCache{hashes: make(map[bitmapTileKey]uint64)}
+}
+
 func buildFrameBitmapUpdate(src frame.Frame) ([]byte, bool) {
 	updates, ok := buildFrameBitmapUpdates(src)
 	if !ok || len(updates) == 0 {
@@ -34,6 +50,10 @@ func buildFrameBitmapUpdate(src frame.Frame) ([]byte, bool) {
 }
 
 func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
+	return buildFrameBitmapUpdatesWithCache(src, nil, false)
+}
+
+func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool) ([][]byte, bool) {
 	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
 		return nil, false
 	}
@@ -53,18 +73,27 @@ func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
 		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
 		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
 			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
-			update, ok := buildFrameBitmapTile(src, stride, x, y, tileWidth, tileHeight)
+			tile, hash, ok := buildFrameBitmapTile(src, stride, x, y, tileWidth, tileHeight)
 			if !ok {
 				return nil, false
 			}
+			key := bitmapTileKey{x: x, y: y, width: tileWidth, height: tileHeight}
+			if cache != nil {
+				if dirtyOnly && cache.hashes[key] == hash {
+					tracef("bitmap_tile_skip", "x=%d y=%d width=%d height=%d", x, y, tileWidth, tileHeight)
+					continue
+				}
+				cache.hashes[key] = hash
+			}
+			update := buildBitmapUpdate([]bitmapRect{tile})
 			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bytes=%d", x, y, tileWidth, tileHeight, len(update))
 			updates = append(updates, update)
 		}
 	}
-	return updates, len(updates) > 0
+	return updates, true
 }
 
-func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) ([]byte, bool) {
+func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (bitmapRect, uint64, bool) {
 	data := make([]byte, width*height*4)
 	for y := 0; y < height; y++ {
 		rowOffset := (y0 + y) * stride
@@ -73,7 +102,7 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) ([
 			si := (x0 + x) * 4
 			di := (y*width + x) * 4
 			if si+3 >= len(row) {
-				return nil, false
+				return bitmapRect{}, 0, false
 			}
 			switch src.Format {
 			case frame.PixelFormatBGRA8888:
@@ -86,7 +115,7 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) ([
 			}
 		}
 	}
-	return buildBitmapUpdate([]bitmapRect{{
+	return bitmapRect{
 		Left:   uint16(x0),
 		Top:    uint16(y0),
 		Right:  uint16(x0 + width - 1),
@@ -95,7 +124,13 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) ([
 		Height: uint16(height),
 		BPP:    bitmapBPP32,
 		Data:   data,
-	}}), true
+	}, hashBytes(data), true
+}
+
+func hashBytes(data []byte) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write(data)
+	return h.Sum64()
 }
 
 func minInt(a, b int) int {
