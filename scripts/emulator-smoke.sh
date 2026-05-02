@@ -75,23 +75,51 @@ fi | tee -a emulator-artifacts/checks.txt
 
 adb exec-out screencap -p > emulator-artifacts/screenshot.png || true
 
+capture_rdp_scene() {
+  local name="$1"
+  local updates="$2"
+  adb exec-out screencap -p > "emulator-artifacts/android-${name}.png" || true
+  go run ./cmd/probe \
+    -addr 127.0.0.1:3390 \
+    -updates "$updates" \
+    -screenshot-width "$width" \
+    -screenshot-height "$height" \
+    -screenshot "emulator-artifacts/rdp-${name}.png" \
+    -summary "emulator-artifacts/rdp-${name}-summary.json" \
+    -dump-packets=false \
+    > "emulator-artifacts/rdp-${name}-probe.log" 2>&1
+  test -s "emulator-artifacts/rdp-${name}.png"
+  grep -q "\"bitmap_updates\": $updates" "emulator-artifacts/rdp-${name}-summary.json"
+}
+
 if [ "$GO_BACKED" = "true" ]; then
   adb forward tcp:3390 tcp:3390
   updates=20
   if [ "$CAPTURE" = "true" ]; then
     updates=${RDP_CAPTURE_UPDATES:-450}
   fi
-  go run ./cmd/probe \
-    -addr 127.0.0.1:3390 \
-    -updates "$updates" \
-    -screenshot-width "$width" \
-    -screenshot-height "$height" \
-    -screenshot emulator-artifacts/rdp-screenshot.png \
-    -summary emulator-artifacts/rdp-probe-summary.json \
-    -dump-packets=false \
-    > emulator-artifacts/rdp-probe.log 2>&1
-  test -s emulator-artifacts/rdp-screenshot.png
-  grep -q "\"bitmap_updates\": $updates" emulator-artifacts/rdp-probe-summary.json
+
+  if [ "$CAPTURE" = "true" ]; then
+    adb shell input keyevent HOME || true
+    sleep 3
+    capture_rdp_scene home "$updates"
+
+    adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt || true
+    sleep 3
+    capture_rdp_scene settings "$updates"
+
+    adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt || true
+    sleep 8
+    capture_rdp_scene browser "$updates"
+
+    cp emulator-artifacts/rdp-browser.png emulator-artifacts/rdp-screenshot.png
+    cp emulator-artifacts/rdp-browser-summary.json emulator-artifacts/rdp-probe-summary.json
+    cp emulator-artifacts/rdp-browser-probe.log emulator-artifacts/rdp-probe.log
+  else
+    capture_rdp_scene screenshot "$updates"
+    cp emulator-artifacts/rdp-screenshot-summary.json emulator-artifacts/rdp-probe-summary.json
+    cp emulator-artifacts/rdp-screenshot-probe.log emulator-artifacts/rdp-probe.log
+  fi
 fi
 
 grep -q 'startServer=ok' emulator-artifacts/checks.txt
