@@ -15,6 +15,10 @@ esac
 
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
 adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
+ACCESSIBILITY_SERVICE="$PACKAGE/$PACKAGE.input.RdpAccessibilityService"
+adb shell settings put secure enabled_accessibility_services "$ACCESSIBILITY_SERVICE" >/dev/null 2>&1 || true
+adb shell settings put secure accessibility_enabled 1 >/dev/null 2>&1 || true
+echo "accessibility_service=$ACCESSIBILITY_SERVICE" | tee emulator-artifacts/accessibility-setup.txt
 
 if [ "$CAPTURE" = "true" ]; then
   adb shell am start -W -n "$ACTIVITY" --ez start_capture true --ei capture_scale "$CAPTURE_SCALE" | tee emulator-artifacts/activity-start.txt
@@ -66,7 +70,7 @@ adb shell pidof "$PACKAGE" | tee emulator-artifacts/pidof.txt || true
 adb shell dumpsys package "$PACKAGE" > emulator-artifacts/dumpsys-package.txt || true
 adb shell dumpsys activity activities > emulator-artifacts/dumpsys-activity.txt || true
 adb logcat -d > emulator-artifacts/logcat.txt || true
-grep -E 'GoRdpAndroid|GoRdpAndroidService|Screen capture started|backend=|frame#|FATAL EXCEPTION|AndroidRuntime|ForegroundService|SecurityException|Exception' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
+grep -E 'GoRdpAndroid|GoRdpAndroidService|GoRdpAndroidInput|Screen capture started|backend=|frame#|globalHome|pointerButton|Accessibility service connected|FATAL EXCEPTION|AndroidRuntime|ForegroundService|SecurityException|Exception' emulator-artifacts/logcat.txt > emulator-artifacts/logcat-filtered.txt || true
 
 if grep -q 'startServer' emulator-artifacts/logcat-filtered.txt; then
   echo 'startServer=ok'
@@ -220,6 +224,9 @@ fi
   echo "- capture: $CAPTURE"
   echo "- screen: ${width}x${height}"
   echo "- capture_scale: $CAPTURE_SCALE"
+  if [ -f emulator-artifacts/accessibility-setup.txt ]; then
+    sed 's/^/- /' emulator-artifacts/accessibility-setup.txt
+  fi
   if [ -f emulator-artifacts/rdp-capture-plan.txt ]; then
     sed 's/^/- /' emulator-artifacts/rdp-capture-plan.txt
   fi

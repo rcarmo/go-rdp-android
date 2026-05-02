@@ -123,6 +123,8 @@ function evidenceForScenario(scenario, checks, inputPlan, summary) {
     if (sceneByName.notifications) metrics.push(['notifications updates', sceneByName.notifications.updates]);
   } else if (name.includes('browser')) {
     addCheck('RDP Home key and browser tap recorded', /rdp_browser=.*home scancode 0x47.*tap/i.test(inputPlan));
+    addCheck('Accessibility bridge handled RDP Home', /globalHome\(scancode=71 ok=true\)/i.test(summary._logcat || ''));
+    addCheck('Accessibility bridge handled RDP pointer tap', /pointerButton\(/i.test(summary._logcat || ''));
     addCheck('Browser came to foreground', /mCurrentFocus=.*(chrome|browser)|mFocusedApp=.*(chrome|browser)|topResumedActivity=.*(chrome|browser)|ActivityRecord.*(chrome|browser)/i.test(summary._browserWindow || '') || /ActivityRecord.*(chrome|browser)/i.test(summary._browserActivity || ''));
     addShot('RDP loaded browser page', 'rdp-browser.png');
     addShot('Android browser', 'android-browser.png');
@@ -167,6 +169,7 @@ async function main() {
   summary._browserStart = await readText(path.join(artifactsDir, 'browser-start.txt'));
   summary._browserActivity = await readText(path.join(artifactsDir, 'browser-activity.txt'));
   summary._browserWindow = await readText(path.join(artifactsDir, 'browser-window.txt'));
+  summary._logcat = await readText(path.join(artifactsDir, 'logcat-filtered.txt'));
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
