@@ -2,6 +2,7 @@ package rdpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"net"
 	"testing"
@@ -39,6 +40,13 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 	}
 	if len(resp) < 15 || resp[1] != x224TypeConnectionConfirm || resp[7] != rdpNegResp {
 		t.Fatalf("unexpected X.224 confirm: %x", resp)
+	}
+	if binary.LittleEndian.Uint32(resp[11:15]) == protocolSSL {
+		tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
+		if err := tlsConn.Handshake(); err != nil {
+			t.Fatal(err)
+		}
+		conn = tlsConn
 	}
 
 	if err := sendTestMCSConnectInitial(conn); err != nil {

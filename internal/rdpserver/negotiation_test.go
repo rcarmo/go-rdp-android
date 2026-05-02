@@ -44,7 +44,7 @@ func TestPerformInitialHandshake(t *testing.T) {
 	errCh := make(chan error, 1)
 	infoCh := make(chan *HandshakeInfo, 1)
 	go func() {
-		info, err := performInitialHandshake(server)
+		info, _, err := performInitialHandshake(server)
 		if err != nil {
 			errCh <- err
 			return
@@ -55,7 +55,7 @@ func TestPerformInitialHandshake(t *testing.T) {
 	neg := make([]byte, 8)
 	neg[0] = rdpNegReq
 	binary.LittleEndian.PutUint16(neg[2:4], 8)
-	binary.LittleEndian.PutUint32(neg[4:8], protocolSSL)
+	binary.LittleEndian.PutUint32(neg[4:8], protocolRDP)
 	userData := append([]byte("Cookie: mstshash=user\r\n"), neg...)
 	li := byte(6 + len(userData))
 	x224 := []byte{li, x224TypeConnectionRequest, 0, 0, 0, 1, 0}

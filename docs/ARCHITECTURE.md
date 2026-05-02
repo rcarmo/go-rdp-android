@@ -64,7 +64,7 @@ func SetInputHandler(handler InputHandler)
 
 Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state.
 
-`SetCredentials` configures the current simple username/password authenticator for future sessions. It validates credentials parsed from the RDP Client Info PDU in the classic security path. This is not CredSSP/NLA yet; it is the first app-level authentication hook while the server-side security stack matures.
+`SetCredentials` configures the current simple username/password authenticator for future sessions. The server negotiates `PROTOCOL_SSL` when requested, wraps the MCS/Client Info exchange in TLS 1.2+ using a generated self-signed certificate, and validates credentials parsed from the RDP Client Info PDU. This is not CredSSP/NLA yet; it is the first encrypted app-level authentication hook while the server-side security stack matures.
 
 ## RDP server core
 

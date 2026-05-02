@@ -263,7 +263,7 @@ go run ./cmd/probe -username user -password pass
 
 CI includes an authentication smoke test that proves good credentials complete the probe while bad credentials fail and log `auth failed` on the server.
 
-This is not NLA/CredSSP. It is an app-level authentication scaffold that gives the server a credential decision point while TLS, standard RDP security exchange, and eventual NLA/CredSSP support are implemented.
+The server now negotiates `PROTOCOL_SSL` when the client requests it, wraps the MCS and Client Info exchange in TLS 1.2+ with a generated self-signed certificate, and then applies the Client Info credential gate. This is still not NLA/CredSSP, but credentials are no longer sent in cleartext in the default probe path.
 
 ## Release debugging
 

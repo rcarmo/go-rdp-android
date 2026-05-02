@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -29,26 +30,40 @@ type HandshakeInfo struct {
 	SelectedProtocol   uint32
 }
 
-func performInitialHandshake(conn net.Conn) (*HandshakeInfo, error) {
+func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 	payload, err := readTPKT(conn)
 	if err != nil {
-		return nil, fmt.Errorf("read tpkt: %w", err)
+		return nil, nil, fmt.Errorf("read tpkt: %w", err)
 	}
 
 	userData, srcRef, err := parseX224ConnectionRequest(payload)
 	if err != nil {
-		return nil, fmt.Errorf("parse x224 connection request: %w", err)
+		return nil, nil, fmt.Errorf("parse x224 connection request: %w", err)
 	}
 
 	info := parseNegotiationUserData(userData)
-	// MVP: select classic RDP security. TLS/NLA server-side support comes later.
-	info.SelectedProtocol = protocolRDP
-
-	if err := writeConnectionConfirm(conn, srcRef, info.SelectedProtocol); err != nil {
-		return nil, fmt.Errorf("write x224 connection confirm: %w", err)
+	if info.RequestedProtocols&protocolSSL != 0 {
+		info.SelectedProtocol = protocolSSL
+	} else {
+		info.SelectedProtocol = protocolRDP
 	}
 
-	return &info, nil
+	if err := writeConnectionConfirm(conn, srcRef, info.SelectedProtocol); err != nil {
+		return nil, nil, fmt.Errorf("write x224 connection confirm: %w", err)
+	}
+	if info.SelectedProtocol == protocolSSL {
+		cfg, err := defaultTLSConfig()
+		if err != nil {
+			return nil, nil, fmt.Errorf("tls config: %w", err)
+		}
+		tlsConn := tls.Server(conn, cfg)
+		if err := tlsConn.Handshake(); err != nil {
+			return nil, nil, fmt.Errorf("tls handshake: %w", err)
+		}
+		return &info, tlsConn, nil
+	}
+
+	return &info, conn, nil
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {

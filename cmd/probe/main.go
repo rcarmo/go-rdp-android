@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -124,6 +125,15 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("X.224 confirm: %x\n", resp)
+	selectedProtocol := parseSelectedProtocol(resp)
+	if selectedProtocol == 0x00000001 {
+		tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
+		if err := tlsConn.Handshake(); err != nil {
+			log.Fatal(err)
+		}
+		conn = tlsConn
+		defer conn.Close()
+	}
 
 	if err := sendMCSConnectInitial(conn); err != nil {
 		log.Fatal(err)
@@ -481,6 +491,13 @@ func tracePacket(direction string, payload []byte) {
 var traceCounter uint64
 
 func nextTraceID() uint64 { return atomic.AddUint64(&traceCounter, 1) }
+
+func parseSelectedProtocol(resp []byte) uint32 {
+	if len(resp) >= 15 && resp[7] == 0x02 {
+		return binary.LittleEndian.Uint32(resp[11:15])
+	}
+	return 0
+}
 
 func sendX224ConnectionRequest(conn net.Conn) error {
 	neg := make([]byte, 8)

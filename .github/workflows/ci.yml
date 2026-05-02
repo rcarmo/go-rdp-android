@@ -119,6 +119,7 @@ jobs:
           set -e
           echo "$bad_status" > test-artifacts/auth/probe-bad-exit-code.txt
           test "$bad_status" -ne 0
+          grep -q 'selected=0x00000001' test-artifacts/auth/mock-server.log
           grep -q 'auth failed' test-artifacts/auth/mock-server.log
       - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v4

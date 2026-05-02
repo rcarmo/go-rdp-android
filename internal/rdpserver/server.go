@@ -88,11 +88,12 @@ func (s *Server) Addr() net.Addr {
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
-	info, err := performInitialHandshake(conn)
+	info, secureConn, err := performInitialHandshake(conn)
 	if err != nil {
 		log.Printf("rdp initial handshake failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
+	conn = secureConn
 	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, info.Cookie)
 
 	mcsInfo, err := readMCSConnectInitial(conn)
