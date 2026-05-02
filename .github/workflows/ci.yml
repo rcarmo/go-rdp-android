@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - '*-ux'
+      - '*-build'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -233,7 +237,7 @@ jobs:
 
   android-emulator:
     name: Android emulator smoke
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ github.event_name == 'workflow_dispatch' || endsWith(github.ref_name, '-ux') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -257,7 +261,7 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: |
-          if [ "${{ inputs.emulator_go_backed || 'false' }}" = "true" ]; then
+          if [ "${{ inputs.emulator_go_backed || (endsWith(github.ref_name, '-ux') && 'true') || 'false' }}" = "true" ]; then
             go install golang.org/x/mobile/cmd/gomobile@latest
             echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
             gomobile init
@@ -272,19 +276,19 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: EMULATOR_GO_BACKED='${{ inputs.emulator_go_backed || 'false' }}' EMULATOR_CAPTURE='${{ inputs.emulator_capture || 'false' }}' EMULATOR_CAPTURE_SCALE='${{ inputs.emulator_capture_scale || '1' }}' bash scripts/emulator-smoke.sh
+          script: EMULATOR_GO_BACKED='${{ inputs.emulator_go_backed || (endsWith(github.ref_name, '-ux') && 'true') || 'false' }}' EMULATOR_CAPTURE='${{ inputs.emulator_capture || (endsWith(github.ref_name, '-ux') && 'true') || 'false' }}' EMULATOR_CAPTURE_SCALE='${{ inputs.emulator_capture_scale || '2' }}' bash scripts/emulator-smoke.sh
       - uses: actions/setup-node@v4
-        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        if: ${{ (inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true') || endsWith(github.ref_name, '-ux') }}
         with:
           node-version: '22'
           cache: npm
       - name: Install Playwright UX report dependencies
-        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        if: ${{ (inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true') || endsWith(github.ref_name, '-ux') }}
         run: |
           npm ci
           npx playwright install --with-deps chromium
       - name: Generate Gherkin/Playwright UX PDF report
-        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        if: ${{ (inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true') || endsWith(github.ref_name, '-ux') }}
         run: npm run ux:report -- --artifacts emulator-artifacts --out emulator-artifacts/ux-report
       - name: Upload emulator artifacts
         if: always()

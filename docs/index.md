@@ -5,3 +5,4 @@
 - [MILESTONES](MILESTONES.md) — staged implementation plan
 - [TESTING](TESTING.md) — CI/off-device validation matrix
 - [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics and optimization targets
+- [RELEASES](RELEASES.md) — tag policy and release identifiers
