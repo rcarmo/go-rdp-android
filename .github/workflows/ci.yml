@@ -273,6 +273,19 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: EMULATOR_GO_BACKED='${{ inputs.emulator_go_backed || 'false' }}' EMULATOR_CAPTURE='${{ inputs.emulator_capture || 'false' }}' EMULATOR_CAPTURE_SCALE='${{ inputs.emulator_capture_scale || '1' }}' bash scripts/emulator-smoke.sh
+      - uses: actions/setup-node@v4
+        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install Playwright UX report dependencies
+        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Generate Gherkin/Playwright UX PDF report
+        if: ${{ inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true' }}
+        run: npm run ux:report -- --artifacts emulator-artifacts --out emulator-artifacts/ux-report
       - name: Upload emulator artifacts
         if: always()
         uses: actions/upload-artifact@v4

@@ -5,6 +5,11 @@ coverage.out
 coverage.func.txt
 coverage.html
 
+# Node / Playwright
+node_modules/
+playwright-report/
+test-results/
+
 # Android / Gradle
 .gradle/
 build/

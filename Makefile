@@ -93,6 +93,10 @@ android-build: ## Build Android debug APK (requires Android SDK + Gradle)
 .PHONY: android-build-go
 android-build-go: gomobile-bind android-build ## Build gomobile AAR and Android debug APK
 
+.PHONY: ux-report
+ux-report: ## Generate UX PDF report from emulator-artifacts (requires npm ci + Playwright browsers)
+	npm run ux:report -- --artifacts emulator-artifacts --out emulator-artifacts/ux-report
+
 .PHONY: ci
 ci: ci-status ## Show latest GitHub Actions run status
 
