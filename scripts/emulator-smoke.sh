@@ -13,8 +13,9 @@ adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS >/dev/null 2
 
 if [ "$CAPTURE" = "true" ]; then
   adb shell am start -W -n "$ACTIVITY" --ez start_capture true | tee emulator-artifacts/activity-start.txt
-  for _ in $(seq 1 30); do
-    if adb shell dumpsys activity activities | grep -q 'MediaProjectionPermissionActivity'; then
+  for _ in $(seq 1 45); do
+    adb shell dumpsys window > emulator-artifacts/window-consent-wait.txt || true
+    if grep -q 'mCurrentFocus.*MediaProjectionPermissionActivity' emulator-artifacts/window-consent-wait.txt; then
       break
     fi
     sleep 1
