@@ -37,6 +37,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         if (hasProjection) {
             startForeground(1, notification())
         }
+        NativeRdpBridge.setInputCoordinateScale(captureScale)
         NativeRdpBridge.startServer(3390, hasProjection)
 
         when {

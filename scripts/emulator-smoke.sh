@@ -132,10 +132,13 @@ if [ "$GO_BACKED" = "true" ]; then
     swipe_x=$((physical_width / 2))
     swipe_start_y=$((physical_height / 100))
     swipe_end_y=$((physical_height * 3 / 4))
+    rdp_chrome_x=$((physical_width * 61 / 100 / CAPTURE_SCALE))
+    rdp_chrome_y=$((physical_height * 82 / 100 / CAPTURE_SCALE))
     cat > emulator-artifacts/input-validation-plan.txt <<EOF
 keyboard=settings search for wifi
 mouse=tap ${mouse_target_x},${mouse_target_y}
 touch=swipe ${swipe_x},${swipe_start_y} to ${swipe_x},${swipe_end_y}
+rdp_browser=home scancode 0x47 then tap ${rdp_chrome_x},${rdp_chrome_y}
 EOF
     cat > emulator-artifacts/scene-plan.json <<JSON
 [
@@ -165,7 +168,11 @@ EOF
   },
   {
     "name": "browser",
-    "command": "adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt && sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
+    "command": "sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
+    "actions": [
+      { "type": "key-home", "delay_ms": 200 },
+      { "type": "tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
+    ],
     "wait_ms": 200,
     "max_updates": $updates
   }

@@ -10,9 +10,15 @@ import io.carmo.go.rdp.android.input.RdpAccessibilityService
  */
 object NativeRdpBridge : RdpInputCallbacks {
     private var frameCount: Long = 0
+    private var inputCoordinateScale: Int = 1
     private val backend: RdpBackend by lazy {
         val go = GomobileRdpBackend()
         if (go.available) go else LoggingRdpBackend()
+    }
+
+    fun setInputCoordinateScale(scale: Int) {
+        inputCoordinateScale = scale.coerceIn(1, 4)
+        Log.i(TAG, "inputCoordinateScale=$inputCoordinateScale")
     }
 
     fun startServer(port: Int, hasProjection: Boolean) {
@@ -30,11 +36,11 @@ object NativeRdpBridge : RdpInputCallbacks {
     }
 
     override fun onPointerMove(x: Int, y: Int) {
-        RdpAccessibilityService.handlePointerMove(x, y)
+        RdpAccessibilityService.handlePointerMove(x * inputCoordinateScale, y * inputCoordinateScale)
     }
 
     override fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean) {
-        RdpAccessibilityService.handlePointerButton(x, y, buttons, down)
+        RdpAccessibilityService.handlePointerButton(x * inputCoordinateScale, y * inputCoordinateScale, buttons, down)
     }
 
     override fun onKey(scancode: Int, down: Boolean) {

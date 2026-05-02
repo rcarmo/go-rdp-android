@@ -34,6 +34,7 @@ class RdpAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "GoRdpAndroidInput"
         private var activeService: WeakReference<RdpAccessibilityService>? = null
+        private const val RDP_SCANCODE_HOME = 0x47
 
         fun handlePointerMove(x: Int, y: Int): Boolean {
             // Accessibility gesture dispatch has no hover/move equivalent suitable for a cheap MVP.
@@ -50,7 +51,13 @@ class RdpAccessibilityService : AccessibilityService() {
 
         fun handleKey(scancode: Int, down: Boolean): Boolean {
             Log.d(TAG, "key(scancode=$scancode down=$down)")
-            return activeService?.get() != null
+            val service = activeService?.get() ?: return false
+            if (down && scancode == RDP_SCANCODE_HOME) {
+                val ok = service.performGlobalAction(GLOBAL_ACTION_HOME)
+                Log.i(TAG, "globalHome(scancode=$scancode ok=$ok)")
+                return ok
+            }
+            return true
         }
 
         fun handleUnicode(codepoint: Int): Boolean {

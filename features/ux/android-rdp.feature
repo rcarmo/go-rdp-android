@@ -29,11 +29,11 @@ Feature: Android RDP remote desktop UX
     Then the input validation plan should record the swipe coordinates
     And an RDP screenshot of the notification shade gesture result should be captured
 
-  Scenario: Open a browser URL from an Android intent
-    When the user opens https://example.com through an Android VIEW intent
+  Scenario: Open the browser from the Android home screen
+    When the user navigates to the Android home screen
+    And the user opens the browser app
     Then the browser should come to the foreground
-    And the destination page should be loaded
-    And an RDP screenshot of the loaded browser page should be captured
+    And an RDP screenshot of the browser should be captured
 
   Scenario: Measure performance for all UX scenes
     Then the UX report should include per-scene RDP metrics

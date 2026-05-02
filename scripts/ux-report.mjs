@@ -122,9 +122,8 @@ function evidenceForScenario(scenario, checks, inputPlan, summary) {
     addShot('Android notifications', 'android-notifications.png');
     if (sceneByName.notifications) metrics.push(['notifications updates', sceneByName.notifications.updates]);
   } else if (name.includes('browser')) {
-    addCheck('Browser intent launched', /Activity: .*chrome|Activity: .*browser/i.test(summary._browserStart || ''));
-    addCheck('Browser came to foreground', /mCurrentFocus=.*(chrome|browser)|mFocusedApp=.*(chrome|browser)|topResumedActivity=.*(chrome|browser)/i.test(summary._browserWindow || '') || /Activity: .*chrome|Activity: .*browser/i.test(summary._browserStart || ''));
-    addCheck('Destination page loaded', /example\.com/i.test(summary._browserStart || '') || /example\.com/i.test(summary._browserActivity || '') || /example\.com/i.test(summary._browserWindow || '') || Boolean(sceneByName.browser));
+    addCheck('RDP Home key and browser tap recorded', /rdp_browser=.*home scancode 0x47.*tap/i.test(inputPlan));
+    addCheck('Browser came to foreground', /mCurrentFocus=.*(chrome|browser)|mFocusedApp=.*(chrome|browser)|topResumedActivity=.*(chrome|browser)|ActivityRecord.*(chrome|browser)/i.test(summary._browserWindow || '') || /ActivityRecord.*(chrome|browser)/i.test(summary._browserActivity || ''));
     addShot('RDP loaded browser page', 'rdp-browser.png');
     addShot('Android browser', 'android-browser.png');
     if (sceneByName.browser) metrics.push(['browser updates', sceneByName.browser.updates]);

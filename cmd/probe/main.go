@@ -48,10 +48,19 @@ type probeSummary struct {
 }
 
 type probeScenePlan struct {
-	Name       string `json:"name"`
-	Command    string `json:"command,omitempty"`
-	WaitMs     int    `json:"wait_ms,omitempty"`
-	MaxUpdates int    `json:"max_updates,omitempty"`
+	Name       string             `json:"name"`
+	Command    string             `json:"command,omitempty"`
+	Actions    []probeSceneAction `json:"actions,omitempty"`
+	WaitMs     int                `json:"wait_ms,omitempty"`
+	MaxUpdates int                `json:"max_updates,omitempty"`
+}
+
+type probeSceneAction struct {
+	Type     string `json:"type"`
+	DelayMs  int    `json:"delay_ms,omitempty"`
+	Scancode uint16 `json:"scancode,omitempty"`
+	X        uint16 `json:"x,omitempty"`
+	Y        uint16 `json:"y,omitempty"`
 }
 
 type probeSceneSummary struct {
@@ -303,6 +312,8 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 				return fmt.Errorf("scene %s command failed to start: %w", scene.Name, err)
 			}
 		}
+		actionErr := make(chan error, 1)
+		go func() { actionErr <- runRDPSceneActions(conn, scene.Actions) }()
 		if scene.WaitMs > 0 {
 			time.Sleep(time.Duration(scene.WaitMs) * time.Millisecond)
 		}
@@ -317,12 +328,61 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 				err = fmt.Errorf("scene %s command failed: %w", scene.Name, waitErr)
 			}
 		}
+		if actionWaitErr := <-actionErr; actionWaitErr != nil && err == nil {
+			err = fmt.Errorf("scene %s RDP action failed: %w", scene.Name, actionWaitErr)
+		}
 		if err != nil {
 			return err
 		}
 		summary.Scenes = append(summary.Scenes, sceneSummary)
 	}
 	return nil
+}
+
+func runRDPSceneActions(conn net.Conn, actions []probeSceneAction) error {
+	for _, action := range actions {
+		if action.DelayMs > 0 {
+			time.Sleep(time.Duration(action.DelayMs) * time.Millisecond)
+		}
+		switch action.Type {
+		case "key-home":
+			if err := sendRDPKey(conn, 0x47); err != nil {
+				return err
+			}
+		case "key":
+			if err := sendRDPKey(conn, action.Scancode); err != nil {
+				return err
+			}
+		case "tap":
+			if err := sendRDPTap(conn, action.X, action.Y); err != nil {
+				return err
+			}
+		case "wait", "":
+			// delay-only action.
+		default:
+			return fmt.Errorf("unknown RDP action type %q", action.Type)
+		}
+	}
+	return nil
+}
+
+func sendRDPKey(conn net.Conn, scancode uint16) error {
+	if err := sendShareData(conn, 0x1c, buildSlowPathInputPDU(
+		buildSlowPathInputEvent(0x0004, 0, scancode, 0),
+	)); err != nil {
+		return err
+	}
+	return sendShareData(conn, 0x1c, buildSlowPathInputPDU(
+		buildSlowPathInputEvent(0x0004, 0x8000, scancode, 0),
+	))
+}
+
+func sendRDPTap(conn net.Conn, x, y uint16) error {
+	return sendShareData(conn, 0x1c, buildSlowPathInputPDU(
+		buildSlowPathInputEvent(0x8001, 0x0800, x, y),
+		buildSlowPathInputEvent(0x8001, 0x9000, x, y),
+		buildSlowPathInputEvent(0x8001, 0x1000, x, y),
+	))
 }
 
 func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, shot string, idleTimeoutMs, maxUpdates int) (probeSceneSummary, error) {
@@ -591,6 +651,24 @@ func writePNG(path string, img image.Image) error {
 	}
 	defer f.Close()
 	return png.Encode(f, img)
+}
+
+func buildSlowPathInputEvent(messageType, flags, codeOrX, y uint16) []byte {
+	out := appendLE32(nil, 0)
+	out = appendLE16(out, messageType)
+	out = appendLE16(out, flags)
+	out = appendLE16(out, codeOrX)
+	out = appendLE16(out, y)
+	return out
+}
+
+func buildSlowPathInputPDU(events ...[]byte) []byte {
+	out := appendLE16(nil, uint16(len(events)))
+	out = appendLE16(out, 0)
+	for _, event := range events {
+		out = append(out, event...)
+	}
+	return out
 }
 
 func sendShareData(conn net.Conn, pduType2 byte, payload []byte) error {
