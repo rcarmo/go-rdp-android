@@ -13,7 +13,12 @@ adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS >/dev/null 2
 
 if [ "$CAPTURE" = "true" ]; then
   adb shell am start -W -n "$ACTIVITY" --ez start_capture true | tee emulator-artifacts/activity-start.txt
-  sleep 2
+  for _ in $(seq 1 30); do
+    if adb shell dumpsys activity activities | grep -q 'MediaProjectionPermissionActivity'; then
+      break
+    fi
+    sleep 1
+  done
   size_line=$(adb shell wm size | tr -d '\r' | awk -F': ' '/Physical size/ {print $2; exit}')
   width=${size_line%x*}
   height=${size_line#*x}
@@ -33,7 +38,13 @@ if [ "$CAPTURE" = "true" ]; then
   adb shell input tap "$entire_screen_x" "$entire_screen_y" || true
   sleep 1
   adb shell input tap "$start_x" "$start_y"
-  sleep 12
+  for _ in $(seq 1 30); do
+    adb logcat -d > emulator-artifacts/logcat-consent-wait.txt || true
+    if grep -q 'Screen capture started' emulator-artifacts/logcat-consent-wait.txt; then
+      break
+    fi
+    sleep 1
+  done
 else
   adb shell am start -W -n "$ACTIVITY" --ez start_test_pattern true | tee emulator-artifacts/activity-start.txt
   sleep 8
