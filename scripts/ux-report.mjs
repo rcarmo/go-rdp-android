@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 function arg(name, fallback) {
   const idx = process.argv.indexOf(`--${name}`);
@@ -145,10 +146,8 @@ async function imageInfo(page, file) {
   return { exists: true, ...box };
 }
 
-async function imageDataUri(file) {
-  const full = path.join(artifactsDir, file);
-  const data = await fs.readFile(full);
-  return `data:image/png;base64,${data.toString('base64')}`;
+function imageFileUri(file) {
+  return pathToFileURL(path.join(artifactsDir, file)).href;
 }
 
 async function main() {
@@ -243,7 +242,7 @@ async function main() {
     }
     html += '<div class="shots">';
     for (const shot of r.screenshots) {
-      if (shot.info?.exists) html += `<div class="shot"><h3>${escapeHtml(shot.label)}</h3><img src="${await imageDataUri(shot.filename)}"><p>${escapeHtml(shot.filename)} — ${shot.info.width}x${shot.info.height}</p></div>`;
+      if (shot.info?.exists) html += `<div class="shot"><h3>${escapeHtml(shot.label)}</h3><img src="${imageFileUri(shot.filename)}"><p>${escapeHtml(shot.filename)} — ${shot.info.width}x${shot.info.height}</p></div>`;
     }
     html += '</div></section>';
   }
@@ -257,7 +256,7 @@ async function main() {
   await fs.writeFile(path.join(outDir, 'ux-validation.json'), JSON.stringify({ ok: failed.length === 0, results }, null, 2));
 
   page.setDefaultTimeout(120_000);
-  await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+  await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'commit', timeout: 120_000 });
   await page.pdf({ path: pdfPath, format: 'A4', printBackground: true, timeout: 120_000, margin: { top: '12mm', right: '10mm', bottom: '12mm', left: '10mm' } });
   await browser.close();
 
