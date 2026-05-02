@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -316,6 +317,9 @@ func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, s
 		pkt, err := readTPKT(conn)
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Timeout() {
+				break
+			}
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				break
 			}
 			return out, err
