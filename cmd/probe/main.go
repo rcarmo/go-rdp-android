@@ -282,12 +282,13 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 		if scene.Name == "" {
 			return fmt.Errorf("scene without name")
 		}
+		var cmd *exec.Cmd
 		if scene.Command != "" {
-			cmd := exec.Command("sh", "-c", scene.Command)
+			cmd = exec.Command("sh", "-c", scene.Command)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("scene %s command failed: %w", scene.Name, err)
+			if err := cmd.Start(); err != nil {
+				return fmt.Errorf("scene %s command failed to start: %w", scene.Name, err)
 			}
 		}
 		if scene.WaitMs > 0 {
@@ -299,6 +300,11 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 		}
 		shot := filepath.Join(artifactDir, "rdp-"+scene.Name+".png")
 		sceneSummary, err := captureScene(conn, scene, screenshot, shot, idleTimeoutMs, maxUpdates)
+		if cmd != nil {
+			if waitErr := cmd.Wait(); waitErr != nil && err == nil {
+				err = fmt.Errorf("scene %s command failed: %w", scene.Name, waitErr)
+			}
+		}
 		if err != nil {
 			return err
 		}
