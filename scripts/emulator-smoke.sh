@@ -140,19 +140,20 @@ mouse=tap ${mouse_target_x},${mouse_target_y}
 touch=swipe ${swipe_x},${swipe_start_y} to ${swipe_x},${swipe_end_y}
 rdp_browser=home scancode 0x47 then tap ${rdp_chrome_x},${rdp_chrome_y}
 EOF
+    scene_updates=$((updates * 4))
     cat > emulator-artifacts/scene-plan.json <<JSON
 [
   {
     "name": "settings",
     "command": "adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt && sleep 3 && adb exec-out screencap -p > emulator-artifacts/android-settings.png",
     "wait_ms": 200,
-    "max_updates": $updates
+    "max_updates": $scene_updates
   },
   {
     "name": "settings-search",
     "command": "adb shell input keyboard keyevent KEYCODE_SEARCH && sleep 1 && adb shell input keyboard text wifi && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-settings-search.png",
     "wait_ms": 200,
-    "max_updates": $updates
+    "max_updates": $scene_updates
   },
   {
     "name": "browser",
@@ -162,19 +163,19 @@ EOF
       { "type": "tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
     ],
     "wait_ms": 200,
-    "max_updates": $updates
+    "max_updates": $scene_updates
   },
   {
     "name": "mouse-target",
     "command": "adb shell input mouse tap $mouse_target_x $mouse_target_y && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-mouse-target.png",
     "wait_ms": 200,
-    "max_updates": $updates
+    "max_updates": $scene_updates
   },
   {
     "name": "notifications",
     "command": "adb shell input keyevent HOME && sleep 1 && adb shell input touchscreen swipe $swipe_x $swipe_start_y $swipe_x $swipe_end_y 600 && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-notifications.png",
     "wait_ms": 200,
-    "max_updates": $updates
+    "max_updates": $scene_updates
   }
 ]
 JSON
