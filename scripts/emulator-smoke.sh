@@ -108,7 +108,9 @@ if [ "$GO_BACKED" = "true" ]; then
   adb forward tcp:3390 tcp:3390
   updates=20
   if [ "$CAPTURE" = "true" ]; then
-    updates=${RDP_CAPTURE_UPDATES:-450}
+    full_frame_updates=$(( ((width + 79) / 80) * ((height + 79) / 80) ))
+    updates=${RDP_CAPTURE_UPDATES:-$full_frame_updates}
+    echo "rdp_tile_size=80 full_frame_updates=$full_frame_updates selected_updates=$updates" | tee emulator-artifacts/rdp-capture-plan.txt
   fi
 
   if [ "$CAPTURE" = "true" ]; then
@@ -133,6 +135,27 @@ if [ "$GO_BACKED" = "true" ]; then
     cp emulator-artifacts/rdp-screenshot-probe.log emulator-artifacts/rdp-probe.log
   fi
 fi
+
+{
+  echo '# RDP emulator performance summary'
+  echo
+  echo "- go_backed: $GO_BACKED"
+  echo "- capture: $CAPTURE"
+  echo "- screen: ${width}x${height}"
+  if [ -f emulator-artifacts/rdp-capture-plan.txt ]; then
+    sed 's/^/- /' emulator-artifacts/rdp-capture-plan.txt
+  fi
+  echo
+  for summary in emulator-artifacts/rdp-*-summary.json emulator-artifacts/rdp-probe-summary.json; do
+    [ -f "$summary" ] || continue
+    echo "## $(basename "$summary")"
+    echo
+    echo '```json'
+    cat "$summary"
+    echo '```'
+    echo
+  done
+} > emulator-artifacts/performance-summary.md
 
 grep -q 'startServer=ok' emulator-artifacts/checks.txt
 grep -q 'frame1=ok' emulator-artifacts/checks.txt

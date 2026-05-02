@@ -23,14 +23,31 @@ var traceOut atomic.Value
 var dumpPackets atomic.Bool
 
 type probeSummary struct {
-	BitmapUpdates  int `json:"bitmap_updates"`
-	PacketsRead    int `json:"packets_read"`
-	PacketsWritten int `json:"packets_written"`
+	BitmapUpdates        int     `json:"bitmap_updates"`
+	PacketsRead          int     `json:"packets_read"`
+	PacketsWritten       int     `json:"packets_written"`
+	BytesRead            int64   `json:"bytes_read"`
+	BytesWritten         int64   `json:"bytes_written"`
+	BitmapPayloadBytes   int64   `json:"bitmap_payload_bytes"`
+	BitmapRectangles     int     `json:"bitmap_rectangles"`
+	BitmapPixels         int64   `json:"bitmap_pixels"`
+	DurationMs           int64   `json:"duration_ms"`
+	HandshakeMs          int64   `json:"handshake_ms"`
+	BitmapReadMs         int64   `json:"bitmap_read_ms"`
+	FirstBitmapMs        int64   `json:"first_bitmap_ms"`
+	ReadThroughputMbps   float64 `json:"read_throughput_mbps"`
+	BitmapThroughputMbps float64 `json:"bitmap_throughput_mbps"`
+	AverageUpdateBytes   float64 `json:"average_update_bytes"`
+	AverageUpdateMs      float64 `json:"average_update_ms"`
+	ScreenshotWidth      int     `json:"screenshot_width,omitempty"`
+	ScreenshotHeight     int     `json:"screenshot_height,omitempty"`
+	ScreenshotPath       string  `json:"screenshot_path,omitempty"`
 }
 
 var summary probeSummary
 
 func main() {
+	started := time.Now()
 	addr := flag.String("addr", "127.0.0.1:3390", "RDP server address")
 	traceDir := flag.String("trace-dir", "", "directory for client/server packet hex traces")
 	summaryPath := flag.String("summary", "", "write JSON probe summary")
@@ -129,23 +146,49 @@ func main() {
 		log.Fatal(err)
 	}
 	readAndPrint(conn, "Server FontMap")
+	handshakeDone := time.Now()
+	summary.HandshakeMs = handshakeDone.Sub(started).Milliseconds()
 	var screenshot *image.RGBA
 	if *screenshotPath != "" {
+		summary.ScreenshotWidth = *screenshotWidth
+		summary.ScreenshotHeight = *screenshotHeight
+		summary.ScreenshotPath = *screenshotPath
 		screenshot = image.NewRGBA(image.Rect(0, 0, *screenshotWidth, *screenshotHeight))
 	}
+	bitmapStarted := time.Now()
 	for i := 0; i < *updates; i++ {
 		pkt := readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+		if i == 0 {
+			summary.FirstBitmapMs = time.Since(started).Milliseconds()
+		}
 		if screenshot != nil {
-			if err := applyBitmapUpdatePacket(screenshot, pkt); err != nil {
+			stats, err := applyBitmapUpdatePacket(screenshot, pkt)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "bitmap decode warning: %v\n", err)
+			} else {
+				summary.BitmapPayloadBytes += int64(stats.Bytes)
+				summary.BitmapRectangles += stats.Rectangles
+				summary.BitmapPixels += int64(stats.Pixels)
 			}
 		}
 		summary.BitmapUpdates++
 	}
+	summary.BitmapReadMs = time.Since(bitmapStarted).Milliseconds()
 	if screenshot != nil {
 		if err := writePNG(*screenshotPath, screenshot); err != nil {
 			log.Fatal(err)
 		}
+	}
+	summary.DurationMs = time.Since(started).Milliseconds()
+	if summary.DurationMs > 0 {
+		summary.ReadThroughputMbps = mbps(summary.BytesRead, summary.DurationMs)
+	}
+	if summary.BitmapReadMs > 0 {
+		summary.BitmapThroughputMbps = mbps(summary.BitmapPayloadBytes, summary.BitmapReadMs)
+	}
+	if summary.BitmapUpdates > 0 {
+		summary.AverageUpdateBytes = float64(summary.BytesRead) / float64(summary.BitmapUpdates)
+		summary.AverageUpdateMs = float64(summary.BitmapReadMs) / float64(summary.BitmapUpdates)
 	}
 	if *summaryPath != "" {
 		data, err := json.MarshalIndent(summary, "", "  ")
@@ -168,6 +211,7 @@ func readTPKT(r io.Reader) ([]byte, error) {
 	_, err := io.ReadFull(r, payload)
 	if err == nil {
 		summary.PacketsRead++
+		summary.BytesRead += int64(length)
 		tracePacket("server", payload)
 	}
 	return payload, err
@@ -182,6 +226,7 @@ func writeTPKT(w io.Writer, payload []byte) error {
 	_, err := w.Write(payload)
 	if err == nil {
 		summary.PacketsWritten++
+		summary.BytesWritten += int64(4 + len(payload))
 		tracePacket("client", payload)
 	}
 	return err
@@ -262,40 +307,46 @@ func readAndPrint(conn net.Conn, label string) []byte {
 	return pkt
 }
 
-func applyBitmapUpdatePacket(dst *image.RGBA, pkt []byte) error {
+type bitmapStats struct {
+	Rectangles int
+	Pixels     int
+	Bytes      int
+}
+
+func applyBitmapUpdatePacket(dst *image.RGBA, pkt []byte) (bitmapStats, error) {
 	if len(pkt) < 4 || pkt[0] != 0x02 || pkt[1] != 0xf0 || pkt[2] != 0x80 {
-		return fmt.Errorf("not an X.224 Data TPDU")
+		return bitmapStats{}, fmt.Errorf("not an X.224 Data TPDU")
 	}
 	mcs := pkt[3:]
 	if len(mcs) < 2 || int(mcs[0]>>2) != 26 {
-		return fmt.Errorf("not an MCS SendDataIndication")
+		return bitmapStats{}, fmt.Errorf("not an MCS SendDataIndication")
 	}
 	body := mcs[1:]
 	if len(body) < 6 || body[4] != 0x70 {
-		return fmt.Errorf("short SendDataIndication")
+		return bitmapStats{}, fmt.Errorf("short SendDataIndication")
 	}
 	length, consumed, err := readPERLengthBytes(body[5:])
 	if err != nil {
-		return err
+		return bitmapStats{}, err
 	}
 	dataStart := 5 + consumed
 	if dataStart+length > len(body) {
-		return fmt.Errorf("SendDataIndication length %d exceeds available %d", length, len(body)-dataStart)
+		return bitmapStats{}, fmt.Errorf("SendDataIndication length %d exceeds available %d", length, len(body)-dataStart)
 	}
 	share := body[dataStart : dataStart+length]
 	if len(share) < 18 {
-		return fmt.Errorf("short Share Data PDU")
+		return bitmapStats{}, fmt.Errorf("short Share Data PDU")
 	}
 	total := int(binary.LittleEndian.Uint16(share[0:2]))
 	if total > len(share) {
-		return fmt.Errorf("share length %d exceeds available %d", total, len(share))
+		return bitmapStats{}, fmt.Errorf("share length %d exceeds available %d", total, len(share))
 	}
 	if binary.LittleEndian.Uint16(share[2:4]) != 0x0017 {
-		return fmt.Errorf("not Share Data")
+		return bitmapStats{}, fmt.Errorf("not Share Data")
 	}
 	payload := share[6:total]
 	if len(payload) < 12 || payload[8] != 0x02 {
-		return fmt.Errorf("not a bitmap Update PDU")
+		return bitmapStats{}, fmt.Errorf("not a bitmap Update PDU")
 	}
 	return applyBitmapUpdate(dst, payload[12:])
 }
@@ -313,31 +364,34 @@ func readPERLengthBytes(data []byte) (length, consumed int, err error) {
 	return (int(data[0]&0x7f) << 8) | int(data[1]), 2, nil
 }
 
-func applyBitmapUpdate(dst *image.RGBA, payload []byte) error {
+func applyBitmapUpdate(dst *image.RGBA, payload []byte) (bitmapStats, error) {
 	if len(payload) < 4 {
-		return fmt.Errorf("short bitmap update")
+		return bitmapStats{}, fmt.Errorf("short bitmap update")
 	}
 	if binary.LittleEndian.Uint16(payload[0:2]) != 0x0001 {
-		return fmt.Errorf("not a bitmap update")
+		return bitmapStats{}, fmt.Errorf("not a bitmap update")
 	}
 	rects := int(binary.LittleEndian.Uint16(payload[2:4]))
+	stats := bitmapStats{Rectangles: rects}
 	r := bytes.NewReader(payload[4:])
 	for i := 0; i < rects; i++ {
 		var left, top, right, bottom, width, height, bpp, flags, dataLen uint16
 		for _, v := range []*uint16{&left, &top, &right, &bottom, &width, &height, &bpp, &flags, &dataLen} {
 			if err := binary.Read(r, binary.LittleEndian, v); err != nil {
-				return err
+				return bitmapStats{}, err
 			}
 		}
 		data := make([]byte, dataLen)
+		stats.Bytes += int(dataLen)
+		stats.Pixels += int(width) * int(height)
 		if _, err := io.ReadFull(r, data); err != nil {
-			return err
+			return bitmapStats{}, err
 		}
 		if bpp != 32 || flags != 0 {
-			return fmt.Errorf("unsupported bitmap rect bpp=%d flags=0x%04x", bpp, flags)
+			return bitmapStats{}, fmt.Errorf("unsupported bitmap rect bpp=%d flags=0x%04x", bpp, flags)
 		}
 		if int(width)*int(height)*4 > len(data) {
-			return fmt.Errorf("short bitmap rect data")
+			return bitmapStats{}, fmt.Errorf("short bitmap rect data")
 		}
 		_ = right
 		_ = bottom
@@ -348,7 +402,14 @@ func applyBitmapUpdate(dst *image.RGBA, payload []byte) error {
 			}
 		}
 	}
-	return nil
+	return stats, nil
+}
+
+func mbps(bytes int64, durationMs int64) float64 {
+	if durationMs <= 0 {
+		return 0
+	}
+	return (float64(bytes) * 8.0) / (float64(durationMs) / 1000.0) / 1_000_000.0
 }
 
 func writePNG(path string, img image.Image) error {
