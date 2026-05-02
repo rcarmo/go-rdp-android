@@ -87,6 +87,7 @@ func main() {
 	artifactDir := flag.String("artifact-dir", ".", "directory for scene screenshots")
 	sceneIdleTimeout := flag.Int("scene-idle-timeout-ms", 1500, "scene capture stops after this read-idle timeout")
 	sceneMaxUpdates := flag.Int("scene-max-updates", 420, "maximum bitmap updates to read per scene")
+	allowPartial := flag.Bool("allow-partial", false, "allow EOF/timeout before requested bitmap updates and still write artifacts")
 	flag.Parse()
 	dumpPackets.Store(*dump)
 	if *traceDir != "" {
@@ -206,7 +207,18 @@ func main() {
 		}
 	} else {
 		for i := 0; i < *updates; i++ {
-			pkt := readAndPrint(conn, fmt.Sprintf("Server Bitmap Update %d", i+1))
+			pkt, err := readTPKT(conn)
+			if err != nil {
+				if *allowPartial && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)) {
+					break
+				}
+				log.Fatal(err)
+			}
+			if dumpPackets.Load() {
+				fmt.Printf("Server Bitmap Update %d: %x\n", i+1, pkt)
+			} else {
+				fmt.Printf("Server Bitmap Update %d: %d bytes\n", i+1, len(pkt))
+			}
 			if i == 0 {
 				summary.FirstBitmapMs = time.Since(started).Milliseconds()
 			}
