@@ -51,6 +51,17 @@ ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 
 This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
 
+## Downscale baseline: 2026-05-02 emulator run
+
+Manual workflow run `25247259184` used `emulator_capture_scale=2`, reducing MediaProjection/RDP capture from 1080x2400 to 540x1200.
+
+| Scale | RDP size | Full-frame tiles | Full-frame payload |
+| ---: | ---: | ---: | ---: |
+| 1 | 1080x2400 | 420 | 10,368,000 bytes |
+| 2 | 540x1200 | 105 | 2,592,000 bytes |
+
+That is a **75% reduction** in uncompressed full-frame payload and tile count for the same device screen. The run passed with `startServer=ok`, `frame1=ok`, `screen_capture=ok`, and `fatal_exception=none`.
+
 ## Single-session baseline: 2026-05-02 emulator run
 
 Manual workflow run `25246034129` kept one RDP connection open while capturing home, navigating to Settings, and navigating to browser. The home capture used one 420-update warmup full frame; Settings and browser were captured as incremental scenes on the same session.
@@ -85,6 +96,6 @@ Performance workstreams:
 1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods. Status: implemented for post-initial stream frames using per-tile hashes; unit coverage verifies unchanged frames emit no updates and one-pixel changes emit one tile.
 2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented and validated as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`.
 3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: first pass implemented and emulator-validated with adaptive capture interval based on bridge submission time plus capture telemetry; CI run `25246333819` stayed green and browser scene fell to 302 dirty updates.
-4. **Optional downscale mode** for low-bandwidth viewing. Status: implemented as `emulator_capture_scale` / `capture_scale` plumbing through CI, Android intent extras, and MediaProjection virtual display sizing; pending emulator validation.
+4. **Optional downscale mode** for low-bandwidth viewing. Status: implemented and emulator-validated as `emulator_capture_scale` / `capture_scale` plumbing through CI, Android intent extras, and MediaProjection virtual display sizing; scale=2 run `25247259184` captured 540x1200 frames with 105 full-frame tiles and 2.59 MB/frame payload.
 5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: not started.
 6. **H.264/AVC video path** using Android hardware encoding where possible. Status: not started. This should be tracked separately from bitmap/RDPGFX work because it changes the capture pipeline from `ImageReader` RGBA frames toward encoder surfaces or RGBA-to-encoder conversion, and it requires client/protocol capability negotiation for video-oriented graphics updates.
