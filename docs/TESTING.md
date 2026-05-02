@@ -1,30 +1,148 @@
-# Testing Matrix
+# Testing and CI
 
-Everything below runs without a physical Android device.
+`go-rdp-android` is CI-first. Physical device testing is still required before real-world use, but GitHub Actions already exercises the protocol stack, Android packaging, gomobile binding, emulator capture, input scripting, RDP screenshot generation, and UX report production.
+
+## Test layers
+
+| Layer | Purpose | Main commands / artifacts |
+| --- | --- | --- |
+| Go unit tests | Parser, graphics, input, bridge, lifecycle coverage | `go test ./...` |
+| Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
+| Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
+| Mock/probe smoke | Exercise desktop RDP handshake and bitmap path | `mock-probe-artifacts` |
+| Android build | Build and inspect normal debug APK | `android-build-artifacts` |
+| gomobile build | Build `mobile.aar`, verify API, build Go-backed APK | `gomobile-build-artifacts` |
+| FreeRDP probe | Track real-client compatibility | `freerdp-compat-probe` |
+| Emulator capture | Validate app startup, MediaProjection, RDP screenshots | `android-emulator-artifacts` |
+| UX report | Validate Gherkin stories and produce PDF | `ux-report/ux-report.pdf` |
 
 ## Default CI gates
 
-- Go vet/build/test with coverage threshold (`make coverage COVERAGE_MIN=75.0`).
+Default push/PR CI runs without a physical Android device:
+
+- Go vet/build/test with coverage threshold.
 - Go race tests and short parser fuzz smoke.
 - Mock server + probe TCP smoke test.
-- Protocol packet trace artifact from the probe (`mock-probe-artifacts`), including client/server hex dumps and logs.
-- Normal Android debug APK build and APK structure inspection, with build/inspection logs uploaded.
+- Protocol packet trace artifact from the probe, including client/server hex dumps and logs.
+- Normal Android debug APK build and APK structure inspection.
 - `gomobile bind` AAR generation.
-- Generated AAR Java API signature verification (`make check-aar-api`).
-- Generated AAR native library/content inspection (`make check-aar-artifact`), with AAR contents uploaded.
-- Go-backed APK build against `mobile.aar` and native library/content inspection, with APK contents uploaded.
-- FreeRDP compatibility probe log, summary and screenshot capture (`freerdp-compat-probe`) against a mock server with animated test-pattern frames. This job is informational/non-blocking until the mock server fully satisfies real clients.
+- Generated AAR Java API signature verification.
+- Generated AAR native library/content inspection.
+- Go-backed APK build against `mobile.aar` and native library/content inspection.
+- FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
-## Manual-only CI
+The FreeRDP job is informational/non-blocking until the server satisfies enough real-client behavior for it to become a hard gate.
 
-- Android emulator smoke test (`workflow_dispatch` only): install debug APK, launch `MainActivity` with `start_test_pattern=true`, verify process startup, verify bridge startup and first synthetic frame in logcat, and for Go-backed runs use `adb forward` plus `cmd/probe` to connect over RDP and save `rdp-screenshot.png` from bitmap updates. Optional `emulator_capture=true` requests MediaProjection, captures the emulator display rather than the synthetic test pattern, navigates through home, Settings, Settings search, a mouse-source tap target, notification-shade swipe, and browser intents, and saves paired `android-*.png` / `rdp-*.png` screenshots for each scene. Input validation records explicit pass/fail checks plus RDP scene screenshots for keyboard search, mouse tap, and notification swipe evidence. The job collects logcat, dumpsys, emulator screenshot, input validation plan, RDP probe summaries, and RDP screenshot artifacts. For Go-backed MediaProjection runs, GitHub Actions also validates `features/ux/*.feature` with the Playwright-based report generator and uploads `ux-report/ux-report.pdf` plus Markdown/HTML/JSON evidence.
-- Workflow inputs:
-  - `emulator_api_level` (default `35`)
-  - `emulator_go_backed` (`false` for normal APK, `true` to build/install the Go-backed APK)
+## Manual and tag-driven emulator UX testing
 
-## Blocked on a physical device
+Run manually:
 
-- MediaProjection permission and frame capture behavior.
-- AccessibilityService enablement and gesture/key injection UX.
-- Real touch latency and frame pacing.
-- Network reachability from another client device.
+```bash
+gh workflow run CI \
+  --ref main \
+  -f emulator_api_level=35 \
+  -f emulator_go_backed=true \
+  -f emulator_capture=true \
+  -f emulator_capture_scale=2
+```
+
+The emulator job:
+
+1. Builds the Go-backed APK if requested or required by tag policy.
+2. Installs and launches the app.
+3. Requests and accepts MediaProjection permission.
+4. Starts the Go RDP server inside the app.
+5. Forwards runner TCP/3390 to emulator TCP/3390.
+6. Captures a home RDP screenshot.
+7. Drives Android Settings, Settings search, mouse tap, notification swipe, and browser scenes.
+8. Captures paired Android and RDP screenshots.
+9. Generates `rdp-probe-summary.json` and `performance-summary.md`.
+10. Validates `features/ux/*.feature` and generates the Playwright PDF report.
+
+The same full UX path runs automatically for `*-ux` tags and release tags (`vX.X.X`).
+
+## Workflow inputs
+
+| Input | Default | Notes |
+| --- | --- | --- |
+| `emulator_api_level` | `35` | Android emulator API level. |
+| `emulator_go_backed` | `false` | Build/install Go-backed APK with `mobile.aar`. Required for RDP proof. |
+| `emulator_capture` | `false` | Request MediaProjection and capture the emulator display. |
+| `emulator_capture_scale` | `1` for manual unless set, `2` in tag defaults | Downscale factor for MediaProjection/RDP capture. |
+
+## UX stories
+
+Feature files live under:
+
+```text
+features/ux/
+```
+
+Current scenarios cover:
+
+- starting a captured RDP desktop session;
+- searching Android Settings with keyboard text input;
+- hitting a deterministic Settings target using mouse input;
+- swiping down to reveal notifications using touchscreen input;
+- opening a browser URL through an Android intent;
+- validating per-scene performance and screenshot sections in the report.
+
+## UX report artifacts
+
+The report generator reads emulator artifacts and writes:
+
+```text
+ux-report/ux-report.md
+ux-report/ux-report.html
+ux-report/ux-report.pdf
+ux-report/ux-validation.json
+```
+
+`ux-validation.json` is the machine-readable pass/fail source. The PDF is the human release artifact.
+
+Local generation from a downloaded artifact directory:
+
+```bash
+npm ci
+npx playwright install --with-deps chromium
+npm run ux:report -- --artifacts /path/to/emulator-artifacts --out /path/to/emulator-artifacts/ux-report
+```
+
+## Expected emulator checks
+
+`checks.txt` should include:
+
+```text
+startServer=ok
+frame1=ok
+screen_capture=ok
+fatal_exception=none
+keyboard_settings_search=ok
+mouse_target_tap=ok
+touch_notification_swipe=ok
+rdp_input_screenshots=ok
+```
+
+## Important artifacts
+
+| Artifact | Meaning |
+| --- | --- |
+| `logcat-filtered.txt` | App-focused logcat subset with startup/capture/frame lines. |
+| `capture-consent.txt` | Emulator size, capture scale, and MediaProjection tap coordinates. |
+| `rdp-capture-plan.txt` | Tile size, capture scale, and selected update count. |
+| `input-validation-plan.txt` | Keyboard/mouse/touch script coordinates and actions. |
+| `rdp-*.png` | RDP-rendered screenshots. |
+| `android-*.png` | Emulator screenshots for comparison. |
+| `rdp-probe-summary.json` | Packet, bitmap, timing, and per-scene metrics. |
+| `performance-summary.md` | Human-readable metrics rollup. |
+| `ux-report/ux-report.pdf` | Final UX report deliverable. |
+
+## Blocked on physical devices
+
+Still requires real Android hardware validation:
+
+- MediaProjection behavior outside emulator.
+- AccessibilityService enablement and actual gesture/key injection UX.
+- Real touch latency and sustained frame pacing.
+- Network reachability from a separate RDP client device.
+- Rotation, screen lock, protected content, OEM restrictions.

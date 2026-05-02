@@ -1,8 +1,21 @@
 # Documentation
 
-- [SPEC](SPEC.md) — native Android RDP server design and feasibility notes
-- [ANDROID](ANDROID.md) — Android app/gomobile bridge notes
-- [MILESTONES](MILESTONES.md) — staged implementation plan
-- [TESTING](TESTING.md) — CI/off-device validation matrix
-- [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics and optimization targets
-- [RELEASES](RELEASES.md) — tag policy and release identifiers
+Start here when working on `go-rdp-android`.
+
+## Product and design
+
+- [SPEC](SPEC.md) — native Android RDP server feasibility, design constraints, and protocol reuse notes.
+- [ARCHITECTURE](ARCHITECTURE.md) — current Android/Kotlin, gomobile, Go RDP server, capture, graphics, input, CI, and release architecture.
+- [ANDROID](ANDROID.md) — Android app/gomobile bridge notes.
+- [MILESTONES](MILESTONES.md) — staged implementation plan.
+
+## Validation and operations
+
+- [TESTING](TESTING.md) — CI matrix, emulator UX tests, Gherkin/Playwright report pipeline, and artifact map.
+- [DEBUGGING](DEBUGGING.md) — protocol, Android, gomobile, emulator, input, UX report, performance, and release troubleshooting.
+- [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics, baselines, and optimization workstreams.
+- [RELEASES](RELEASES.md) — tag policy and release identifiers.
+
+## Assets
+
+- [icon-256.png](icon-256.png) — README/documentation icon asset derived from the master application icon.

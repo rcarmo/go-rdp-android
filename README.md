@@ -2,76 +2,179 @@
 
 ![go-rdp-android icon](docs/icon-256.png)
 
-Native Android RDP server experiment.
+A native Android RDP server experiment written in Kotlin and Go.
 
-The goal is to expose an Android device over RDP **without ADB**, using:
+`go-rdp-android` is exploring how far a normal installed Android app can go toward exposing the Android screen over RDP **without using ADB as the runtime architecture**. The app uses Android `MediaProjection` for screen capture, an `AccessibilityService` landing path for input, and a Go RDP server core bridged into Android with `gomobile`.
 
-- Android `MediaProjection` for screen capture
-- Android `AccessibilityService` for input injection
-- Go for the RDP server core
-- Kotlin for Android lifecycle, permissions, and foreground services
+The current implementation is a CI-first prototype: it can build a Go-backed APK, launch it in an Android emulator, grant MediaProjection, connect to the embedded Go RDP server over forwarded TCP, render RDP screenshots, exercise keyboard/mouse/touch input scripts, and generate a Gherkin/Playwright UX PDF report.
 
-See [docs/SPEC.md](docs/SPEC.md) for the design notes and feasibility analysis.
+## Feature list
 
-## Status
+Implemented or validated today:
 
-Early scaffold:
+- Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent flow, and AccessibilityService declaration.
+- Go RDP server core with TPKT, X.224, MCS, basic security/client-info handling, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path input decoding.
+- `gomobile bind` integration via `mobile.aar`, with Kotlin reflection backend and logging fallback when the AAR is absent.
+- Android `MediaProjection` capture pipeline using `VirtualDisplay` + `ImageReader` RGBA frames.
+- Synthetic test-pattern frame source for emulator/CI validation without capture permission.
+- RDP bitmap update tiling sized for safe TPKT/PER envelopes.
+- Dirty-tile suppression for post-initial streamed frames.
+- Adaptive capture pacing/backpressure telemetry in the Android capture loop.
+- Optional MediaProjection downscale mode (`capture_scale` / `emulator_capture_scale`).
+- Keyboard, mouse, and touch input validation in CI using scripted emulator input.
+- Gherkin-style UX stories under `features/ux/` and a Playwright-based PDF report generator.
+- GitHub Actions coverage for Go tests, race tests, fuzz smoke, Android APK builds, gomobile AAR/API checks, FreeRDP compatibility probes, emulator capture tests, and UX PDF artifacts.
+- Tag-driven CI/CD policy for build, UX, and release tag classes.
 
-- Go server-core skeleton
-- initial TPKT/X.224 negotiation
-- Android/Kotlin app shell
-- foreground service and MediaProjection capture skeleton
-- AccessibilityService placeholder
-- GitHub Actions for Go and Android builds
+Partially implemented / experimental:
 
-## Layout
+- Real-client RDP compatibility. The mock server/probe path is stable; FreeRDP remains informational/non-blocking while the protocol surface matures.
+- Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
+- Performance. Slow-path bitmap transport works and is measured; compression/RDPGFX/H.264 work is still pending.
+
+## Package and version
+
+- SemVer: `0.1.0`
+- Android namespace/application ID: `io.carmo.go.rdp.android`
+- Android `versionCode`: `1`
+- Go module: `github.com/rcarmo/go-rdp-android`
+
+Android package IDs cannot contain hyphens. The project name `go-rdp-android` is represented as the Android package `io.carmo.go.rdp.android`.
+
+## Repository layout
 
 ```text
-cmd/mock-server/                 Desktop-side mock for protocol experiments
-internal/rdpserver/              Go RDP server core skeleton
-internal/frame/                  Frame source abstractions
+android/app/                     Native Android Kotlin app
+cmd/mock-server/                 Desktop mock RDP server for protocol experiments
+cmd/probe/                       Scriptable RDP probe/client used by CI
+features/ux/                     Gherkin-style UX user stories
+internal/frame/                  Frame source abstractions and test patterns
 internal/input/                  Input sink abstractions
-android/app/                     Native Android app shell in Kotlin
-docs/SPEC.md                     Design/specification
+internal/rdpserver/              Go RDP server core
+mobile/                          gomobile-facing Go bridge API
+scripts/                         CI helpers, artifact checks, UX report generator
+docs/                            Architecture, testing, performance and release docs
 ```
 
-## Build
+## Documentation
+
+- [Documentation index](docs/index.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Android integration](docs/ANDROID.md)
+- [Testing and CI](docs/TESTING.md)
+- [Debugging](docs/DEBUGGING.md)
+- [Performance](docs/PERFORMANCE.md)
+- [Release/tag policy](docs/RELEASES.md)
+- [Specification and feasibility notes](docs/SPEC.md)
+- [Milestones](docs/MILESTONES.md)
+
+## Build and test locally
+
+Go checks:
 
 ```bash
 make test
 make build-go
+make coverage
 ```
 
-Run the current handshake prototype locally:
+Run the desktop mock server and probe:
 
 ```bash
 # terminal 1
-make run-mock
-# or use animated synthetic frames:
 make run-mock-pattern
 
 # terminal 2
 make probe
 
-# or run both as a local smoke test
+# or run both as a smoke test
 make smoke
 ```
 
-The probe exercises:
+Build Android locally if the Android SDK and Gradle are available:
 
-```text
-TCP → TPKT → X.224 → MCS Connect → Domain/Channel Join → Client Info → Demand/Confirm Active → FontMap → Bitmap Update
+```bash
+make android-build
 ```
 
-Android debug APKs are built by GitHub Actions and uploaded as workflow artifacts.
+Build the Go-backed Android APK:
 
-The current graphics path converts `frame.Source` RGBA/BGRA frames into TPKT-safe slow-path bitmap update tiles, with a solid-color fallback when no frame is available. Slow-path keyboard, Unicode, and mouse input PDUs are decoded into the internal `input.Sink` interface for the future Android Accessibility bridge.
+```bash
+make gomobile-init   # first time only
+make android-build-go
+```
 
-## Next major steps
+Generate a UX report from an existing `emulator-artifacts/` directory:
 
-1. Extract/reuse protocol pieces from `rcarmo/go-rdp` into server-friendly packages.
-2. Build a desktop mock RDP server that serves generated frames.
-3. Validate an RDP client can connect to the mock.
-4. Generate a Go Android binding via `gomobile bind`.
-5. Wire Android `MediaProjection` frames into the Go server.
-6. Wire RDP input events into Android Accessibility gestures.
+```bash
+npm ci
+npx playwright install --with-deps chromium
+make ux-report
+```
+
+## CI/CD quick reference
+
+Default push/PR CI runs:
+
+- Go vet/build/test/coverage.
+- Race tests and parser fuzz smoke.
+- Mock server + probe artifact generation.
+- Android debug APK build and inspection.
+- gomobile AAR build, API verification, and Go-backed APK build.
+- Informational FreeRDP compatibility probe.
+
+Manual emulator UX run:
+
+```bash
+gh workflow run CI \
+  --ref main \
+  -f emulator_api_level=35 \
+  -f emulator_go_backed=true \
+  -f emulator_capture=true \
+  -f emulator_capture_scale=2
+```
+
+Tag behavior:
+
+| Tag pattern | Behavior |
+| --- | --- |
+| `*-ux` | Full emulator UX validation and Playwright PDF report. |
+| `*-build` | Build/test/artifact production. |
+| `vX.X.X` | Release tag: build artifacts plus UX PDF report staged for release files. |
+
+## Feature roadmap
+
+1. **RDP compatibility hardening**
+   - Improve real-client compatibility beyond the current probe/mock path.
+   - Expand GCC/security/licensing/capability handling.
+   - Promote the FreeRDP compatibility probe from informational to blocking when stable.
+
+2. **Input injection completion**
+   - Map RDP pointer, keyboard, Unicode, and touch events into robust Accessibility gestures and text input.
+   - Add coordinate transforms for downscaled capture and rotation.
+   - Extend CI scripts and future device tests for more input workflows.
+
+3. **Performance workstreams**
+   - Continue dirty-tile suppression improvements.
+   - Keep single RDP sessions open for UX navigation and incremental metrics.
+   - Refine capture pacing/backpressure.
+   - Expand downscale/quality modes.
+   - Investigate compressed bitmap/RDPGFX updates.
+   - Investigate H.264/AVC with Android hardware encoding.
+
+4. **Security and release readiness**
+   - Add authentication/pairing strategy.
+   - Add TLS/certificate story if needed by target clients.
+   - Add signed release APK workflow.
+   - Validate version/tag consistency for `vX.X.X` releases.
+
+5. **Physical-device validation**
+   - Validate MediaProjection, AccessibilityService behavior, network reachability, rotation, latency, and sustained capture on real Android devices.
+
+## Current limitations
+
+- The app is not production-ready and should not be exposed to untrusted networks.
+- The RDP server profile is intentionally minimal and not yet compatible with every client.
+- NLA/CredSSP, audio, clipboard, drive redirection, multi-monitor, and dynamic virtual channels are out of scope for the current prototype.
+- MediaProjection cannot capture protected content.
+- Accessibility input injection is more restricted than shell/ADB input injection.
