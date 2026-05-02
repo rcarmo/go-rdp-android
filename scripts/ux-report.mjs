@@ -256,7 +256,8 @@ async function main() {
   await fs.writeFile(path.join(outDir, 'ux-validation.json'), JSON.stringify({ ok: failed.length === 0, results }, null, 2));
 
   page.setDefaultTimeout(120_000);
-  await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'commit', timeout: 120_000 });
+  await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load', timeout: 120_000 });
+  await page.waitForTimeout(1000);
   await page.pdf({ path: pdfPath, format: 'A4', printBackground: true, timeout: 120_000, margin: { top: '12mm', right: '10mm', bottom: '12mm', left: '10mm' } });
   await browser.close();
 
