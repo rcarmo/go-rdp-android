@@ -6,6 +6,7 @@
 
     <application
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="go-rdp-android"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">

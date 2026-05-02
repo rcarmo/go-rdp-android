@@ -1,5 +1,7 @@
 # go-rdp-android
 
+![go-rdp-android icon](docs/icon-256.png)
+
 Native Android RDP server experiment.
 
 The goal is to expose an Android device over RDP **without ADB**, using:
