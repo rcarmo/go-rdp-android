@@ -100,6 +100,7 @@ CI artifacts to inspect:
 
 Common issues:
 
+- Android 16 KB page-size warnings such as `lib/arm64-v8a/libgojni.so: LOAD segment not aligned` mean the gomobile native library was not linked with 16 KB-compatible ELF segment alignment. The Makefile passes `-ldflags="-extldflags=-Wl,-z,max-page-size=16384"`, and `check-android-artifact.go` fails CI if bundled `libgojni.so` PT_LOAD alignments are below `0x4000`.
 - Missing `mobile.aar` means the app falls back to `LoggingRdpBackend`.
 - Generated gomobile API drift is caught by `make check-aar-api`.
 - Native library packaging issues are caught by `make check-aar-artifact` and `make check-apk-artifact REQUIRE_GO_LIBS=1`.
