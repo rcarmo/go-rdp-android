@@ -20,7 +20,7 @@ The `Android emulator smoke` job then:
 3. Starts the gomobile-backed RDP server on TCP/3390.
 4. Uses `adb forward tcp:3390 tcp:3390` from the runner.
 5. Navigates through home, Settings, and browser intents.
-6. Runs `cmd/probe` for each scene and stores paired Android/RDP screenshots plus JSON metrics.
+6. Runs `cmd/probe` for each scene and stores paired Android/RDP screenshots plus JSON metrics. The single-session scene plan also exercises emulator keyboard text entry in Settings search, a mouse-source tap target, and a touchscreen swipe to open notifications.
 
 ## Artifacts
 

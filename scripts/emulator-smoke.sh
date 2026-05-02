@@ -126,11 +126,39 @@ if [ "$GO_BACKED" = "true" ]; then
     adb shell input keyevent HOME || true
     sleep 3
     adb exec-out screencap -p > emulator-artifacts/android-home.png || true
+    mouse_target_x=$((physical_width / 2))
+    mouse_target_y=$((physical_height * 38 / 100))
+    swipe_x=$((physical_width / 2))
+    swipe_start_y=$((physical_height / 100))
+    swipe_end_y=$((physical_height * 3 / 4))
+    cat > emulator-artifacts/input-validation-plan.txt <<EOF
+keyboard=settings search for wifi
+mouse=tap ${mouse_target_x},${mouse_target_y}
+touch=swipe ${swipe_x},${swipe_start_y} to ${swipe_x},${swipe_end_y}
+EOF
     cat > emulator-artifacts/scene-plan.json <<JSON
 [
   {
     "name": "settings",
     "command": "adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt && sleep 3 && adb exec-out screencap -p > emulator-artifacts/android-settings.png",
+    "wait_ms": 200,
+    "max_updates": $updates
+  },
+  {
+    "name": "settings-search",
+    "command": "adb shell input keyboard keyevent KEYCODE_SEARCH && sleep 1 && adb shell input keyboard text wifi && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-settings-search.png",
+    "wait_ms": 200,
+    "max_updates": $updates
+  },
+  {
+    "name": "mouse-target",
+    "command": "adb shell input mouse tap $mouse_target_x $mouse_target_y && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-mouse-target.png",
+    "wait_ms": 200,
+    "max_updates": $updates
+  },
+  {
+    "name": "notifications",
+    "command": "adb shell input keyevent HOME && sleep 1 && adb shell input touchscreen swipe $swipe_x $swipe_start_y $swipe_x $swipe_end_y 600 && sleep 2 && adb exec-out screencap -p > emulator-artifacts/android-notifications.png",
     "wait_ms": 200,
     "max_updates": $updates
   },
@@ -157,7 +185,15 @@ JSON
       > emulator-artifacts/rdp-probe.log 2>&1
     test -s emulator-artifacts/rdp-home.png
     test -s emulator-artifacts/rdp-settings.png
+    test -s emulator-artifacts/rdp-settings-search.png
+    test -s emulator-artifacts/rdp-mouse-target.png
+    test -s emulator-artifacts/rdp-notifications.png
     test -s emulator-artifacts/rdp-browser.png
+    {
+      echo 'keyboard_settings_search=ok'
+      echo 'mouse_target_tap=ok'
+      echo 'touch_notification_swipe=ok'
+    } | tee -a emulator-artifacts/checks.txt
     cp emulator-artifacts/rdp-browser.png emulator-artifacts/rdp-screenshot.png
   else
     capture_rdp_scene screenshot "$updates"
@@ -175,6 +211,14 @@ fi
   echo "- capture_scale: $CAPTURE_SCALE"
   if [ -f emulator-artifacts/rdp-capture-plan.txt ]; then
     sed 's/^/- /' emulator-artifacts/rdp-capture-plan.txt
+  fi
+  if [ -f emulator-artifacts/input-validation-plan.txt ]; then
+    echo
+    echo '## Input validation plan'
+    echo
+    echo '```text'
+    cat emulator-artifacts/input-validation-plan.txt
+    echo '```'
   fi
   if grep -q 'captureStats' emulator-artifacts/logcat-filtered.txt 2>/dev/null; then
     echo
@@ -202,3 +246,8 @@ if [ "$CAPTURE" = "true" ]; then
   grep -q 'screen_capture=ok' emulator-artifacts/checks.txt
 fi
 grep -q 'fatal_exception=none' emulator-artifacts/checks.txt
+if [ "$GO_BACKED" = "true" ] && [ "$CAPTURE" = "true" ]; then
+  grep -q 'keyboard_settings_search=ok' emulator-artifacts/checks.txt
+  grep -q 'mouse_target_tap=ok' emulator-artifacts/checks.txt
+  grep -q 'touch_notification_swipe=ok' emulator-artifacts/checks.txt
+fi
