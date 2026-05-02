@@ -15,10 +15,14 @@ esac
 
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
 adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
-ACCESSIBILITY_SERVICE="$PACKAGE/$PACKAGE.input.RdpAccessibilityService"
+ACCESSIBILITY_SERVICE="$PACKAGE/.input.RdpAccessibilityService"
 adb shell settings put secure enabled_accessibility_services "$ACCESSIBILITY_SERVICE" >/dev/null 2>&1 || true
 adb shell settings put secure accessibility_enabled 1 >/dev/null 2>&1 || true
-echo "accessibility_service=$ACCESSIBILITY_SERVICE" | tee emulator-artifacts/accessibility-setup.txt
+{
+  echo "accessibility_service=$ACCESSIBILITY_SERVICE"
+  echo "enabled_accessibility_services=$(adb shell settings get secure enabled_accessibility_services | tr -d '\r')"
+  echo "accessibility_enabled=$(adb shell settings get secure accessibility_enabled | tr -d '\r')"
+} | tee emulator-artifacts/accessibility-setup.txt
 
 if [ "$CAPTURE" = "true" ]; then
   adb shell am start -W -n "$ACTIVITY" --ez start_capture true --ei capture_scale "$CAPTURE_SCALE" | tee emulator-artifacts/activity-start.txt
