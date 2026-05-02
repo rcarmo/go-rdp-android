@@ -50,6 +50,18 @@ ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 
 This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
 
+## Single-session baseline: 2026-05-02 emulator run
+
+Manual workflow run `25246034129` kept one RDP connection open while capturing home, navigating to Settings, and navigating to browser. The home capture used one 420-update warmup full frame; Settings and browser were captured as incremental scenes on the same session.
+
+| Phase | Updates | Payload | Notes |
+| --- | ---: | ---: | --- |
+| Home warmup | 420 | ~10.37 MB | Initial full-frame canvas. |
+| Settings scene | 420 | 10.38 MB | Effectively a full-screen change from launcher to Settings. |
+| Browser scene | 378 | 9.33 MB | Dirty-tile suppression skipped 42 unchanged tiles vs. a 420-tile full frame. |
+
+The run produced `rdp-home.png`, `rdp-settings.png`, `rdp-browser.png`, and a single `rdp-probe-summary.json` with per-scene counters.
+
 ## Baseline: 2026-05-02 emulator run
 
 Manual workflow run `25245076441` captured home, Settings, and browser scenes via MediaProjection and RDP. Each scene used the exact 420-update full-frame count instead of the earlier 450-update over-capture.
@@ -70,7 +82,7 @@ Immediate findings:
 Performance workstreams:
 
 1. **Dirty-tile suppression** after the initial frame to avoid resending unchanged tiles during idle periods. Status: implemented for post-initial stream frames using per-tile hashes; unit coverage verifies unchanged frames emit no updates and one-pixel changes emit one tile.
-2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`; pending emulator CI validation.
+2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented and validated as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`.
 3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: not started.
 4. **Optional downscale mode** for low-bandwidth viewing. Status: not started.
 5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: not started.
