@@ -36,9 +36,42 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
+  release-cleanup:
+    name: Release artifact cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prune previous GitHub Actions artifacts for release tags
+        if: ${{ startsWith(github.ref_name, 'v') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          echo "Release tag ${GITHUB_REF_NAME}: pruning pre-existing Actions artifacts before publishing release files"
+          deleted=0
+          while :; do
+            json=$(gh api "repos/$REPO/actions/artifacts?per_page=100&page=1")
+            mapfile -t artifacts < <(jq -r --argjson run_id "$RUN_ID" '.artifacts[] | select(.workflow_run.id != $run_id) | [.id, .name, .workflow_run.id] | @tsv' <<<"$json")
+            [ "${#artifacts[@]}" -gt 0 ] || break
+            for artifact in "${artifacts[@]}"; do
+              IFS=$'\t' read -r id name run <<<"$artifact"
+              [ -n "$id" ] || continue
+              echo "Deleting artifact id=$id name=$name run=$run"
+              gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
+              echo "$id" >> /tmp/deleted-artifacts.txt
+            done
+          done
+          if [ -f /tmp/deleted-artifacts.txt ]; then
+            deleted=$(wc -l </tmp/deleted-artifacts.txt | tr -d ' ')
+          fi
+          echo "Deleted $deleted previous artifact(s)"
+
   go:
+    needs: release-cleanup
     name: Go checks
     runs-on: ubuntu-latest
     steps:
@@ -78,6 +111,7 @@ jobs:
 
   go-race-fuzz:
     name: Go race and fuzz smoke
+    needs: release-cleanup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +125,7 @@ jobs:
 
   android:
     name: Android debug build
+    needs: release-cleanup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -127,6 +162,7 @@ jobs:
 
   gomobile:
     name: Go mobile AAR build
+    needs: release-cleanup
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -190,6 +226,7 @@ jobs:
 
   freerdp-compat:
     name: FreeRDP compatibility probe
+    needs: release-cleanup
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 10
@@ -237,6 +274,7 @@ jobs:
 
   android-emulator:
     name: Android emulator smoke
+    needs: release-cleanup
     if: ${{ github.event_name == 'workflow_dispatch' || endsWith(github.ref_name, '-ux') || startsWith(github.ref_name, 'v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
