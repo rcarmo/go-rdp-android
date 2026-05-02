@@ -2,6 +2,7 @@
 GO ?= go
 GH ?= gh
 GOMOBILE ?= gomobile
+GOMOBILE_LDFLAGS ?= -extldflags=-Wl,-z,max-page-size=16384
 PROJECT := go-rdp-android
 MOBILE_AAR := android/app/libs/mobile.aar
 COVERAGE_MIN ?= 75.0
@@ -62,7 +63,7 @@ gomobile-init: ## Install/init gomobile tooling
 .PHONY: gomobile-bind
 gomobile-bind: ## Build mobile.aar from the Go mobile package
 	mkdir -p android/app/libs
-	$(GOMOBILE) bind -target=android -androidapi 29 -o $(MOBILE_AAR) ./mobile
+	$(GOMOBILE) bind -target=android -androidapi 29 -ldflags="$(GOMOBILE_LDFLAGS)" -o $(MOBILE_AAR) ./mobile
 
 .PHONY: check-aar-api
 check-aar-api: ## Verify generated gomobile AAR Java API shape
