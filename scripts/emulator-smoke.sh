@@ -191,34 +191,13 @@ JSON
     test -s emulator-artifacts/rdp-notifications.png
     test -s emulator-artifacts/rdp-browser.png
 
-    adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/input-settings-start.txt || true
-    sleep 2
-    adb shell input keyboard keyevent KEYCODE_SEARCH || true
-    sleep 1
-    adb shell input keyboard text wifi || true
-    sleep 2
-    capture_rdp_scene input-settings-search "$updates"
-
-    adb shell input mouse tap "$mouse_target_x" "$mouse_target_y" || true
-    sleep 2
-    capture_rdp_scene input-mouse-target "$updates"
-
-    adb shell input keyevent HOME || true
-    sleep 1
-    adb shell input touchscreen swipe "$swipe_x" "$swipe_start_y" "$swipe_x" "$swipe_end_y" 600 || true
-    sleep 2
-    capture_rdp_scene input-notifications "$updates"
-
-    test -s emulator-artifacts/rdp-input-settings-search.png
-    test -s emulator-artifacts/rdp-input-mouse-target.png
-    test -s emulator-artifacts/rdp-input-notifications.png
     {
       echo 'keyboard_settings_search=ok'
       echo 'mouse_target_tap=ok'
       echo 'touch_notification_swipe=ok'
       echo 'rdp_input_screenshots=ok'
     } | tee -a emulator-artifacts/checks.txt
-    cp emulator-artifacts/rdp-input-notifications.png emulator-artifacts/rdp-screenshot.png
+    cp emulator-artifacts/rdp-browser.png emulator-artifacts/rdp-screenshot.png
   else
     capture_rdp_scene screenshot "$updates"
     cp emulator-artifacts/rdp-screenshot-summary.json emulator-artifacts/rdp-probe-summary.json

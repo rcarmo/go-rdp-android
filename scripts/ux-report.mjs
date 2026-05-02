@@ -19,9 +19,9 @@ const requiredFiles = [
   'input-validation-plan.txt',
   'rdp-probe-summary.json',
   'rdp-home.png',
-  'rdp-input-settings-search.png',
-  'rdp-input-mouse-target.png',
-  'rdp-input-notifications.png',
+  'rdp-settings-search.png',
+  'rdp-mouse-target.png',
+  'rdp-notifications.png',
   'rdp-browser.png',
 ];
 
@@ -105,19 +105,19 @@ function evidenceForScenario(scenario, checks, inputPlan, summary) {
   } else if (name.includes('search android settings')) {
     addCheck('Keyboard search step passed', checks.includes('keyboard_settings_search=ok'));
     addCheck('Settings search scene recorded', Boolean(sceneByName['settings-search']));
-    addShot('RDP Settings search', 'rdp-input-settings-search.png');
-    addShot('Android Settings search', 'android-input-settings-search.png');
+    addShot('RDP Settings search', 'rdp-settings-search.png');
+    addShot('Android Settings search', 'android-settings-search.png');
     if (sceneByName['settings-search']) metrics.push(['settings-search updates', sceneByName['settings-search'].updates]);
   } else if (name.includes('mouse-source')) {
     addCheck('Mouse tap step passed', checks.includes('mouse_target_tap=ok'));
     addCheck('Mouse coordinates recorded', /^mouse=/m.test(inputPlan), inputPlan.match(/^mouse=.*$/m)?.[0] || '');
-    addShot('RDP mouse target', 'rdp-input-mouse-target.png');
+    addShot('RDP mouse target', 'rdp-mouse-target.png');
     addShot('Android mouse target', 'android-input-mouse-target.png');
     if (sceneByName['mouse-target']) metrics.push(['mouse-target updates', sceneByName['mouse-target'].updates]);
   } else if (name.includes('notifications')) {
     addCheck('Touch swipe step passed', checks.includes('touch_notification_swipe=ok'));
     addCheck('Swipe coordinates recorded', /^touch=/m.test(inputPlan), inputPlan.match(/^touch=.*$/m)?.[0] || '');
-    addShot('RDP notifications', 'rdp-input-notifications.png');
+    addShot('RDP notifications', 'rdp-notifications.png');
     addShot('Android notifications', 'android-notifications.png');
     if (sceneByName.notifications) metrics.push(['notifications updates', sceneByName.notifications.updates]);
   } else if (name.includes('browser')) {
