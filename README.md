@@ -4,7 +4,7 @@
 
 A native Android RDP server experiment written in Kotlin and Go.
 
-`go-rdp-android` is exploring how far a normal installed Android app can go toward exposing the Android screen over RDP **without using ADB as the runtime architecture**. The app uses Android `MediaProjection` for screen capture, an `AccessibilityService` landing path for input, and a Go RDP server core bridged into Android with `gomobile`.
+`go-rdp-android` is exploring how far a normal installed Android app can go toward exposing the Android screen over RDP **without using ADB as the runtime architecture**, building on [`rcarmo/go-rdp`](https://github.com/rcarmo/go-rdp) as the original core protocol implementation and reference. The app uses Android `MediaProjection` for screen capture, an `AccessibilityService` landing path for input, and a Go RDP server core bridged into Android with `gomobile`.
 
 The current implementation is a CI-first prototype: it can build a Go-backed APK, launch it in an Android emulator, grant MediaProjection, connect to the embedded Go RDP server over forwarded TCP, render RDP screenshots, exercise keyboard/mouse/touch input scripts, and generate a Gherkin/Playwright UX PDF report.
 
