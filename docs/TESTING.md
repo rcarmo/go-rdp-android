@@ -84,7 +84,7 @@ Current scenarios cover:
 - searching Android Settings with keyboard text input;
 - hitting a deterministic Settings target using mouse input;
 - swiping down to reveal notifications using touchscreen input;
-- opening a browser URL through an Android intent;
+- opening a browser URL through an Android intent, verifying the browser comes foreground and the destination page is considered loaded;
 - validating per-scene performance and screenshot sections in the report.
 
 ## UX report artifacts

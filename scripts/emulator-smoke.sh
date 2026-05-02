@@ -165,7 +165,7 @@ EOF
   },
   {
     "name": "browser",
-    "command": "adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt && sleep 8 && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
+    "command": "adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt && sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
     "wait_ms": 200,
     "max_updates": $updates
   }

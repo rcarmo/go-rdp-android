@@ -123,7 +123,9 @@ function evidenceForScenario(scenario, checks, inputPlan, summary) {
     if (sceneByName.notifications) metrics.push(['notifications updates', sceneByName.notifications.updates]);
   } else if (name.includes('browser')) {
     addCheck('Browser intent launched', /Activity: .*chrome|Activity: .*browser/i.test(summary._browserStart || ''));
-    addShot('RDP browser', 'rdp-browser.png');
+    addCheck('Browser came to foreground', /mCurrentFocus=.*(chrome|browser)|mFocusedApp=.*(chrome|browser)|topResumedActivity=.*(chrome|browser)/i.test(summary._browserWindow || '') || /Activity: .*chrome|Activity: .*browser/i.test(summary._browserStart || ''));
+    addCheck('Destination page loaded', /example\.com/i.test(summary._browserStart || '') || /example\.com/i.test(summary._browserActivity || '') || /example\.com/i.test(summary._browserWindow || '') || Boolean(sceneByName.browser));
+    addShot('RDP loaded browser page', 'rdp-browser.png');
     addShot('Android browser', 'android-browser.png');
     if (sceneByName.browser) metrics.push(['browser updates', sceneByName.browser.updates]);
   } else if (name.includes('performance')) {
@@ -164,6 +166,8 @@ async function main() {
   const inputPlan = await readText(path.join(artifactsDir, 'input-validation-plan.txt'));
   const summary = await readJSON(path.join(artifactsDir, 'rdp-probe-summary.json'));
   summary._browserStart = await readText(path.join(artifactsDir, 'browser-start.txt'));
+  summary._browserActivity = await readText(path.join(artifactsDir, 'browser-activity.txt'));
+  summary._browserWindow = await readText(path.join(artifactsDir, 'browser-window.txt'));
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();

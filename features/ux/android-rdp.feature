@@ -31,8 +31,9 @@ Feature: Android RDP remote desktop UX
 
   Scenario: Open a browser URL from an Android intent
     When the user opens https://example.com through an Android VIEW intent
-    Then a browser activity should launch
-    And an RDP screenshot of the browser scene should be captured
+    Then the browser should come to the foreground
+    And the destination page should be loaded
+    And an RDP screenshot of the loaded browser page should be captured
 
   Scenario: Measure performance for all UX scenes
     Then the UX report should include per-scene RDP metrics
