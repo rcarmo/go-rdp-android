@@ -149,7 +149,7 @@ class ScreenCaptureManager(
 
     private fun logStats(force: Boolean) {
         val now = SystemClock.elapsedRealtime()
-        if (!force && submittedFrames % 120L != 0L && now - lastStatsLogMs < 10_000L) return
+        if (!force && submittedFrames != 1L && submittedFrames % 30L != 0L && now - lastStatsLogMs < 5_000L) return
         if (submittedFrames == 0L && throttledFrames == 0L) return
         lastStatsLogMs = now
         val avgSubmitMs = if (submittedFrames == 0L) 0 else totalSubmitMs / submittedFrames
