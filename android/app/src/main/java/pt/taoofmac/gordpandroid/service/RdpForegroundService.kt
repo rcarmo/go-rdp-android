@@ -33,6 +33,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
         val hasProjection = data != null && resultCode != 0
+        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
         if (hasProjection) {
             startForeground(1, notification())
         }
@@ -42,7 +43,11 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             hasProjection && data != null -> {
                 stopTestPattern()
                 val metrics = currentDisplayMetrics()
-                captureManager?.start(resultCode, data, metrics.widthPixels, metrics.heightPixels, metrics.densityDpi, maxFps = 15)
+                val captureWidth = (metrics.widthPixels / captureScale).coerceAtLeast(1)
+                val captureHeight = (metrics.heightPixels / captureScale).coerceAtLeast(1)
+                val captureDensity = (metrics.densityDpi / captureScale).coerceAtLeast(1)
+                Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity")
+                captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
             }
             testPattern -> {
                 Log.i(TAG, "Starting test-pattern frame source")
@@ -133,6 +138,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_TEST_PATTERN = "test_pattern"
+        const val EXTRA_CAPTURE_SCALE = "capture_scale"
         private const val CHANNEL_ID = "rdp-server"
         private const val TAG = "GoRdpAndroidService"
     }

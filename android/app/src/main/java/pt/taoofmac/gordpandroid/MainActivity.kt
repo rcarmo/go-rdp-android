@@ -19,6 +19,7 @@ class MainActivity : Activity() {
 
         val autoStartTestPattern = intent?.getBooleanExtra(EXTRA_START_TEST_PATTERN, false) == true
         val autoStartCapture = intent?.getBooleanExtra(EXTRA_START_CAPTURE, false) == true
+        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
         val status = TextView(this).apply {
             text = "Native Android RDP server prototype\n\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nCI/debug: test-pattern mode can start without MediaProjection."
             textSize = 16f
@@ -29,7 +30,7 @@ class MainActivity : Activity() {
         }
         val capture = Button(this).apply {
             text = "Grant Screen Capture"
-            setOnClickListener { requestScreenCapture() }
+            setOnClickListener { requestScreenCapture(1) }
         }
         val testPattern = Button(this).apply {
             text = "Start Test Pattern Server"
@@ -54,7 +55,7 @@ class MainActivity : Activity() {
             startTestPatternService()
         }
         if (autoStartCapture) {
-            status.post { requestScreenCapture() }
+            status.post { requestScreenCapture(captureScale) }
         }
     }
 
@@ -65,7 +66,10 @@ class MainActivity : Activity() {
         startService(intent)
     }
 
-    private fun requestScreenCapture() {
+    private var pendingCaptureScale: Int = 1
+
+    private fun requestScreenCapture(scale: Int) {
+        pendingCaptureScale = scale.coerceIn(1, 4)
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         startActivityForResult(manager.createScreenCaptureIntent(), projectionRequestCode)
     }
@@ -77,6 +81,7 @@ class MainActivity : Activity() {
             val intent = Intent(this, RdpForegroundService::class.java).apply {
                 putExtra(RdpForegroundService.EXTRA_RESULT_CODE, resultCode)
                 putExtra(RdpForegroundService.EXTRA_RESULT_DATA, data)
+                putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, pendingCaptureScale)
             }
             startForegroundService(intent)
         }
@@ -85,5 +90,6 @@ class MainActivity : Activity() {
     companion object {
         const val EXTRA_START_TEST_PATTERN = "start_test_pattern"
         const val EXTRA_START_CAPTURE = "start_capture"
+        const val EXTRA_CAPTURE_SCALE = "capture_scale"
     }
 }

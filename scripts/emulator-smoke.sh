@@ -7,12 +7,17 @@ PACKAGE=pt.taoofmac.gordpandroid
 ACTIVITY="$PACKAGE/.MainActivity"
 GO_BACKED="${EMULATOR_GO_BACKED:-false}"
 CAPTURE="${EMULATOR_CAPTURE:-false}"
+CAPTURE_SCALE="${EMULATOR_CAPTURE_SCALE:-1}"
+case "$CAPTURE_SCALE" in
+  1|2|3|4) ;;
+  *) CAPTURE_SCALE=1 ;;
+esac
 
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk | tee emulator-artifacts/adb-install.txt
 adb shell pm grant "$PACKAGE" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
 
 if [ "$CAPTURE" = "true" ]; then
-  adb shell am start -W -n "$ACTIVITY" --ez start_capture true | tee emulator-artifacts/activity-start.txt
+  adb shell am start -W -n "$ACTIVITY" --ez start_capture true --ei capture_scale "$CAPTURE_SCALE" | tee emulator-artifacts/activity-start.txt
   for _ in $(seq 1 45); do
     adb shell dumpsys window > emulator-artifacts/window-consent-wait.txt || true
     if grep -q 'mCurrentFocus.*MediaProjectionPermissionActivity' emulator-artifacts/window-consent-wait.txt; then
@@ -21,17 +26,21 @@ if [ "$CAPTURE" = "true" ]; then
     sleep 1
   done
   size_line=$(adb shell wm size | tr -d '\r' | awk -F': ' '/Physical size/ {print $2; exit}')
-  width=${size_line%x*}
-  height=${size_line#*x}
+  physical_width=${size_line%x*}
+  physical_height=${size_line#*x}
+  : "${physical_width:=1080}"
+  : "${physical_height:=2400}"
+  width=$((physical_width / CAPTURE_SCALE))
+  height=$((physical_height / CAPTURE_SCALE))
   : "${width:=1080}"
   : "${height:=2400}"
-  dropdown_x=$((width / 2))
-  dropdown_y=$((height / 2))
-  entire_screen_x=$((width / 2))
-  entire_screen_y=$((height * 57 / 100))
-  start_x=$((width * 82 / 100))
-  start_y=$((height * 725 / 1000))
-  echo "wm_size=${width}x${height} dropdown_tap=${dropdown_x},${dropdown_y} entire_screen_tap=${entire_screen_x},${entire_screen_y} start_tap=${start_x},${start_y}" | tee emulator-artifacts/capture-consent.txt
+  dropdown_x=$((physical_width / 2))
+  dropdown_y=$((physical_height / 2))
+  entire_screen_x=$((physical_width / 2))
+  entire_screen_y=$((physical_height * 57 / 100))
+  start_x=$((physical_width * 82 / 100))
+  start_y=$((physical_height * 725 / 1000))
+  echo "wm_size=${physical_width}x${physical_height} capture_scale=$CAPTURE_SCALE rdp_size=${width}x${height} dropdown_tap=${dropdown_x},${dropdown_y} entire_screen_tap=${entire_screen_x},${entire_screen_y} start_tap=${start_x},${start_y}" | tee emulator-artifacts/capture-consent.txt
   adb exec-out screencap -p > emulator-artifacts/mediaprojection-dialog.png || true
   adb shell input tap "$dropdown_x" "$dropdown_y" || true
   sleep 1
@@ -110,26 +119,26 @@ if [ "$GO_BACKED" = "true" ]; then
   if [ "$CAPTURE" = "true" ]; then
     full_frame_updates=$(( ((width + 79) / 80) * ((height + 79) / 80) ))
     updates=${RDP_CAPTURE_UPDATES:-$full_frame_updates}
-    echo "rdp_tile_size=80 full_frame_updates=$full_frame_updates selected_updates=$updates" | tee emulator-artifacts/rdp-capture-plan.txt
+    echo "rdp_tile_size=80 capture_scale=$CAPTURE_SCALE full_frame_updates=$full_frame_updates selected_updates=$updates" | tee emulator-artifacts/rdp-capture-plan.txt
   fi
 
   if [ "$CAPTURE" = "true" ]; then
     adb shell input keyevent HOME || true
     sleep 3
     adb exec-out screencap -p > emulator-artifacts/android-home.png || true
-    cat > emulator-artifacts/scene-plan.json <<'JSON'
+    cat > emulator-artifacts/scene-plan.json <<JSON
 [
   {
     "name": "settings",
     "command": "adb shell am start -W -a android.settings.SETTINGS | tee emulator-artifacts/settings-start.txt && sleep 3 && adb exec-out screencap -p > emulator-artifacts/android-settings.png",
     "wait_ms": 200,
-    "max_updates": 420
+    "max_updates": $updates
   },
   {
     "name": "browser",
     "command": "adb shell am start -W -a android.intent.action.VIEW -d 'https://example.com' | tee emulator-artifacts/browser-start.txt && sleep 8 && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
     "wait_ms": 200,
-    "max_updates": 420
+    "max_updates": $updates
   }
 ]
 JSON
@@ -163,6 +172,7 @@ fi
   echo "- go_backed: $GO_BACKED"
   echo "- capture: $CAPTURE"
   echo "- screen: ${width}x${height}"
+  echo "- capture_scale: $CAPTURE_SCALE"
   if [ -f emulator-artifacts/rdp-capture-plan.txt ]; then
     sed 's/^/- /' emulator-artifacts/rdp-capture-plan.txt
   fi
