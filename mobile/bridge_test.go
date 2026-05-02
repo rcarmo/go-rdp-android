@@ -110,6 +110,14 @@ func TestMobileInputHandler(t *testing.T) {
 	}
 }
 
+func TestMobileServerCredentials(t *testing.T) {
+	srv := NewServer()
+	srv.SetCredentials("rui", "secret")
+	if srv.username != "rui" || srv.password != "secret" {
+		t.Fatalf("credentials not stored: %#v", srv)
+	}
+}
+
 func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	srv := NewServer()
 	if err := srv.Start(0); err != nil {

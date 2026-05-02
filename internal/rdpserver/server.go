@@ -14,9 +14,10 @@ import (
 
 // Config controls the RDP server.
 type Config struct {
-	Addr   string
-	Width  int
-	Height int
+	Addr          string
+	Width         int
+	Height        int
+	Authenticator Authenticator
 }
 
 // Server is the native Android RDP server core.
@@ -105,7 +106,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}

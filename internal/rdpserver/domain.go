@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	mcsErectDomainRequestApp  = 1
-	mcsAttachUserRequestApp   = 10
-	mcsAttachUserConfirmApp   = 11
-	mcsChannelJoinRequestApp  = 14
-	mcsChannelJoinConfirmApp  = 15
-	defaultMCSUserID          = 1001
-	domainReadTimeout         = 10 * time.Second
+	mcsErectDomainRequestApp = 1
+	mcsAttachUserRequestApp  = 10
+	mcsAttachUserConfirmApp  = 11
+	mcsChannelJoinRequestApp = 14
+	mcsChannelJoinConfirmApp = 15
+	defaultMCSUserID         = 1001
+	domainReadTimeout        = 10 * time.Second
 )
 
 type domainPDU struct {
@@ -28,7 +28,7 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator) error {
 	userID := uint16(defaultMCSUserID)
 	for i := 0; i < 32; i++ {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
@@ -72,6 +72,18 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 				return err
 			}
 			if sec.Flags&secInfoPacket != 0 {
+				clientInfo, err := parseClientInfo(sec.Payload)
+				if err != nil {
+					if auth != nil {
+						return err
+					}
+					tracef("client_info_parse", "err=%v", err)
+				} else {
+					tracef("client_info", "user=%q domain=%q flags=0x%08x", clientInfo.UserName, clientInfo.Domain, clientInfo.Flags)
+					if err := authenticateClientInfo(auth, clientInfo); err != nil {
+						return fmt.Errorf("auth failed: %w", err)
+					}
+				}
 				if err := writeDemandActive(conn, width, height); err != nil {
 					return err
 				}

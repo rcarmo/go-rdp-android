@@ -235,6 +235,28 @@ If capture is too slow or memory-heavy:
 - Inspect `captureStats` for high submit times.
 - Inspect per-scene tile counts for dirty-tile suppression effectiveness.
 
+## Authentication debugging
+
+The current authentication hook is a simple username/password check over parsed classic RDP Client Info fields:
+
+```go
+rdpserver.Config{Authenticator: rdpserver.StaticCredentials{Username: "user", Password: "pass"}}
+```
+
+or through gomobile:
+
+```go
+mobile.SetCredentials("user", "pass")
+```
+
+Probe credentials can be sent with:
+
+```bash
+go run ./cmd/probe -username user -password pass
+```
+
+This is not NLA/CredSSP. It is an app-level authentication scaffold that gives the server a credential decision point while TLS, standard RDP security exchange, and eventual NLA/CredSSP support are implemented.
+
 ## Release debugging
 
 Tag policy is documented in [RELEASES](RELEASES.md).

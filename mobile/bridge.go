@@ -17,13 +17,15 @@ var defaultServer = NewServer()
 
 // Server is a gomobile-friendly wrapper around the RDP server core.
 type Server struct {
-	mu     sync.Mutex
-	ctx    context.Context
-	cancel context.CancelFunc
-	done   chan error
-	server *rdpserver.Server
-	frames *FrameQueue
-	input  *mobileInputSink
+	mu       sync.Mutex
+	ctx      context.Context
+	cancel   context.CancelFunc
+	done     chan error
+	server   *rdpserver.Server
+	frames   *FrameQueue
+	input    *mobileInputSink
+	username string
+	password string
 }
 
 // NewServer creates a mobile bridge server instance.
@@ -45,7 +47,11 @@ func (s *Server) Start(port int) error {
 		return nil
 	}
 	addr := fmt.Sprintf(":%d", port)
-	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: 1280, Height: 720}, s.frames, s.input)
+	var auth rdpserver.Authenticator
+	if s.username != "" || s.password != "" {
+		auth = rdpserver.StaticCredentials{Username: s.username, Password: s.password}
+	}
+	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: 1280, Height: 720, Authenticator: auth}, s.frames, s.input)
 	if err != nil {
 		return err
 	}
@@ -105,6 +111,14 @@ func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []b
 	})
 }
 
+// SetCredentials configures a simple username/password authenticator for future sessions.
+func (s *Server) SetCredentials(username, password string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.username = username
+	s.password = password
+}
+
 // SetInputHandler installs the callback target for decoded RDP input events.
 func (s *Server) SetInputHandler(handler InputHandler) {
 	s.input.SetHandler(handler)
@@ -130,6 +144,9 @@ func StopServer() error { return defaultServer.Stop() }
 func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error {
 	return defaultServer.SubmitFrame(width, height, pixelStride, rowStride, data)
 }
+
+// SetCredentials configures simple username/password authentication for future sessions.
+func SetCredentials(username, password string) { defaultServer.SetCredentials(username, password) }
 
 // SetInputHandler installs the callback target on the default singleton server.
 func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handler) }

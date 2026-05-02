@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+	"unicode/utf16"
 )
 
 var traceOut atomic.Value
@@ -89,6 +90,9 @@ func main() {
 	screenshotPath := flag.String("screenshot", "", "compose bitmap updates into a PNG screenshot")
 	screenshotWidth := flag.Int("screenshot-width", 320, "screenshot canvas width")
 	screenshotHeight := flag.Int("screenshot-height", 240, "screenshot canvas height")
+	username := flag.String("username", "", "username to send in Client Info")
+	password := flag.String("password", "", "password to send in Client Info")
+	domain := flag.String("domain", "", "domain to send in Client Info")
 	dump := flag.Bool("dump-packets", true, "print full packet hex dumps")
 	warmupUpdates := flag.Int("warmup-updates", 0, "number of initial bitmap updates to consume before scene commands")
 	warmupScreenshot := flag.String("warmup-screenshot", "", "write screenshot after warmup updates")
@@ -154,7 +158,7 @@ func main() {
 	}
 	fmt.Printf("ChannelJoinConfirm: %x\n", joinResp)
 
-	clientInfo := []byte{0x40, 0, 0, 0, 1, 2, 3, 4}
+	clientInfo := append([]byte{0x40, 0, 0, 0}, buildClientInfoPayload(*username, *password, *domain)...)
 	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, clientInfo)); err != nil {
 		log.Fatal(err)
 	}
@@ -674,6 +678,34 @@ func buildSlowPathInputPDU(events ...[]byte) []byte {
 func sendShareData(conn net.Conn, pduType2 byte, payload []byte) error {
 	pdu := buildShareDataPDU(pduType2, payload)
 	return sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, pdu))
+}
+
+func buildClientInfoPayload(username, password, domain string) []byte {
+	fields := [][]byte{
+		encodeClientInfoString(domain),
+		encodeClientInfoString(username),
+		encodeClientInfoString(password),
+		encodeClientInfoString(""),
+		encodeClientInfoString(""),
+	}
+	out := make([]byte, 18)
+	binary.LittleEndian.PutUint32(out[4:8], 0x00000010) // INFO_UNICODE
+	for i, field := range fields {
+		binary.LittleEndian.PutUint16(out[8+i*2:10+i*2], uint16(len(field)))
+	}
+	for _, field := range fields {
+		out = append(out, field...)
+	}
+	return out
+}
+
+func encodeClientInfoString(s string) []byte {
+	runes := utf16.Encode([]rune(s + "\x00"))
+	out := make([]byte, len(runes)*2)
+	for i, r := range runes {
+		binary.LittleEndian.PutUint16(out[i*2:i*2+2], r)
+	}
+	return out
 }
 
 func buildShareDataPDU(pduType2 byte, payload []byte) []byte {
