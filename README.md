@@ -28,7 +28,7 @@ Implemented or validated today:
 
 Partially implemented / experimental:
 
-- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp`, `/sec:tls`, and `/sec:nla` to reach active state, receive bitmap updates, handle Fast-Path input, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
+- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp` and `/sec:tls` to reach active state, receive bitmap updates, handle Fast-Path input, and stay connected until CI terminates the client. `/sec:nla` is also run as an exploratory evidence probe while FreeRDP CredSSP compatibility is hardened; Microsoft-client compatibility is still pending.
 - Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
 - Performance. Slow-path bitmap transport works and is measured; compression/RDPGFX/H.264 work is still pending.
 
