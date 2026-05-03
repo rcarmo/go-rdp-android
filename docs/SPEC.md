@@ -102,7 +102,7 @@ Deliberately skip initially:
 - clipboard
 - printer/device redirection
 - multi-monitor
-- dynamic virtual channels
+- dynamic virtual channels except the RDPEI touch-input subset when touch support becomes a target
 - RemoteFX/H.264 advanced graphics
 
 ### Phase 2: Security and compatibility
@@ -159,14 +159,14 @@ Recommendation: start with Option A.
 
 ## Input pipeline
 
-RDP input events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures.
+Classic RDP keyboard and pointer events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures. True touch input is different: modern RDP clients can send touch contact frames using MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so it needs channel negotiation and a contact lifecycle decoder.
 
 Map them to Android:
 
 | RDP input | Android native app path |
 |---|---|
 | Mouse move/click | Accessibility `dispatchGesture()` |
-| Touch | Accessibility gesture path |
+| Touch contacts (RDPEI) | Accessibility gesture path with contact IDs/strokes |
 | Keyboard text | Accessibility text input / IME strategy |
 | Special keys | Accessibility global actions where possible |
 | Clipboard | Android ClipboardManager + focused text injection |

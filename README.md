@@ -176,6 +176,6 @@ Tag behavior:
 - The app is not production-ready and should not be exposed to untrusted networks.
 - The RDP server profile is intentionally minimal and not yet compatible with every client.
 - Hybrid/NLA CredSSP exists as an experimental path, but real Microsoft/FreeRDP client compatibility is still not guaranteed.
-- Audio, clipboard, drive redirection, multi-monitor, and dynamic virtual channels are out of scope for the current prototype.
+- Audio, clipboard, drive redirection, and multi-monitor are out of scope for the current prototype. Dynamic virtual channels remain out of scope except for the planned RDPEI touch-input subset.
 - MediaProjection cannot capture protected content.
 - Accessibility input injection is more restricted than shell/ADB input injection.

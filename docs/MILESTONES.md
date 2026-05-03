@@ -63,9 +63,10 @@ Tasks:
 Goal: translate RDP input into Android interactions.
 
 Tasks:
-- decode pointer/keyboard input
-- Kotlin input callback surface
+- decode pointer/keyboard input ✅ (slow-path and Fast-Path)
+- Kotlin input callback surface ✅
 - Accessibility gesture injection
+- true RDP touch support via RDPEI/dynamic virtual channels (`drdynvc`)
 - text/clipboard handling plan
 
 ## M5 — Usability/security

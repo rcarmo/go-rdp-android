@@ -17,10 +17,15 @@ Android display
   → RDP client/probe over TCP
 
 RDP client/probe input
-  → Go slow-path input decoder
+  → Go slow-path / Fast-Path input decoder
   → mobile.InputHandler
   → NativeRdpBridge callbacks
   → RdpAccessibilityService landing points
+
+Future true RDP touch input
+  → RDPEI over dynamic virtual channel (drdynvc)
+  → touch-contact decoder
+  → Android Accessibility gesture strokes
 ```
 
 The current CI path uses `adb forward tcp:3390 tcp:3390` only as an emulator test convenience. The application architecture itself is native Android + Go and does not require ADB to run on a device.
@@ -97,6 +102,16 @@ TCP
 → slow-path and Fast-Path input decoding
 ```
 
+Planned protocol path for true touch input:
+
+```text
+Client static channel request for drdynvc
+→ Dynamic virtual channel negotiation
+→ RDPEI input channel
+→ touch contact frames
+→ Android gesture dispatch
+```
+
 Graphics currently use classic slow-path bitmap updates. Frames are split into 80x80 tiles to stay within safe packet/length envelopes. After the first frame, a per-session tile cache skips unchanged tiles.
 
 ## Capture and graphics pipeline
@@ -107,7 +122,7 @@ The default real-capture path is:
 MediaProjection → VirtualDisplay → ImageReader RGBA_8888
   → Kotlin byte array
   → Go FrameQueue
-  → RGBA to BGRA tile conversion
+  → RGBA to 24-bit BGR tile conversion
   → slow-path RDP bitmap update PDUs
 ```
 
@@ -126,6 +141,8 @@ Current input support has two layers:
 
 1. Go decodes RDP slow-path and Fast-Path pointer, keyboard, and Unicode events into `input.Sink` calls. FreeRDP normally uses Fast-Path input after activation, so the server reads those transport PDUs directly instead of discarding them.
 2. gomobile forwards those events to Kotlin `RdpInputCallbacks` and `RdpAccessibilityService` landing methods.
+
+True RDP touch is separate from mouse/pointer input. Modern clients can send contact frames through MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so touch support needs dynamic-channel negotiation and a touch-contact event model rather than mapping all input to mouse buttons. That work is tracked in `/workspace/workitems/10-next/go-rdp-android-rdpei-touch-input.md`.
 
 CI currently validates emulator input using scripted Android input commands while RDP capture is running:
 
