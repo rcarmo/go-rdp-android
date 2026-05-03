@@ -60,12 +60,13 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					if _, err := parseConfirmActive(pdu.Data); err != nil {
 						return err
 					}
+					continue
 				case pduTypeData:
 					if err := handleShareDataPDU(conn, share, frames, sink, width, height); err != nil {
 						return err
 					}
+					continue
 				}
-				continue
 			}
 			sec, err := parseSecurityPDU(pdu.Data)
 			if err != nil {
