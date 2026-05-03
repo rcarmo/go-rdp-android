@@ -13,7 +13,7 @@ The current implementation is a CI-first prototype: it can build a Go-backed APK
 Implemented or validated today:
 
 - Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent flow, and AccessibilityService declaration.
-- Go RDP server core with TPKT, X.224, MCS, basic security/client-info handling, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path input decoding.
+- Go RDP server core with TPKT, X.224, MCS, GCC server core/security/network data, TLS-only Client Info authentication, Hybrid/NLA CredSSP/NTLMv2 authentication via `rcarmo/go-rdp`, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path input decoding.
 - `gomobile bind` integration via `mobile.aar`, with Kotlin reflection backend and logging fallback when the AAR is absent.
 - Android `MediaProjection` capture pipeline using `VirtualDisplay` + `ImageReader` RGBA frames.
 - Synthetic test-pattern frame source for emulator/CI validation without capture permission.
@@ -23,7 +23,7 @@ Implemented or validated today:
 - Optional MediaProjection downscale mode (`capture_scale` / `emulator_capture_scale`).
 - Keyboard, mouse, and touch input validation in CI using scripted emulator input.
 - Gherkin-style UX stories under `features/ux/` and a Playwright-based PDF report generator.
-- GitHub Actions coverage for Go tests, race tests, fuzz smoke, Android APK builds, gomobile AAR/API checks, FreeRDP compatibility probes, emulator capture tests, and UX PDF artifacts.
+- GitHub Actions coverage for Go tests, race tests, fuzz smoke, classic and NLA authentication smokes, Android APK builds, gomobile AAR/API checks, FreeRDP compatibility probes, emulator capture tests, and UX PDF artifacts.
 - Tag-driven CI/CD policy for build, UX, and release tag classes.
 
 Partially implemented / experimental:
@@ -34,9 +34,9 @@ Partially implemented / experimental:
 
 ## Package and version
 
-- SemVer: `0.1.0`
+- SemVer: `0.1.1`
 - Android namespace/application ID: `io.carmo.go.rdp.android`
-- Android `versionCode`: `1`
+- Android `versionCode`: `2`
 - Go module: `github.com/rcarmo/go-rdp-android`
 
 Android package IDs cannot contain hyphens. The project name `go-rdp-android` is represented as the Android package `io.carmo.go.rdp.android`.
@@ -163,8 +163,8 @@ Tag behavior:
    - Investigate H.264/AVC with Android hardware encoding.
 
 4. **Security and release readiness**
-   - Add authentication/pairing strategy.
-   - Add TLS/certificate story if needed by target clients.
+   - Harden the current TLS-only Client Info and Hybrid/NLA CredSSP authentication paths.
+   - Add user-facing certificate and pairing/credential management.
    - Add signed release APK workflow.
    - Validate version/tag consistency for `vX.X.X` releases.
 
@@ -175,6 +175,7 @@ Tag behavior:
 
 - The app is not production-ready and should not be exposed to untrusted networks.
 - The RDP server profile is intentionally minimal and not yet compatible with every client.
-- NLA/CredSSP, audio, clipboard, drive redirection, multi-monitor, and dynamic virtual channels are out of scope for the current prototype.
+- Hybrid/NLA CredSSP exists as an experimental path, but real Microsoft/FreeRDP client compatibility is still not guaranteed.
+- Audio, clipboard, drive redirection, multi-monitor, and dynamic virtual channels are out of scope for the current prototype.
 - MediaProjection cannot capture protected content.
 - Accessibility input injection is more restricted than shell/ADB input injection.

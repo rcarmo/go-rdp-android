@@ -91,13 +91,13 @@ Start with the smallest RDP profile that Microsoft Remote Desktop clients will a
 - User enables AccessibilityService.
 - Go code listens on configurable TCP port, e.g. `3389` or `3390`.
 - Accept exactly one session at a time.
-- Implement enough RDP handshake for non-NLA/TLS or TLS-only clients.
+- Implement enough RDP handshake for TLS-only clients and an experimental Hybrid/NLA path.
 - Send bitmap framebuffer updates.
 - Decode pointer/key input and forward to Android service.
 
 Deliberately skip initially:
 
-- NLA/CredSSP
+- production-grade NLA/CredSSP/client compatibility hardening
 - audio
 - clipboard
 - printer/device redirection
@@ -107,9 +107,9 @@ Deliberately skip initially:
 
 ### Phase 2: Security and compatibility
 
-- Add TLS with app-generated cert or user-supplied cert.
-- Add password/pairing token auth.
-- Investigate minimal CredSSP/NLA server support if Microsoft clients require it.
+- Add TLS with app-generated cert or user-supplied cert. ✅ (generated self-signed cert scaffold)
+- Add password/pairing token auth. ✅ (static credential gate)
+- Investigate minimal CredSSP/NLA server support if Microsoft clients require it. ✅ (experimental Hybrid/NLA CredSSP path)
 - Add display resize/reconnect semantics.
 
 ### Phase 3: Performance

@@ -9,7 +9,7 @@
 | Go unit tests | Parser, graphics, input, bridge, lifecycle coverage | `go test ./...` |
 | Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
-| Mock/probe smoke | Exercise desktop RDP handshake and bitmap path | `mock-probe-artifacts` |
+| Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
 | gomobile build | Build `mobile.aar`, verify API, build Go-backed APK | `gomobile-build-artifacts` |
 | FreeRDP probe | Track real-client compatibility | `freerdp-compat-probe` |
@@ -23,6 +23,7 @@ Default push/PR CI runs without a physical Android device:
 - Go vet/build/test with coverage threshold.
 - Go race tests and short parser fuzz smoke.
 - Mock server + probe TCP smoke test.
+- TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection.
 - Protocol packet trace artifact from the probe, including client/server hex dumps and logs.
 - Normal Android debug APK build and APK structure inspection.
 - `gomobile bind` AAR generation.

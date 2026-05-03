@@ -21,9 +21,11 @@ Tasks:
 - MCS ErectDomainRequest handling ✅
 - MCS AttachUserRequest/Confirm handling ✅
 - MCS ChannelJoinRequest/Confirm handling ✅
-- GCC Conference Create Response ✅ (minimal scaffold)
+- GCC Conference Create Response ✅ (server core/security/network data blocks)
 - SendDataRequest parsing ✅
-- Security Exchange / Client Info parsing ✅ (minimal scaffold)
+- Security Exchange / Client Info parsing ✅
+- TLS-only Client Info credential gate ✅
+- Hybrid/NLA CredSSP/NTLMv2 credential gate ✅ (experimental)
 - Server Demand Active PDU ✅ (minimal capability scaffold)
 - Client Confirm Active PDU parsing ✅
 - Synchronize/Control/FontList finalization handling ✅ (minimal scaffold)
@@ -68,7 +70,8 @@ Tasks:
 
 ## M5 — Usability/security
 
-- TLS and pairing/password auth
+- TLS and pairing/password auth ✅ (static credential scaffold)
+- Hybrid/NLA CredSSP auth ✅ (experimental)
 - foreground notification controls
 - reconnect handling
 - settings UI

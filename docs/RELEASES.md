@@ -13,14 +13,14 @@ The repository uses tag suffixes to select CI/CD depth.
 Examples:
 
 ```sh
-git tag 0.1.0-ux
-git push origin 0.1.0-ux
+git tag 0.1.1-ux
+git push origin 0.1.1-ux
 
-git tag 0.1.0-build
-git push origin 0.1.0-build
+git tag 0.1.1-build
+git push origin 0.1.1-build
 
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 ## Release artifact cleanup
@@ -41,9 +41,9 @@ Release notes are generated from Git history and list commits since the previous
 
 ## Current identifiers
 
-- SemVer: `0.1.0`
+- SemVer: `0.1.1`
 - Android package/application ID: `io.carmo.go.rdp.android`
-- Android versionCode: `1`
+- Android versionCode: `2`
 
 ## Notes
 

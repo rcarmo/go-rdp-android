@@ -152,8 +152,8 @@ Key CI jobs:
 
 Release identifiers:
 
-- SemVer: `0.1.0`
+- SemVer: `0.1.1`
 - Android application ID: `io.carmo.go.rdp.android`
-- Android versionCode: `1`
+- Android versionCode: `2`
 
 Tag classes are documented in [RELEASES](RELEASES.md). Release tags (`vX.X.X`) generate normal build artifacts and the UX PDF report.
