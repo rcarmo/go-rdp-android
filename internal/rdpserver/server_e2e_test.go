@@ -102,6 +102,12 @@ func TestServerLoopbackInitialHandshakeAndMCSProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if sec, err := parseSecurityPDU(demandResp.Data); err == nil && sec.Flags&secLicensePacket != 0 {
+		demandResp, err = readTestMCSDomainPDU(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	if demandResp.Application != mcsSendDataIndicationApp {
 		t.Fatalf("expected SendDataIndication with Demand Active, got %#v", demandResp)
 	}

@@ -183,7 +183,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("sent minimal Client Info security PDU")
-	demand, err := readTPKT(conn)
+	demand, err := readDemandActiveOrSkipLicense(conn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -452,6 +452,32 @@ func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, s
 		return out, err
 	}
 	return out, nil
+}
+
+func readDemandActiveOrSkipLicense(conn net.Conn) ([]byte, error) {
+	for i := 0; i < 3; i++ {
+		pkt, err := readTPKT(conn)
+		if err != nil {
+			return nil, err
+		}
+		if isLicensePDU(pkt) {
+			fmt.Printf("License: %x\n", pkt)
+			continue
+		}
+		return pkt, nil
+	}
+	return nil, fmt.Errorf("Demand Active not received after license PDUs")
+}
+
+func isLicensePDU(pkt []byte) bool {
+	// TPKT has already been removed. Look for X.224 Data + MCS SendDataIndication
+	// carrying a security header with SEC_LICENSE_PKT (0x0080).
+	for i := 0; i+4 <= len(pkt); i++ {
+		if binary.LittleEndian.Uint16(pkt[i:i+2])&0x0080 != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
