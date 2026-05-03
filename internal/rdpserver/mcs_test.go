@@ -47,4 +47,5 @@ func (r *byteReader) ReadByte() (byte, error) {
 }
 
 type errEOF struct{}
+
 func (errEOF) Error() string { return "eof" }
