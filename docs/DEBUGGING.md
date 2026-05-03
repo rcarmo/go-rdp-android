@@ -71,7 +71,7 @@ The `FreeRDP compatibility probe` job is a blocking CI gate. It launches the moc
 - top-level best-attempt `xfreerdp-root.png`
 - per-attempt logs under `attempt-*`
 
-The gate currently requires `bitmap_seen=true`, not a fully clean FreeRDP shutdown. Use the summary to locate the last successful server trace phase and the per-attempt logs to distinguish real protocol regressions from Xvfb/client startup flakiness.
+The gate currently requires `active_seen=true`, `bitmap_seen=true`, and `exit_code=124`, meaning FreeRDP reached active state, received bitmap updates, and stayed connected until the workflow timeout killed the client. Use the summary to locate the last successful server trace phase and the per-attempt logs to distinguish real protocol regressions from Xvfb/client startup flakiness.
 
 ## Android build debugging
 

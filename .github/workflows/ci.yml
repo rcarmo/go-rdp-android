@@ -304,7 +304,7 @@ jobs:
             cp freerdp-artifacts/mock-server.log "$dir/mock-server.log"
             GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go "$dir"
             cat "$dir/summary.md"
-            if grep -q '"bitmap_seen": true' "$dir/summary.json"; then
+            if grep -q '"bitmap_seen": true' "$dir/summary.json" && grep -q '"active_seen": true' "$dir/summary.json" && grep -q '"exit_code": "124"' "$dir/summary.json"; then
               pass=1
               best_attempt=$attempt
               cp "$dir"/* freerdp-artifacts/
@@ -316,7 +316,7 @@ jobs:
 
           echo "$best_attempt" > freerdp-artifacts/best-attempt.txt
           if [ "$pass" -ne 1 ]; then
-            echo "FreeRDP compatibility gate failed: no attempt reached bitmap/update streaming" >&2
+            echo "FreeRDP compatibility gate failed: no attempt reached active bitmap streaming and stayed connected until timeout" >&2
             tail -n 160 "freerdp-artifacts/attempt-${best_attempt}/xfreerdp.log" || true
             exit 1
           fi

@@ -28,7 +28,7 @@ Implemented or validated today:
 
 Partially implemented / experimental:
 
-- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires at least one retried attempt to reach bitmap/update streaming; Microsoft-client compatibility is still pending.
+- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires at least one retried attempt to reach active state, receive bitmap updates, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
 - Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
 - Performance. Slow-path bitmap transport works and is measured; compression/RDPGFX/H.264 work is still pending.
 
