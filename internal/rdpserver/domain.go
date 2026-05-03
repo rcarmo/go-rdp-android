@@ -32,7 +32,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 	userID := uint16(defaultMCSUserID)
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
-		pdu, err := readMCSDomainPDU(conn)
+		pdu, err := readMCSDomainPDUOrFastPath(conn, sink)
 		if err != nil {
 			if errors.Is(err, errFastPathPDU) {
 				continue
@@ -108,6 +108,24 @@ func readMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read tpkt: %w", err)
 	}
+	return parseMCSDomainTransportPayload(payload)
+}
+
+func readMCSDomainPDUOrFastPath(conn net.Conn, sink input.Sink) (*domainPDU, error) {
+	transport, err := readTransportPDU(conn)
+	if err != nil {
+		return nil, fmt.Errorf("read transport PDU: %w", err)
+	}
+	if transport.FastPath {
+		if err := dispatchFastPathInput(transport.Header, transport.Payload, sink); err != nil {
+			return nil, fmt.Errorf("fast-path input: %w", err)
+		}
+		return nil, errFastPathPDU
+	}
+	return parseMCSDomainTransportPayload(transport.Payload)
+}
+
+func parseMCSDomainTransportPayload(payload []byte) (*domainPDU, error) {
 	mcs, err := parseX224Data(payload)
 	if err != nil {
 		return nil, fmt.Errorf("parse x224 data: %w", err)

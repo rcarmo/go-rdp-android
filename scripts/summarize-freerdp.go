@@ -41,7 +41,7 @@ func main() {
 	s.MCSSeen = strings.Contains(sv, "MCS") || strings.Contains(sv, "mcs_")
 	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
 	s.ActiveSeen = strings.Contains(xf, "CONNECTION_STATE_ACTIVE")
-	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore")
+	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore") || strings.Contains(sv, "fastpath_input")
 	s.ScreenshotPNG = exists(filepath.Join(dir, "xfreerdp-root.png"))
 	s.ScreenshotXWD = exists(filepath.Join(dir, "xfreerdp-root.xwd"))
 	for _, line := range strings.Split(xf, "\n") {

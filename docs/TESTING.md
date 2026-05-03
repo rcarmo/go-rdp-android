@@ -32,7 +32,7 @@ Default push/PR CI runs without a physical Android device:
 - Go-backed APK build against `mobile.aar` and native library/content inspection.
 - FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
-The FreeRDP job is now a blocking compatibility gate for both `/sec:rdp` and `/sec:tls`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), and remain connected until the CI timeout terminates the client (`exit_code=124`).
+The FreeRDP job is now a blocking compatibility gate for both `/sec:rdp` and `/sec:tls`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and remain connected until the CI timeout terminates the client (`exit_code=124`).
 
 ## Manual and tag-driven emulator UX testing
 

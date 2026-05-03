@@ -26,6 +26,12 @@ const (
 
 var errFastPathPDU = errors.New("fast-path packet ignored")
 
+type transportPDU struct {
+	FastPath bool
+	Header   byte
+	Payload  []byte
+}
+
 // HandshakeInfo captures the initial client negotiation request.
 type HandshakeInfo struct {
 	Cookie             string
@@ -74,14 +80,35 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
-	header := make([]byte, 4)
-	if _, err := io.ReadFull(r, header); err != nil {
+	pdu, err := readTransportPDU(r)
+	if err != nil {
 		return nil, err
 	}
-	if header[0] != tpktVersion {
-		return nil, consumeFastPathRemainder(r, header)
+	if pdu.FastPath {
+		tracef("fastpath_ignore", "first=0x%02x length=%d", pdu.Header, 2+len(pdu.Payload))
+		return nil, errFastPathPDU
 	}
-	length := int(binary.BigEndian.Uint16(header[2:4]))
+	return pdu.Payload, nil
+}
+
+func readTransportPDU(r io.Reader) (*transportPDU, error) {
+	first := make([]byte, 1)
+	if _, err := io.ReadFull(r, first); err != nil {
+		return nil, err
+	}
+	if first[0] != tpktVersion {
+		payload, err := readFastPathTransportPayload(r)
+		if err != nil {
+			return nil, err
+		}
+		return &transportPDU{FastPath: true, Header: first[0], Payload: payload}, nil
+	}
+
+	headerRest := make([]byte, 3)
+	if _, err := io.ReadFull(r, headerRest); err != nil {
+		return nil, err
+	}
+	length := int(binary.BigEndian.Uint16(headerRest[1:3]))
 	if length < 4 {
 		return nil, fmt.Errorf("invalid TPKT length %d", length)
 	}
@@ -90,23 +117,30 @@ func readTPKT(r io.Reader) ([]byte, error) {
 	if err == nil {
 		tracef("tpkt_read", "payload_len=%d", len(payload))
 	}
-	return payload, err
+	return &transportPDU{Payload: payload}, err
 }
 
-func consumeFastPathRemainder(r io.Reader, header []byte) error {
-	if len(header) < 2 {
-		return errFastPathPDU
+func readFastPathTransportPayload(r io.Reader) ([]byte, error) {
+	lengthBytes := make([]byte, 1)
+	if _, err := io.ReadFull(r, lengthBytes); err != nil {
+		return nil, err
 	}
-	length := int(header[1])
-	consumed := len(header)
-	if header[1]&0x80 != 0 && len(header) >= 3 {
-		length = (int(header[1]&0x7f) << 8) | int(header[2])
+	length := int(lengthBytes[0])
+	headerLen := 2
+	if lengthBytes[0]&0x80 != 0 {
+		second := make([]byte, 1)
+		if _, err := io.ReadFull(r, second); err != nil {
+			return nil, err
+		}
+		length = (int(lengthBytes[0]&0x7f) << 8) | int(second[0])
+		headerLen = 3
 	}
-	if length > consumed {
-		_, _ = io.CopyN(io.Discard, r, int64(length-consumed))
+	if length < headerLen {
+		return nil, fmt.Errorf("invalid Fast-Path length %d", length)
 	}
-	tracef("fastpath_ignore", "first=0x%02x length=%d consumed=%d", header[0], length, consumed)
-	return errFastPathPDU
+	payload := make([]byte, length-headerLen)
+	_, err := io.ReadFull(r, payload)
+	return payload, err
 }
 
 func writeTPKT(w io.Writer, payload []byte) error {

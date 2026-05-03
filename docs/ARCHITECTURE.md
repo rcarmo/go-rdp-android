@@ -94,7 +94,7 @@ TCP
 → Control
 → FontList / FontMap
 → slow-path bitmap updates
-→ slow-path input decoding
+→ slow-path and Fast-Path input decoding
 ```
 
 Graphics currently use classic slow-path bitmap updates. Frames are split into 80x80 tiles to stay within safe packet/length envelopes. After the first frame, a per-session tile cache skips unchanged tiles.
@@ -124,7 +124,7 @@ Planned graphics paths include compressed bitmap/RDPGFX and H.264/AVC. Those are
 
 Current input support has two layers:
 
-1. Go decodes RDP slow-path pointer, keyboard, and Unicode events into `input.Sink` calls.
+1. Go decodes RDP slow-path and Fast-Path pointer, keyboard, and Unicode events into `input.Sink` calls. FreeRDP normally uses Fast-Path input after activation, so the server reads those transport PDUs directly instead of discarding them.
 2. gomobile forwards those events to Kotlin `RdpInputCallbacks` and `RdpAccessibilityService` landing methods.
 
 CI currently validates emulator input using scripted Android input commands while RDP capture is running:
