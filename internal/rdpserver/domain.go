@@ -101,7 +101,6 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			return fmt.Errorf("unsupported MCS domain PDU application %d", pdu.Application)
 		}
 	}
-	return nil
 }
 
 func readMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
