@@ -102,7 +102,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d", conn.RemoteAddr(), mcsInfo.ApplicationTag, mcsInfo.PayloadLength, mcsInfo.UserDataLength)
-	if err := writeMCSConnectResponse(conn); err != nil {
+	if err := writeMCSConnectResponse(conn, info.SelectedProtocol); err != nil {
 		log.Printf("rdp MCS Connect-Response failed to %s: %v", conn.RemoteAddr(), err)
 		return
 	}

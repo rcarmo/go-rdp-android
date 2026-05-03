@@ -15,8 +15,8 @@ const (
 
 var t12402098OID = [6]byte{0, 0, 20, 124, 0, 1}
 
-func writeMCSConnectResponse(conn net.Conn) error {
-	gcc := buildGCCConferenceCreateResponse(nil)
+func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32) error {
+	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol))
 	body := new(bytes.Buffer)
 	berWriteEnumerated(mcsResultSuccessful, body)
 	berWriteInteger(1001, body) // calledConnectId
@@ -142,8 +142,8 @@ func berWriteOctetString(data []byte, w io.Writer) {
 	_, _ = w.Write(data)
 }
 
-func perWriteChoice(value byte, w io.Writer) { _, _ = w.Write([]byte{value}) }
-func perWriteEnumerates(value byte, w io.Writer) { _, _ = w.Write([]byte{value}) }
+func perWriteChoice(value byte, w io.Writer)      { _, _ = w.Write([]byte{value}) }
+func perWriteEnumerates(value byte, w io.Writer)  { _, _ = w.Write([]byte{value}) }
 func perWriteNumberOfSet(value byte, w io.Writer) { _, _ = w.Write([]byte{value}) }
 
 func perWriteInteger16(value uint16, w io.Writer) {

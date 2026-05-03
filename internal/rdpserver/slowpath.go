@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 const (
@@ -64,8 +66,13 @@ func parseSecurityPDU(data []byte) (*securityPDU, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("short security PDU")
 	}
+	r := bytes.NewReader(data)
+	flags, err := rdpcodec.UnwrapSecurityFlag(r)
+	if err != nil {
+		return nil, err
+	}
 	pdu := &securityPDU{
-		Flags:   binary.LittleEndian.Uint16(data[0:2]),
+		Flags:   flags,
 		FlagsHi: binary.LittleEndian.Uint16(data[2:4]),
 		Payload: data[4:],
 	}
