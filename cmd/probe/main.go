@@ -470,14 +470,9 @@ func readDemandActiveOrSkipLicense(conn net.Conn) ([]byte, error) {
 }
 
 func isLicensePDU(pkt []byte) bool {
-	// TPKT has already been removed. Look for X.224 Data + MCS SendDataIndication
-	// carrying a security header with SEC_LICENSE_PKT (0x0080).
-	for i := 0; i+4 <= len(pkt); i++ {
-		if binary.LittleEndian.Uint16(pkt[i:i+2])&0x0080 != 0 {
-			return true
-		}
-	}
-	return false
+	// TPKT has already been removed. The server's licensing response carries
+	// SEC_LICENSE_PKT, flagsHi=0, LICENSE_ERROR_ALERT, PREAMBLE_VERSION_3.
+	return bytes.Contains(pkt, []byte{0x80, 0x00, 0x00, 0x00, 0xff, 0x03})
 }
 
 func readTPKT(r io.Reader) ([]byte, error) {
