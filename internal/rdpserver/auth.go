@@ -66,12 +66,14 @@ func parseClientInfo(payload []byte) (ClientInfo, error) {
 	}
 	off := 18
 	fields := make([]string, len(lengths))
+	unicodeStrings := info.Flags&0x00000010 != 0
 	for i, n := range lengths {
 		if n < 0 || off+n > len(payload) {
 			return info, fmt.Errorf("Client Info field %d length %d exceeds available %d", i, n, len(payload)-off)
 		}
 		fields[i] = decodeClientInfoString(payload[off : off+n])
 		off += n
+		off = skipClientInfoTerminator(payload, off, n, unicodeStrings)
 	}
 	info.Domain = fields[0]
 	info.UserName = fields[1]
@@ -79,6 +81,25 @@ func parseClientInfo(payload []byte) (ClientInfo, error) {
 	info.AlternateShell = fields[3]
 	info.WorkingDir = fields[4]
 	return info, nil
+}
+
+func skipClientInfoTerminator(payload []byte, off, fieldLength int, unicodeStrings bool) int {
+	if unicodeStrings {
+		if fieldLength >= 2 && off >= 2 && payload[off-2] == 0 && payload[off-1] == 0 {
+			return off
+		}
+		if len(payload)-off >= 2 && payload[off] == 0 && payload[off+1] == 0 {
+			return off + 2
+		}
+		return off
+	}
+	if fieldLength >= 1 && off >= 1 && payload[off-1] == 0 {
+		return off
+	}
+	if len(payload)-off >= 1 && payload[off] == 0 {
+		return off + 1
+	}
+	return off
 }
 
 func decodeClientInfoString(data []byte) string {
