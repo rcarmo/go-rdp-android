@@ -109,13 +109,13 @@ func (s *Server) handleConn(conn net.Conn) {
 		log.Printf("rdp MCS Connect-Initial failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
-	log.Printf("rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d", conn.RemoteAddr(), mcsInfo.ApplicationTag, mcsInfo.PayloadLength, mcsInfo.UserDataLength)
-	if err := writeMCSConnectResponse(conn, info.SelectedProtocol); err != nil {
+	log.Printf("rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d channels=%d", conn.RemoteAddr(), mcsInfo.ApplicationTag, mcsInfo.PayloadLength, mcsInfo.UserDataLength, len(mcsInfo.ClientChannels))
+	if err := writeMCSConnectResponse(conn, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS Connect-Response failed to %s: %v", conn.RemoteAddr(), err)
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator, info.SelectedProtocol); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	x224TypeData = 0xf0
+	x224TypeData            = 0xf0
 	mcsConnectInitialAppTag = 101
 )
 
@@ -17,6 +17,7 @@ type MCSInfo struct {
 	ApplicationTag int
 	PayloadLength  int
 	UserDataLength int
+	ClientChannels []clientChannel
 }
 
 func readMCSConnectInitial(conn net.Conn) (*MCSInfo, error) {
@@ -58,7 +59,9 @@ func parseMCSConnectInitial(data []byte) (*MCSInfo, error) {
 	if payloadLen > r.Len() {
 		return nil, fmt.Errorf("MCS payload length %d exceeds available %d", payloadLen, r.Len())
 	}
-	return &MCSInfo{ApplicationTag: appTag, PayloadLength: payloadLen, UserDataLength: r.Len()}, nil
+	payload := make([]byte, r.Len())
+	copy(payload, data[len(data)-r.Len():])
+	return &MCSInfo{ApplicationTag: appTag, PayloadLength: payloadLen, UserDataLength: len(payload), ClientChannels: parseClientChannelsFromConnectInitial(payload)}, nil
 }
 
 func readBERApplicationTag(r *bytes.Reader) (tag int, length int, err error) {

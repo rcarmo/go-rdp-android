@@ -18,11 +18,11 @@ const (
 // server security block to advertise ENCRYPTION_METHOD_NONE and
 // ENCRYPTION_LEVEL_NONE because transport security is provided by the selected
 // external protocol.
-func buildServerUserData(selectedProtocol uint32) []byte {
+func buildServerUserData(selectedProtocol uint32, channels []clientChannel) []byte {
 	buf := new(bytes.Buffer)
 	writeServerCoreData(buf, selectedProtocol)
 	writeServerSecurityData(buf, selectedProtocol)
-	writeServerNetworkData(buf)
+	writeServerNetworkData(buf, channels)
 	return buf.Bytes()
 }
 
@@ -46,10 +46,16 @@ func writeServerSecurityData(buf *bytes.Buffer, selectedProtocol uint32) {
 	writeGCCUserDataBlock(buf, gccUserDataSC_SECURITY, payload.Bytes())
 }
 
-func writeServerNetworkData(buf *bytes.Buffer) {
+func writeServerNetworkData(buf *bytes.Buffer, channels []clientChannel) {
 	payload := new(bytes.Buffer)
 	_ = binary.Write(payload, binary.LittleEndian, uint16(globalChannelID))
-	_ = binary.Write(payload, binary.LittleEndian, uint16(0)) // no static virtual channels yet
+	_ = binary.Write(payload, binary.LittleEndian, uint16(len(channels)))
+	for _, ch := range channels {
+		_ = binary.Write(payload, binary.LittleEndian, ch.ID)
+	}
+	if len(channels)%2 == 1 {
+		_ = binary.Write(payload, binary.LittleEndian, uint16(0))
+	}
 	writeGCCUserDataBlock(buf, gccUserDataSC_NET, payload.Bytes())
 }
 

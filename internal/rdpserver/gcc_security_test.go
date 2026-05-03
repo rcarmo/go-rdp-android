@@ -6,7 +6,7 @@ import (
 )
 
 func TestBuildServerUserDataIncludesCoreSecurityAndNetwork(t *testing.T) {
-	data := buildServerUserData(protocolSSL)
+	data := buildServerUserData(protocolSSL, nil)
 	blocks := parseGCCUserDataBlocksForTest(t, data)
 
 	core := blocks[gccUserDataSC_CORE]

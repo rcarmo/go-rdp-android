@@ -15,8 +15,8 @@ const (
 
 var t12402098OID = [6]byte{0, 0, 20, 124, 0, 1}
 
-func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32) error {
-	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol))
+func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []clientChannel) error {
+	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol, channels))
 	body := new(bytes.Buffer)
 	berWriteEnumerated(mcsResultSuccessful, body)
 	berWriteInteger(1001, body) // calledConnectId
