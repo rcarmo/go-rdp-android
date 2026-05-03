@@ -62,15 +62,16 @@ Common protocol failure points:
 
 ## FreeRDP compatibility debugging
 
-The `FreeRDP compatibility probe` job is informational. It launches the mock server under Xvfb and captures:
+The `FreeRDP compatibility probe` job is a blocking CI gate. It launches the mock server under Xvfb, retries up to three FreeRDP attempts, and requires at least one attempt to reach bitmap/update streaming. It captures:
 
-- `xfreerdp.log`
-- `mock-server.log`
-- `summary.md`
-- `summary.json`
-- `xfreerdp-root.png`
+- top-level best-attempt `xfreerdp.log`
+- top-level best-attempt `mock-server.log`
+- top-level best-attempt `summary.md`
+- top-level best-attempt `summary.json`
+- top-level best-attempt `xfreerdp-root.png`
+- per-attempt logs under `attempt-*`
 
-Because this server is still minimal, FreeRDP failures are expected until more of the RDP protocol surface is implemented. Use the summary to locate the last successful server trace phase.
+The gate currently requires `bitmap_seen=true`, not a fully clean FreeRDP shutdown. Use the summary to locate the last successful server trace phase and the per-attempt logs to distinguish real protocol regressions from Xvfb/client startup flakiness.
 
 ## Android build debugging
 

@@ -256,8 +256,7 @@ jobs:
     name: FreeRDP compatibility probe
     needs: release-cleanup
     runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -269,36 +268,66 @@ jobs:
           sudo apt-get install -y freerdp2-x11 xvfb x11-apps imagemagick || sudo apt-get install -y freerdp3-x11 xvfb x11-apps imagemagick
       - name: Probe mock server with xfreerdp and capture X11 screenshot
         run: |
-          set -u
-          mkdir -p freerdp-artifacts
-          GO_RDP_ANDROID_TRACE=1 go run ./cmd/mock-server -test-pattern -width 320 -height 240 -fps 5 >freerdp-artifacts/mock-server.log 2>&1 &
+          set -euo pipefail
+          mkdir -p freerdp-artifacts .gotmp
+          GO_RDP_ANDROID_TRACE=1 GOTMPDIR="$PWD/.gotmp" go run ./cmd/mock-server -test-pattern -width 320 -height 240 -fps 5 >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
-          sleep 2
-          set +e
-          xvfb-run -a bash -c '
+          for _ in $(seq 1 50); do
+            if grep -q 'listening on' freerdp-artifacts/mock-server.log; then
+              break
+            fi
+            sleep 0.2
+          done
+          grep -q 'listening on' freerdp-artifacts/mock-server.log
+
+          pass=0
+          best_attempt=0
+          for attempt in 1 2 3; do
+            dir="freerdp-artifacts/attempt-${attempt}"
+            mkdir -p "$dir"
+            echo "FreeRDP attempt ${attempt}" | tee "$dir/attempt.txt"
             set +e
-            timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >freerdp-artifacts/xfreerdp.log 2>&1 &
-            rdp_pid=$!
-            sleep 8
-            xwd -root -silent -out freerdp-artifacts/xfreerdp-root.xwd 2>freerdp-artifacts/xwd.log
-            (convert freerdp-artifacts/xfreerdp-root.xwd freerdp-artifacts/xfreerdp-root.png || magick freerdp-artifacts/xfreerdp-root.xwd freerdp-artifacts/xfreerdp-root.png) >freerdp-artifacts/convert.log 2>&1
-            wait $rdp_pid
-            echo $? > freerdp-artifacts/exit-code.txt
-          '
-          set -e
-          mkdir -p .gotmp
-          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go freerdp-artifacts
+            xvfb-run -a bash -c "
+              set +e
+              timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
+              rdp_pid=\$!
+              sleep 8
+              xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
+              (convert '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png' || magick '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png') >'$dir/convert.log' 2>&1
+              wait \$rdp_pid
+              echo \$? > '$dir/exit-code.txt'
+            "
+            xvfb_status=$?
+            set -e
+            echo "$xvfb_status" > "$dir/xvfb-exit-code.txt"
+            cp freerdp-artifacts/mock-server.log "$dir/mock-server.log"
+            GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go "$dir"
+            cat "$dir/summary.md"
+            if grep -q '"bitmap_seen": true' "$dir/summary.json"; then
+              pass=1
+              best_attempt=$attempt
+              cp "$dir"/* freerdp-artifacts/
+              break
+            fi
+            best_attempt=$attempt
+            sleep 1
+          done
+
+          echo "$best_attempt" > freerdp-artifacts/best-attempt.txt
+          if [ "$pass" -ne 1 ]; then
+            echo "FreeRDP compatibility gate failed: no attempt reached bitmap/update streaming" >&2
+            tail -n 160 "freerdp-artifacts/attempt-${best_attempt}/xfreerdp.log" || true
+            exit 1
+          fi
           test -s freerdp-artifacts/summary.md
           test -s freerdp-artifacts/summary.json
           cat freerdp-artifacts/xfreerdp.log | tail -n 120 || true
-          # Compatibility probe is informational until the server satisfies full real-client RDP.
-          exit 0
       - name: Upload FreeRDP probe logs
         uses: actions/upload-artifact@v4
         with:
           name: freerdp-compat-probe
-          path: freerdp-artifacts/*
+          path: freerdp-artifacts/**
 
   android-emulator:
     name: Android emulator smoke

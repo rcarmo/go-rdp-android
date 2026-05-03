@@ -12,7 +12,7 @@
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
 | gomobile build | Build `mobile.aar`, verify API, build Go-backed APK | `gomobile-build-artifacts` |
-| FreeRDP probe | Track real-client compatibility | `freerdp-compat-probe` |
+| FreeRDP probe | Blocking real-client compatibility gate; retries and requires bitmap/update streaming | `freerdp-compat-probe` |
 | Emulator capture | Validate app startup, MediaProjection, RDP screenshots | `android-emulator-artifacts` |
 | UX report | Validate Gherkin stories and produce PDF | `ux-report/ux-report.pdf` |
 
@@ -32,7 +32,7 @@ Default push/PR CI runs without a physical Android device:
 - Go-backed APK build against `mobile.aar` and native library/content inspection.
 - FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
-The FreeRDP job is informational/non-blocking until the server satisfies enough real-client behavior for it to become a hard gate.
+The FreeRDP job is now a blocking compatibility gate. It retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/attempt-*`, and requires at least one attempt to reach server-side bitmap/update streaming (`bitmap_seen=true`).
 
 ## Manual and tag-driven emulator UX testing
 

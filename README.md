@@ -28,7 +28,7 @@ Implemented or validated today:
 
 Partially implemented / experimental:
 
-- Real-client RDP compatibility. The mock server/probe path is stable; FreeRDP remains informational/non-blocking while the protocol surface matures.
+- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires at least one retried attempt to reach bitmap/update streaming; Microsoft-client compatibility is still pending.
 - Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
 - Performance. Slow-path bitmap transport works and is measured; compression/RDPGFX/H.264 work is still pending.
 
@@ -121,7 +121,7 @@ Default push/PR CI runs:
 - Mock server + probe artifact generation.
 - Android debug APK build and inspection.
 - gomobile AAR build, API verification, and Go-backed APK build.
-- Informational FreeRDP compatibility probe.
+- Blocking FreeRDP compatibility probe requiring bitmap/update streaming evidence.
 
 Manual emulator UX run:
 
@@ -147,7 +147,7 @@ Tag behavior:
 1. **RDP compatibility hardening**
    - Improve real-client compatibility beyond the current probe/mock path.
    - Expand GCC/security/licensing/capability handling.
-   - Promote the FreeRDP compatibility probe from informational to blocking when stable.
+   - Keep expanding the now-blocking FreeRDP compatibility gate beyond bitmap/update streaming toward full clean-session behavior.
 
 2. **Input injection completion**
    - Map RDP pointer, keyboard, Unicode, and touch events into robust Accessibility gestures and text input.
