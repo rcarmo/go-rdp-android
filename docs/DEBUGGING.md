@@ -237,7 +237,7 @@ If capture is too slow or memory-heavy:
 
 ## Authentication debugging
 
-The current authentication hook is a simple username/password check over parsed classic RDP Client Info fields:
+The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:
 
 ```go
 rdpserver.Config{Authenticator: rdpserver.StaticCredentials{Username: "user", Password: "pass"}}
@@ -255,15 +255,16 @@ The mock server can require credentials:
 go run ./cmd/mock-server -username user -password pass
 ```
 
-Probe credentials can be sent with:
+Probe credentials can be sent through the TLS-only Client Info path or through NLA:
 
 ```bash
 go run ./cmd/probe -username user -password pass
+go run ./cmd/probe -nla -username user -password pass
 ```
 
-CI includes an authentication smoke test that proves good credentials complete the probe while bad credentials fail and log `auth failed` on the server.
+CI includes authentication smoke tests for both paths. Good credentials complete the probe; bad classic credentials log `auth failed`; bad NLA credentials fail during CredSSP/NTLMv2 verification and log `NLA/CredSSP failed`.
 
-The server now negotiates `PROTOCOL_SSL` when the client requests it, wraps the MCS and Client Info exchange in TLS 1.2+ with a generated self-signed certificate, and then applies the Client Info credential gate. This is still not NLA/CredSSP, but credentials are no longer sent in cleartext in the default probe path.
+The server negotiates `PROTOCOL_SSL` for TLS-only clients and `PROTOCOL_HYBRID` for NLA-capable clients. Hybrid sessions run CredSSP/NTLMv2 before MCS Connect, validate TLS public-key binding, decrypt `TSCredentials`, and then apply the same static credential gate.
 
 ## Release debugging
 

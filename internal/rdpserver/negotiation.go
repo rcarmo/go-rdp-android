@@ -19,8 +19,9 @@ const (
 	rdpNegReq  = 0x01
 	rdpNegResp = 0x02
 
-	protocolRDP = 0x00000000
-	protocolSSL = 0x00000001
+	protocolRDP    = 0x00000000
+	protocolSSL    = 0x00000001
+	protocolHybrid = 0x00000002
 )
 
 // HandshakeInfo captures the initial client negotiation request.
@@ -28,6 +29,7 @@ type HandshakeInfo struct {
 	Cookie             string
 	RequestedProtocols uint32
 	SelectedProtocol   uint32
+	TLSPublicKey       []byte
 }
 
 func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
@@ -42,7 +44,9 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 	}
 
 	info := parseNegotiationUserData(userData)
-	if info.RequestedProtocols&protocolSSL != 0 {
+	if info.RequestedProtocols&protocolHybrid != 0 {
+		info.SelectedProtocol = protocolHybrid
+	} else if info.RequestedProtocols&protocolSSL != 0 {
 		info.SelectedProtocol = protocolSSL
 	} else {
 		info.SelectedProtocol = protocolRDP
@@ -51,7 +55,7 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 	if err := writeConnectionConfirm(conn, srcRef, info.SelectedProtocol); err != nil {
 		return nil, nil, fmt.Errorf("write x224 connection confirm: %w", err)
 	}
-	if info.SelectedProtocol == protocolSSL {
+	if info.SelectedProtocol == protocolSSL || info.SelectedProtocol == protocolHybrid {
 		cfg, err := defaultTLSConfig()
 		if err != nil {
 			return nil, nil, fmt.Errorf("tls config: %w", err)
@@ -60,6 +64,7 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 		if err := tlsConn.Handshake(); err != nil {
 			return nil, nil, fmt.Errorf("tls handshake: %w", err)
 		}
+		info.TLSPublicKey = tlsPublicKeyFromConfig(cfg)
 		return &info, tlsConn, nil
 	}
 

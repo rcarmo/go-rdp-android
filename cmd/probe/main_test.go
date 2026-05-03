@@ -49,7 +49,7 @@ func TestSendHelpersWriteExpectedPackets(t *testing.T) {
 	defer client.Close()
 	defer server.Close()
 	done := make(chan error, 3)
-	go func() { done <- sendX224ConnectionRequest(client) }()
+	go func() { done <- sendX224ConnectionRequest(client, false) }()
 	payload, err := readTPKT(server)
 	if err != nil {
 		t.Fatal(err)

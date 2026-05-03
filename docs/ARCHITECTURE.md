@@ -64,7 +64,7 @@ func SetInputHandler(handler InputHandler)
 
 Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state.
 
-`SetCredentials` configures the current simple username/password authenticator for future sessions. The server negotiates `PROTOCOL_SSL` when requested, wraps the MCS/Client Info exchange in TLS 1.2+ using a generated self-signed certificate, and validates credentials parsed from the RDP Client Info PDU. This is not CredSSP/NLA yet; it is the first encrypted app-level authentication hook while the server-side security stack matures.
+`SetCredentials` configures the current username/password authenticator for future sessions. The server now has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally.
 
 ## RDP server core
 
@@ -80,8 +80,10 @@ Implemented protocol path:
 TCP
 → TPKT
 → X.224 negotiation
+→ TLS when `PROTOCOL_SSL` or `PROTOCOL_HYBRID` is selected
+→ CredSSP/NTLMv2 when `PROTOCOL_HYBRID` is selected
 → MCS Connect
-→ GCC response scaffold
+→ GCC response with server core/security/network data
 → ErectDomain
 → AttachUser
 → ChannelJoin

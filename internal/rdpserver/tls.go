@@ -33,6 +33,17 @@ func defaultTLSConfig() (*tls.Config, error) {
 	return defaultTLSConfigOnce.cfg, defaultTLSConfigOnce.err
 }
 
+func tlsPublicKeyFromConfig(cfg *tls.Config) []byte {
+	if cfg == nil || len(cfg.Certificates) == 0 || len(cfg.Certificates[0].Certificate) == 0 {
+		return nil
+	}
+	cert, err := x509.ParseCertificate(cfg.Certificates[0].Certificate[0])
+	if err != nil {
+		return nil
+	}
+	return append([]byte(nil), cert.RawSubjectPublicKeyInfo...)
+}
+
 func generateSelfSignedCert() (tls.Certificate, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

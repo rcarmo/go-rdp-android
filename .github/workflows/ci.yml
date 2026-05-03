@@ -113,14 +113,22 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/auth/mock-server.log' EXIT
           sleep 2
           GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password secret -summary test-artifacts/auth/probe-good-summary.json >test-artifacts/auth/probe-good.log 2>&1
+          GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -nla -username rui -password secret -summary test-artifacts/auth/probe-nla-good-summary.json >test-artifacts/auth/probe-nla-good.log 2>&1
           set +e
           GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password wrong -summary test-artifacts/auth/probe-bad-summary.json >test-artifacts/auth/probe-bad.log 2>&1
           bad_status=$?
+          GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -nla -username rui -password wrong -summary test-artifacts/auth/probe-nla-bad-summary.json >test-artifacts/auth/probe-nla-bad.log 2>&1
+          nla_bad_status=$?
           set -e
           echo "$bad_status" > test-artifacts/auth/probe-bad-exit-code.txt
+          echo "$nla_bad_status" > test-artifacts/auth/probe-nla-bad-exit-code.txt
           test "$bad_status" -ne 0
+          test "$nla_bad_status" -ne 0
           grep -q 'selected=0x00000001' test-artifacts/auth/mock-server.log
+          grep -q 'selected=0x00000002' test-artifacts/auth/mock-server.log
           grep -q 'auth failed' test-artifacts/auth/mock-server.log
+          grep -q 'NLA/CredSSP authenticated' test-artifacts/auth/mock-server.log
+          grep -q 'NLA/CredSSP failed' test-artifacts/auth/mock-server.log
       - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v4
         with:

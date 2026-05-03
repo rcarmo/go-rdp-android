@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
@@ -21,6 +22,8 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode/utf16"
+
+	rdpauth "github.com/rcarmo/go-rdp/pkg/auth"
 )
 
 var traceOut atomic.Value
@@ -102,6 +105,7 @@ func main() {
 	sceneIdleTimeout := flag.Int("scene-idle-timeout-ms", 1500, "scene capture stops after this read-idle timeout")
 	sceneMaxUpdates := flag.Int("scene-max-updates", 420, "maximum bitmap updates to read per scene")
 	allowPartial := flag.Bool("allow-partial", false, "allow EOF/timeout before requested bitmap updates and still write artifacts")
+	nla := flag.Bool("nla", false, "request Hybrid/NLA and perform CredSSP before MCS")
 	flag.Parse()
 	dumpPackets.Store(*dump)
 	if *traceDir != "" {
@@ -117,7 +121,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	if err := sendX224ConnectionRequest(conn); err != nil {
+	if err := sendX224ConnectionRequest(conn, *nla); err != nil {
 		log.Fatal(err)
 	}
 	resp, err := readTPKT(conn)
@@ -126,13 +130,19 @@ func main() {
 	}
 	fmt.Printf("X.224 confirm: %x\n", resp)
 	selectedProtocol := parseSelectedProtocol(resp)
-	if selectedProtocol == 0x00000001 {
+	if selectedProtocol == 0x00000001 || selectedProtocol == 0x00000002 {
 		tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
 		if err := tlsConn.Handshake(); err != nil {
 			log.Fatal(err)
 		}
 		conn = tlsConn
 		defer conn.Close()
+		if selectedProtocol == 0x00000002 {
+			if err := performClientCredSSP(conn, tlsConn, *username, *password, *domain); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("completed CredSSP/NLA")
+		}
 	}
 
 	if err := sendMCSConnectInitial(conn); err != nil {
@@ -499,11 +509,15 @@ func parseSelectedProtocol(resp []byte) uint32 {
 	return 0
 }
 
-func sendX224ConnectionRequest(conn net.Conn) error {
+func sendX224ConnectionRequest(conn net.Conn, nla bool) error {
 	neg := make([]byte, 8)
 	neg[0] = 0x01 // RDP_NEG_REQ
 	binary.LittleEndian.PutUint16(neg[2:4], 8)
-	binary.LittleEndian.PutUint32(neg[4:8], 0x00000001) // SSL requested
+	protocols := uint32(0x00000001) // SSL requested
+	if nla {
+		protocols |= 0x00000002 // HYBRID/NLA requested
+	}
+	binary.LittleEndian.PutUint32(neg[4:8], protocols)
 	userData := append([]byte("Cookie: mstshash=probe\r\n"), neg...)
 	li := byte(6 + len(userData))
 	x224 := []byte{li, 0xe0, 0, 0, 0, 1, 0}
@@ -792,4 +806,100 @@ func appendLE16(dst []byte, v uint16) []byte {
 
 func appendLE32(dst []byte, v uint32) []byte {
 	return append(dst, byte(v), byte(v>>8), byte(v>>16), byte(v>>24))
+}
+
+func performClientCredSSP(conn net.Conn, tlsConn *tls.Conn, username, password, domain string) error {
+	state := tlsConn.ConnectionState()
+	if len(state.PeerCertificates) == 0 {
+		return fmt.Errorf("NLA: server certificate unavailable")
+	}
+	pubKey := state.PeerCertificates[0].RawSubjectPublicKeyInfo
+	ntlm := rdpauth.NewNTLMv2(domain, username, password)
+	clientNonce := make([]byte, 32)
+	if _, err := rand.Read(clientNonce); err != nil {
+		return err
+	}
+	if _, err := conn.Write(rdpauth.EncodeTSRequestWithNonce([][]byte{ntlm.GetNegotiateMessage()}, nil, nil, clientNonce)); err != nil {
+		return fmt.Errorf("NLA: send negotiate: %w", err)
+	}
+	challengeBytes, err := readCredSSPMessage(conn)
+	if err != nil {
+		return fmt.Errorf("NLA: read challenge: %w", err)
+	}
+	challengeReq, err := rdpauth.DecodeTSRequest(challengeBytes)
+	if err != nil {
+		return fmt.Errorf("NLA: decode challenge: %w", err)
+	}
+	if len(challengeReq.NegoTokens) == 0 {
+		return fmt.Errorf("NLA: missing challenge token")
+	}
+	authMsg, sec := ntlm.GetAuthenticateMessage(challengeReq.NegoTokens[0].Data)
+	if authMsg == nil || sec == nil {
+		return fmt.Errorf("NLA: build authenticate message")
+	}
+	pubKeyAuth := sec.GssEncrypt(rdpauth.ComputeClientPubKeyAuth(challengeReq.Version, pubKey, clientNonce))
+	if _, err := conn.Write(rdpauth.EncodeTSRequestWithNonce([][]byte{authMsg}, nil, pubKeyAuth, clientNonce)); err != nil {
+		return fmt.Errorf("NLA: send authenticate: %w", err)
+	}
+	serverPubKeyBytes, err := readCredSSPMessage(conn)
+	if err != nil {
+		return fmt.Errorf("NLA: read server pubKeyAuth: %w", err)
+	}
+	serverPubKeyReq, err := rdpauth.DecodeTSRequest(serverPubKeyBytes)
+	if err != nil {
+		return fmt.Errorf("NLA: decode server pubKeyAuth: %w", err)
+	}
+	serverPubKeyAuth := sec.GssDecrypt(serverPubKeyReq.PubKeyAuth)
+	if !bytes.Equal(serverPubKeyAuth, rdpauth.ComputeServerPubKeyAuth(serverPubKeyReq.Version, pubKey, clientNonce)) {
+		return fmt.Errorf("NLA: server pubKeyAuth mismatch")
+	}
+	domainBytes, userBytes, passBytes := ntlm.GetCredSSPCredentials()
+	creds := rdpauth.EncodeCredentials(domainBytes, userBytes, passBytes)
+	if _, err := conn.Write(rdpauth.EncodeTSRequest(nil, sec.GssEncrypt(creds), nil)); err != nil {
+		return fmt.Errorf("NLA: send credentials: %w", err)
+	}
+	return nil
+}
+
+func readCredSSPMessage(r io.Reader) ([]byte, error) {
+	first := make([]byte, 2)
+	if _, err := io.ReadFull(r, first); err != nil {
+		return nil, err
+	}
+	if first[0] != 0x30 {
+		return nil, fmt.Errorf("unexpected CredSSP tag 0x%02x", first[0])
+	}
+	length, lenBytes, err := parseDERLength(first[1], r)
+	if err != nil {
+		return nil, err
+	}
+	if length > 64*1024 {
+		return nil, fmt.Errorf("CredSSP message too large: %d", length)
+	}
+	out := append([]byte{}, first...)
+	out = append(out, lenBytes...)
+	body := make([]byte, length)
+	if _, err := io.ReadFull(r, body); err != nil {
+		return nil, err
+	}
+	return append(out, body...), nil
+}
+
+func parseDERLength(first byte, r io.Reader) (int, []byte, error) {
+	if first < 0x80 {
+		return int(first), nil, nil
+	}
+	n := int(first & 0x7f)
+	if n == 0 || n > 4 {
+		return 0, nil, fmt.Errorf("unsupported DER length byte 0x%02x", first)
+	}
+	extra := make([]byte, n)
+	if _, err := io.ReadFull(r, extra); err != nil {
+		return 0, nil, err
+	}
+	length := 0
+	for _, b := range extra {
+		length = (length << 8) | int(b)
+	}
+	return length, extra, nil
 }
