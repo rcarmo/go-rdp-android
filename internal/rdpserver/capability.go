@@ -91,8 +91,8 @@ func capabilitySet(capType uint16, payload []byte) []byte {
 func buildGeneralCapability() []byte {
 	buf := new(bytes.Buffer)
 	for _, v := range []uint16{
-		1, // osMajorType: OSMAJORTYPE_WINDOWS
-		3, // osMinorType: OSMINORTYPE_WINDOWS_NT
+		1,      // osMajorType: OSMAJORTYPE_WINDOWS
+		3,      // osMinorType: OSMINORTYPE_WINDOWS_NT
 		0x0200, // protocolVersion
 		0,      // pad2octetsA
 		0,      // generalCompressionTypes
@@ -100,31 +100,31 @@ func buildGeneralCapability() []byte {
 		0,      // updateCapabilityFlag
 		0,      // remoteUnshareFlag
 		0,      // generalCompressionLevel
-		0,      // refreshRectSupport
-		0,      // suppressOutputSupport
 	} {
 		_ = binary.Write(buf, binary.LittleEndian, v)
 	}
+	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // refreshRectSupport
+	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // suppressOutputSupport
 	return buf.Bytes()
 }
 
 func buildBitmapCapability(width, height int) []byte {
 	buf := new(bytes.Buffer)
 	for _, v := range []uint16{
-		32,            // preferredBitsPerPixel
-		1,             // receive1BitPerPixel
-		1,             // receive4BitsPerPixel
-		1,             // receive8BitsPerPixel
-		uint16(width), // desktopWidth
+		32,             // preferredBitsPerPixel
+		1,              // receive1BitPerPixel
+		1,              // receive4BitsPerPixel
+		1,              // receive8BitsPerPixel
+		uint16(width),  // desktopWidth
 		uint16(height), // desktopHeight
-		0,             // pad2octets
-		1,             // desktopResizeFlag
-		1,             // bitmapCompressionFlag
+		0,              // pad2octets
+		1,              // desktopResizeFlag
+		1,              // bitmapCompressionFlag
 	} {
 		_ = binary.Write(buf, binary.LittleEndian, v)
 	}
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // highColorFlags
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // drawingFlags
+	_ = binary.Write(buf, binary.LittleEndian, uint8(0))  // highColorFlags
+	_ = binary.Write(buf, binary.LittleEndian, uint8(0))  // drawingFlags
 	_ = binary.Write(buf, binary.LittleEndian, uint16(1)) // multipleRectangleSupport
 	_ = binary.Write(buf, binary.LittleEndian, uint16(0)) // pad2octetsB
 	return buf.Bytes()

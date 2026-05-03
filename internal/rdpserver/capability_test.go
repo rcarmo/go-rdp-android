@@ -1,6 +1,9 @@
 package rdpserver
 
-import "testing"
+import (
+	"encoding/binary"
+	"testing"
+)
 
 func TestBuildDemandActivePDU(t *testing.T) {
 	pdu := buildDemandActivePDU(800, 600)
@@ -13,6 +16,16 @@ func TestBuildDemandActivePDU(t *testing.T) {
 	}
 	if share.PDUType != pduTypeDemandActive || share.PDUSource != serverChannelID {
 		t.Fatalf("unexpected share header: %#v", share)
+	}
+}
+
+func TestBuildGeneralCapabilityLength(t *testing.T) {
+	cap := capabilitySet(capTypeGeneral, buildGeneralCapability())
+	if len(cap) != 24 {
+		t.Fatalf("general capability length = %d, want 24", len(cap))
+	}
+	if got := binary.LittleEndian.Uint16(cap[2:4]); got != 24 {
+		t.Fatalf("general capability length field = %d, want 24", got)
 	}
 }
 
