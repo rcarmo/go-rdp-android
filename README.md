@@ -17,7 +17,7 @@ Implemented or validated today:
 - `gomobile bind` integration via `mobile.aar`, with Kotlin reflection backend and logging fallback when the AAR is absent.
 - Android `MediaProjection` capture pipeline using `VirtualDisplay` + `ImageReader` RGBA frames.
 - Synthetic test-pattern frame source for emulator/CI validation without capture permission.
-- RDP bitmap update tiling sized for safe TPKT/PER envelopes.
+- RDP 24-bit BGR bitmap update tiling sized for safe TPKT/PER envelopes.
 - Dirty-tile suppression for post-initial streamed frames.
 - Adaptive capture pacing/backpressure telemetry in the Android capture loop.
 - Optional MediaProjection downscale mode (`capture_scale` / `emulator_capture_scale`).
@@ -30,7 +30,7 @@ Partially implemented / experimental:
 
 - Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp` and `/sec:tls` to reach active state, receive bitmap updates, handle Fast-Path input, and stay connected until CI terminates the client. `/sec:nla` is also run as an exploratory evidence probe while FreeRDP CredSSP compatibility is hardened; Microsoft-client compatibility is still pending.
 - Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
-- Performance. Slow-path bitmap transport works and is measured; compression/RDPGFX/H.264 work is still pending.
+- Performance. Slow-path 24-bit bitmap transport works and is measured; compressed bitmap/RDPGFX/H.264 work is still pending.
 
 ## Package and version
 

@@ -11,7 +11,7 @@ const (
 	pduType2Update = 0x02
 
 	updateTypeBitmap       = 0x0001
-	bitmapBPP32            = 32
+	bitmapBPP24            = 24
 	maxInitialBitmapUpdate = 80
 )
 
@@ -94,24 +94,26 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 }
 
 func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (bitmapRect, uint64, bool) {
-	data := make([]byte, width*height*4)
+	rowBytes := alignedBitmapRowBytes(width, bitmapBPP24)
+	data := make([]byte, rowBytes*height)
 	for y := 0; y < height; y++ {
 		rowOffset := (y0 + y) * stride
 		row := src.Data[rowOffset:]
 		for x := 0; x < width; x++ {
 			si := (x0 + x) * 4
-			di := (y*width + x) * 4
+			di := y*rowBytes + x*3
 			if si+3 >= len(row) {
 				return bitmapRect{}, 0, false
 			}
 			switch src.Format {
 			case frame.PixelFormatBGRA8888:
-				copy(data[di:di+4], row[si:si+4])
+				data[di+0] = row[si+0]
+				data[di+1] = row[si+1]
+				data[di+2] = row[si+2]
 			case frame.PixelFormatRGBA8888:
 				data[di+0] = row[si+2]
 				data[di+1] = row[si+1]
 				data[di+2] = row[si+0]
-				data[di+3] = row[si+3]
 			}
 		}
 	}
@@ -122,9 +124,14 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (b
 		Bottom: uint16(y0 + height - 1),
 		Width:  uint16(width),
 		Height: uint16(height),
-		BPP:    bitmapBPP32,
+		BPP:    bitmapBPP24,
 		Data:   data,
 	}, hashBytes(data), true
+}
+
+func alignedBitmapRowBytes(width int, bpp uint16) int {
+	bits := width * int(bpp)
+	return ((bits + 31) / 32) * 4
 }
 
 func hashBytes(data []byte) uint64 {
@@ -147,19 +154,18 @@ func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {
 	if height <= 0 || height > 64 {
 		height = 64
 	}
-	data := make([]byte, width*height*4)
+	rowBytes := alignedBitmapRowBytes(width, bitmapBPP24)
+	data := make([]byte, rowBytes*height)
 	b := byte(argb)
 	g := byte(argb >> 8)
 	r := byte(argb >> 16)
-	a := byte(argb >> 24)
-	if a == 0 {
-		a = 0xff
-	}
-	for i := 0; i < len(data); i += 4 {
-		data[i+0] = b
-		data[i+1] = g
-		data[i+2] = r
-		data[i+3] = a
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			di := y*rowBytes + x*3
+			data[di+0] = b
+			data[di+1] = g
+			data[di+2] = r
+		}
 	}
 	return buildBitmapUpdate([]bitmapRect{{
 		Left:   0,
@@ -168,7 +174,7 @@ func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {
 		Bottom: uint16(height - 1),
 		Width:  uint16(width),
 		Height: uint16(height),
-		BPP:    bitmapBPP32,
+		BPP:    bitmapBPP24,
 		Data:   data,
 	}})
 }

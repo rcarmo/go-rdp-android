@@ -43,7 +43,7 @@ Expected artifact files include:
 - aggregate read and bitmap throughput in Mbps;
 - average update size and update read time.
 
-The current slow-path bitmap renderer sends uncompressed 32-bit tiles. For a 1080x2400 emulator screen and an 80x80 tile size, one full frame is:
+The current slow-path bitmap renderer sends uncompressed 24-bit BGR tiles with 4-byte row alignment. This is still classic bitmap update transport, but it avoids sending an unused alpha byte and cuts payload by roughly 25% versus the initial 32-bit BGRA baseline. For a 1080x2400 emulator screen and an 80x80 tile size, one full frame is:
 
 ```text
 ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
@@ -57,10 +57,10 @@ Manual workflow run `25247259184` used `emulator_capture_scale=2`, reducing Medi
 
 | Scale | RDP size | Full-frame tiles | Full-frame payload |
 | ---: | ---: | ---: | ---: |
-| 1 | 1080x2400 | 420 | 10,368,000 bytes |
-| 2 | 540x1200 | 105 | 2,592,000 bytes |
+| 1 | 1080x2400 | 420 | 7,776,000 bytes |
+| 2 | 540x1200 | 105 | 1,944,000 bytes |
 
-That is a **75% reduction** in uncompressed full-frame payload and tile count for the same device screen. The run passed with `startServer=ok`, `frame1=ok`, `screen_capture=ok`, and `fatal_exception=none`.
+That is a **75% reduction** in uncompressed full-frame payload and tile count for the same device screen at the same bits-per-pixel. The 24-bit BGR encoder adds a further **25% payload reduction** over the original 32-bit baseline. The run passed with `startServer=ok`, `frame1=ok`, `screen_capture=ok`, and `fatal_exception=none`.
 
 ## Single-session baseline: 2026-05-02 emulator run
 
@@ -86,7 +86,7 @@ Manual workflow run `25245076441` captured home, Settings, and browser scenes vi
 
 Immediate findings:
 
-- One uncompressed full-resolution frame costs about **10.4 MB** on the wire.
+- The original 32-bit uncompressed full-resolution frame cost about **10.4 MB** on the wire; the 24-bit BGR encoder reduces that to about **7.8 MB** before dirty-tile suppression or downscaling.
 - A full frame is **420 separate slow-path bitmap PDUs** at the current 80x80 tile size.
 - The first scene after capture startup is slower; later scenes are dominated by bitmap transfer/composition.
 - Exact full-frame update counting removes 30 unnecessary update reads compared with the earlier 450-update probe default.
@@ -97,5 +97,5 @@ Performance workstreams:
 2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented and validated as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`.
 3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: first pass implemented and emulator-validated with adaptive capture interval based on bridge submission time plus capture telemetry; CI run `25246333819` stayed green and browser scene fell to 302 dirty updates.
 4. **Optional downscale mode** for low-bandwidth viewing. Status: implemented and emulator-validated as `emulator_capture_scale` / `capture_scale` plumbing through CI, Android intent extras, and MediaProjection virtual display sizing; scale=2 run `25247259184` captured 540x1200 frames with 105 full-frame tiles and 2.59 MB/frame payload.
-5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: not started.
+5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: started with a compatibility-safe 24-bit BGR bitmap encoder; RLE/RDPGFX negotiation and compressed bitmap streams are still pending.
 6. **H.264/AVC video path** using Android hardware encoding where possible. Status: not started. This should be tracked separately from bitmap/RDPGFX work because it changes the capture pipeline from `ImageReader` RGBA frames toward encoder surfaces or RGBA-to-encoder conversion, and it requires client/protocol capability negotiation for video-oriented graphics updates.
