@@ -39,7 +39,7 @@ func main() {
 	s.TCPSeen = strings.Contains(sv, "rdp initial handshake") || strings.Contains(xf, "127.0.0.1")
 	s.X224Seen = strings.Contains(sv, "x224") || strings.Contains(sv, "initial handshake")
 	s.MCSSeen = strings.Contains(sv, "MCS") || strings.Contains(sv, "mcs_")
-	s.BitmapSeen = strings.Contains(sv, "bitmap") || strings.Contains(sv, "Bitmap")
+	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
 	s.ActiveSeen = strings.Contains(xf, "CONNECTION_STATE_ACTIVE")
 	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore")
 	s.ScreenshotPNG = exists(filepath.Join(dir, "xfreerdp-root.png"))

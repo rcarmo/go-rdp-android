@@ -281,48 +281,60 @@ jobs:
           done
           grep -q 'listening on' freerdp-artifacts/mock-server.log
 
-          pass=0
-          best_attempt=0
-          for attempt in 1 2 3; do
-            dir="freerdp-artifacts/attempt-${attempt}"
-            mkdir -p "$dir"
-            echo "FreeRDP attempt ${attempt}" | tee "$dir/attempt.txt"
-            set +e
-            xvfb-run -a bash -c "
+          run_freerdp_mode() {
+            mode="$1"
+            pass=0
+            best_attempt=0
+            mkdir -p "freerdp-artifacts/${mode}"
+            for attempt in 1 2 3; do
+              dir="freerdp-artifacts/${mode}/attempt-${attempt}"
+              mkdir -p "$dir"
+              echo "FreeRDP ${mode} attempt ${attempt}" | tee "$dir/attempt.txt"
               set +e
-              timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:rdp /cert:ignore /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
-              rdp_pid=\$!
-              sleep 8
-              xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
-              (convert '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png' || magick '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png') >'$dir/convert.log' 2>&1
-              wait \$rdp_pid
-              echo \$? > '$dir/exit-code.txt'
-            "
-            xvfb_status=$?
-            set -e
-            echo "$xvfb_status" > "$dir/xvfb-exit-code.txt"
-            cp freerdp-artifacts/mock-server.log "$dir/mock-server.log"
-            GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go "$dir"
-            cat "$dir/summary.md"
-            if grep -q '"bitmap_seen": true' "$dir/summary.json" && grep -q '"active_seen": true' "$dir/summary.json" && grep -q '"exit_code": "124"' "$dir/summary.json"; then
-              pass=1
+              xvfb-run -a bash -c "
+                set +e
+                timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:${mode} /cert:ignore /u:runner /p:secret /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
+                rdp_pid=\$!
+                sleep 8
+                xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
+                (convert '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png' || magick '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png') >'$dir/convert.log' 2>&1
+                wait \$rdp_pid
+                echo \$? > '$dir/exit-code.txt'
+              "
+              xvfb_status=$?
+              set -e
+              echo "$xvfb_status" > "$dir/xvfb-exit-code.txt"
+              cp freerdp-artifacts/mock-server.log "$dir/mock-server.log"
+              GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go "$dir"
+              cat "$dir/summary.md"
+              if grep -q '"bitmap_seen": true' "$dir/summary.json" && grep -q '"active_seen": true' "$dir/summary.json" && grep -q '"exit_code": "124"' "$dir/summary.json"; then
+                pass=1
+                best_attempt=$attempt
+                cp "$dir/summary.md" "freerdp-artifacts/${mode}-summary.md"
+                cp "$dir/summary.json" "freerdp-artifacts/${mode}-summary.json"
+                if [ "$mode" = "rdp" ]; then
+                  cp "$dir"/* freerdp-artifacts/
+                fi
+                break
+              fi
               best_attempt=$attempt
-              cp "$dir"/* freerdp-artifacts/
-              break
-            fi
-            best_attempt=$attempt
-            sleep 1
-          done
+              sleep 1
+            done
 
-          echo "$best_attempt" > freerdp-artifacts/best-attempt.txt
-          if [ "$pass" -ne 1 ]; then
-            echo "FreeRDP compatibility gate failed: no attempt reached active bitmap streaming and stayed connected until timeout" >&2
-            tail -n 160 "freerdp-artifacts/attempt-${best_attempt}/xfreerdp.log" || true
-            exit 1
-          fi
-          test -s freerdp-artifacts/summary.md
-          test -s freerdp-artifacts/summary.json
-          cat freerdp-artifacts/xfreerdp.log | tail -n 120 || true
+            echo "$best_attempt" > "freerdp-artifacts/${mode}/best-attempt.txt"
+            if [ "$pass" -ne 1 ]; then
+              echo "FreeRDP ${mode} compatibility gate failed: no attempt reached active bitmap streaming and stayed connected until timeout" >&2
+              tail -n 160 "freerdp-artifacts/${mode}/attempt-${best_attempt}/xfreerdp.log" || true
+              exit 1
+            fi
+          }
+
+          run_freerdp_mode rdp
+          run_freerdp_mode tls
+          test -s freerdp-artifacts/rdp-summary.md
+          test -s freerdp-artifacts/tls-summary.md
+          cat freerdp-artifacts/rdp-summary.md
+          cat freerdp-artifacts/tls-summary.md
       - name: Upload FreeRDP probe logs
         uses: actions/upload-artifact@v4
         with:

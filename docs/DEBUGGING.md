@@ -62,16 +62,16 @@ Common protocol failure points:
 
 ## FreeRDP compatibility debugging
 
-The `FreeRDP compatibility probe` job is a blocking CI gate. It launches the mock server under Xvfb, retries up to three FreeRDP attempts, and requires at least one attempt to reach bitmap/update streaming. It captures:
+The `FreeRDP compatibility probe` job is a blocking CI gate for both `/sec:rdp` and `/sec:tls`. It launches the mock server under Xvfb, retries up to three FreeRDP attempts for each mode, and requires at least one attempt per mode to reach active bitmap/update streaming. It captures:
 
 - top-level best-attempt `xfreerdp.log`
 - top-level best-attempt `mock-server.log`
 - top-level best-attempt `summary.md`
 - top-level best-attempt `summary.json`
 - top-level best-attempt `xfreerdp-root.png`
-- per-attempt logs under `attempt-*`
+- per-attempt logs under `<mode>/attempt-*`
 
-The gate currently requires `active_seen=true`, `bitmap_seen=true`, and `exit_code=124`, meaning FreeRDP reached active state, received bitmap updates, and stayed connected until the workflow timeout killed the client. Use the summary to locate the last successful server trace phase and the per-attempt logs to distinguish real protocol regressions from Xvfb/client startup flakiness.
+For both security modes, the gate currently requires `active_seen=true`, `bitmap_seen=true`, and `exit_code=124`, meaning FreeRDP reached active state, received bitmap updates, and stayed connected until the workflow timeout killed the client. Use the summaries to locate the last successful server trace phase and the per-attempt logs to distinguish real protocol regressions from Xvfb/client startup flakiness.
 
 ## Android build debugging
 
