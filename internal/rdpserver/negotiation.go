@@ -24,6 +24,8 @@ const (
 	protocolHybrid = 0x00000002
 )
 
+var errFastPathPDU = errors.New("fast-path packet ignored")
+
 // HandshakeInfo captures the initial client negotiation request.
 type HandshakeInfo struct {
 	Cookie             string
@@ -77,7 +79,7 @@ func readTPKT(r io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	if header[0] != tpktVersion {
-		return nil, fmt.Errorf("unsupported TPKT version %d", header[0])
+		return nil, consumeFastPathRemainder(r, header)
 	}
 	length := int(binary.BigEndian.Uint16(header[2:4]))
 	if length < 4 {
@@ -89,6 +91,22 @@ func readTPKT(r io.Reader) ([]byte, error) {
 		tracef("tpkt_read", "payload_len=%d", len(payload))
 	}
 	return payload, err
+}
+
+func consumeFastPathRemainder(r io.Reader, header []byte) error {
+	if len(header) < 2 {
+		return errFastPathPDU
+	}
+	length := int(header[1])
+	consumed := len(header)
+	if header[1]&0x80 != 0 && len(header) >= 3 {
+		length = (int(header[1]&0x7f) << 8) | int(header[2])
+	}
+	if length > consumed {
+		_, _ = io.CopyN(io.Discard, r, int64(length-consumed))
+	}
+	tracef("fastpath_ignore", "first=0x%02x length=%d consumed=%d", header[0], length, consumed)
+	return errFastPathPDU
 }
 
 func writeTPKT(w io.Writer, payload []byte) error {

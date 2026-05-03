@@ -34,6 +34,9 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
 		pdu, err := readMCSDomainPDU(conn)
 		if err != nil {
+			if errors.Is(err, errFastPathPDU) {
+				continue
+			}
 			var netErr net.Error
 			if errors.As(err, &netErr) && netErr.Timeout() {
 				return nil

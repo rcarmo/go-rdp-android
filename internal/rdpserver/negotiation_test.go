@@ -3,6 +3,7 @@ package rdpserver
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"net"
 	"testing"
 )
@@ -19,6 +20,17 @@ func TestTPKTRoundTrip(t *testing.T) {
 	}
 	if !bytes.Equal(got, payload) {
 		t.Fatalf("got %x want %x", got, payload)
+	}
+}
+
+func TestReadTPKTIgnoresFastPathPacket(t *testing.T) {
+	var buf bytes.Buffer
+	buf.Write([]byte{0x0c, 0x06, 0xaa, 0xbb, 0xcc, 0xdd})
+	if _, err := readTPKT(&buf); !errors.Is(err, errFastPathPDU) {
+		t.Fatalf("expected fast-path sentinel, got %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Fatalf("fast-path packet was not drained, remaining=%d", buf.Len())
 	}
 }
 
