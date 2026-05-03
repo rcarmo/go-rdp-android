@@ -30,7 +30,7 @@ type domainPDU struct {
 
 func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, selectedProtocol uint32) error {
 	userID := uint16(defaultMCSUserID)
-	for i := 0; i < 32; i++ {
+	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
 		pdu, err := readMCSDomainPDU(conn)
 		if err != nil {
