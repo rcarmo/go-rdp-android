@@ -18,7 +18,7 @@ const (
 	mcsChannelJoinRequestApp = 14
 	mcsChannelJoinConfirmApp = 15
 	defaultMCSUserID         = 1001
-	domainReadTimeout        = 10 * time.Second
+	domainReadTimeout        = 2 * time.Minute
 )
 
 type domainPDU struct {
