@@ -47,6 +47,7 @@ type InputHandler interface {
     PointerButton(x int, y int, buttons int, down bool)
     Key(scancode int, down bool)
     Unicode(codepoint int)
+    TouchContact(contactID int, x int, y int, flags int)
 }
 
 func SetInputHandler(handler InputHandler)

@@ -6,10 +6,12 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/rcarmo/go-rdp-android/internal/input"
 )
 
 func TestNewDRDYNVCManagerFindsStaticChannel(t *testing.T) {
-	m := newDRDYNVCManager([]clientChannel{{Name: "cliprdr", ID: 1004}, {Name: "drdynvc", ID: 1005}})
+	m := newDRDYNVCManager([]clientChannel{{Name: "cliprdr", ID: 1004}, {Name: "drdynvc", ID: 1005}}, nil)
 	if !m.enabled() || m.staticChannelID != 1005 {
 		t.Fatalf("unexpected manager: %#v", m)
 	}
@@ -77,7 +79,7 @@ func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	defer server.Close()
 	defer client.Close()
 
-	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}})
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
 	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
 	create = append(create, []byte(rdpeiDynamicChannelName)...)
 	create = append(create, 0)
@@ -129,27 +131,30 @@ func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 }
 
 func TestDRDYNVCManagerHandlesRDPEIData(t *testing.T) {
-	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}})
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
 	m.hasRDPEIChannel = true
 	m.rdpeiChannelID = 9
-	csReady := make([]byte, 10)
-	binary.LittleEndian.PutUint32(csReady[0:4], rdpeiCSReadyShowTouchVisuals)
-	binary.LittleEndian.PutUint32(csReady[4:8], rdpeiProtocolV300)
-	binary.LittleEndian.PutUint16(csReady[8:10], 5)
-	data := buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventCSReady, csReady))
+	touchPayload := rdpeiTouchEventPayloadForTest(4, 11, 22, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
+	data := buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, touchPayload))
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err != nil {
 		t.Fatalf("handleStaticPDU: %v", err)
+	}
+	if len(sink.frames) != 1 || len(sink.frames[0]) != 1 {
+		t.Fatalf("expected one touch frame, got %#v", sink.frames)
+	}
+	contact := sink.frames[0][0]
+	if contact.ID != 4 || contact.X != 11 || contact.Y != 22 || contact.Flags&input.TouchDown == 0 {
+		t.Fatalf("unexpected dispatched contact: %#v", contact)
 	}
 }
 
 func TestDRDYNVCDataFirstAssembly(t *testing.T) {
-	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}})
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
 	m.hasRDPEIChannel = true
 	m.rdpeiChannelID = 9
-	csReady := make([]byte, 10)
-	binary.LittleEndian.PutUint32(csReady[4:8], rdpeiProtocolV300)
-	binary.LittleEndian.PutUint16(csReady[8:10], 5)
-	rdpei := withRDPEIHeader(rdpeiEventCSReady, csReady)
+	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 100, 200, rdpeiContactFlagUp))
 	firstPayload := buildDRDYNVCDataFirstPDUForTest(9, uint32(len(rdpei)), rdpei[:4])
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(firstPayload)); err != nil {
 		t.Fatalf("data first: %v", err)
@@ -163,6 +168,9 @@ func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	}
 	if len(m.fragments) != 0 {
 		t.Fatalf("fragments not cleared: %#v", m.fragments)
+	}
+	if len(sink.frames) != 1 || sink.frames[0][0].Flags&input.TouchUp == 0 {
+		t.Fatalf("assembled RDPEI touch was not dispatched: %#v", sink.frames)
 	}
 }
 
@@ -221,6 +229,35 @@ func buildDRDYNVCDataFirstPDUForTest(channelID uint32, totalLength uint32, data 
 	out = appendLE32Bytes(out, totalLength)
 	out = append(out, data...)
 	return out
+}
+
+func rdpeiTouchEventPayloadForTest(contactID uint8, x, y int32, flags uint32) []byte {
+	payload := []byte{}
+	payload = append(payload, rdpeiTestVarUint32(0)...)
+	payload = append(payload, rdpeiTestVarUint16(1)...)
+	payload = append(payload, rdpeiTestVarUint16(1)...)
+	payload = append(payload, rdpeiTestVarUint64(0)...)
+	payload = append(payload, contactID)
+	payload = append(payload, rdpeiTestVarUint16(0)...)
+	payload = append(payload, rdpeiTestVarInt32(x)...)
+	payload = append(payload, rdpeiTestVarInt32(y)...)
+	payload = append(payload, rdpeiTestVarUint32(flags)...)
+	return payload
+}
+
+type recordingTouchSink struct {
+	frames [][]input.TouchContact
+}
+
+func (s *recordingTouchSink) PointerMove(_, _ int) error { return nil }
+func (s *recordingTouchSink) PointerButton(_, _ int, _ input.ButtonState, _ bool) error {
+	return nil
+}
+func (s *recordingTouchSink) Key(_ uint16, _ bool) error { return nil }
+func (s *recordingTouchSink) Unicode(_ rune) error       { return nil }
+func (s *recordingTouchSink) TouchFrame(contacts []input.TouchContact) error {
+	s.frames = append(s.frames, append([]input.TouchContact(nil), contacts...))
+	return nil
 }
 
 type discardConn struct{}

@@ -5,6 +5,7 @@ interface RdpInputCallbacks {
     fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean)
     fun onKey(scancode: Int, down: Boolean)
     fun onUnicode(codepoint: Int)
+    fun onTouchContact(contactId: Int, x: Int, y: Int, flags: Int)
 }
 
 interface RdpBackend {

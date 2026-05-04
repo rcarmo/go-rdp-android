@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	"github.com/rcarmo/go-rdp-android/internal/input"
 )
 
 func TestFrameQueueDropsOldest(t *testing.T) {
@@ -53,6 +54,11 @@ type recordingMobileInputHandler struct {
 		down     bool
 	}
 	unicode []int
+	touches []struct {
+		contactID int
+		x, y      int
+		flags     int
+	}
 }
 
 func (h *recordingMobileInputHandler) PointerMove(x int, y int) {
@@ -74,6 +80,13 @@ func (h *recordingMobileInputHandler) Key(scancode int, down bool) {
 func (h *recordingMobileInputHandler) Unicode(codepoint int) {
 	h.unicode = append(h.unicode, codepoint)
 }
+func (h *recordingMobileInputHandler) TouchContact(contactID int, x int, y int, flags int) {
+	h.touches = append(h.touches, struct {
+		contactID int
+		x, y      int
+		flags     int
+	}{contactID: contactID, x: x, y: y, flags: flags})
+}
 
 func TestMobileInputHandler(t *testing.T) {
 	srv := NewServer()
@@ -91,6 +104,9 @@ func TestMobileInputHandler(t *testing.T) {
 	if err := srv.input.Unicode('A'); err != nil {
 		t.Fatal(err)
 	}
+	if err := srv.input.TouchFrame([]input.TouchContact{{ID: 3, X: 30, Y: 40, Flags: input.TouchDown | input.TouchInRange | input.TouchInContact}}); err != nil {
+		t.Fatal(err)
+	}
 	if len(handler.moves) != 1 || handler.moves[0] != ([2]int{10, 20}) {
 		t.Fatalf("unexpected moves: %#v", handler.moves)
 	}
@@ -102,6 +118,9 @@ func TestMobileInputHandler(t *testing.T) {
 	}
 	if len(handler.unicode) != 1 || handler.unicode[0] != 'A' {
 		t.Fatalf("unexpected unicode: %#v", handler.unicode)
+	}
+	if len(handler.touches) != 1 || handler.touches[0].contactID != 3 || handler.touches[0].x != 30 || handler.touches[0].y != 40 || handler.touches[0].flags&int(input.TouchDown) == 0 {
+		t.Fatalf("unexpected touches: %#v", handler.touches)
 	}
 
 	srv.SetInputHandler(nil)

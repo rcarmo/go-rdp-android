@@ -6,6 +6,7 @@ import android.graphics.Path
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import java.lang.ref.WeakReference
+import java.util.concurrent.ConcurrentHashMap
 
 class RdpAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
@@ -35,6 +36,9 @@ class RdpAccessibilityService : AccessibilityService() {
         private const val TAG = "GoRdpAndroidInput"
         private var activeService: WeakReference<RdpAccessibilityService>? = null
         private const val RDP_SCANCODE_HOME = 0x47
+        private const val TOUCH_FLAG_DOWN = 0x1
+        private const val TOUCH_FLAG_UP = 0x4
+        private val activeTouches = ConcurrentHashMap<Int, Pair<Int, Int>>()
 
         fun handlePointerMove(x: Int, y: Int): Boolean {
             // Accessibility gesture dispatch has no hover/move equivalent suitable for a cheap MVP.
@@ -63,6 +67,24 @@ class RdpAccessibilityService : AccessibilityService() {
         fun handleUnicode(codepoint: Int): Boolean {
             Log.d(TAG, "unicode(codepoint=$codepoint)")
             return activeService?.get() != null
+        }
+
+        fun handleTouchContact(contactId: Int, x: Int, y: Int, flags: Int): Boolean {
+            Log.d(TAG, "touchContact(id=$contactId x=$x y=$y flags=$flags)")
+            val service = activeService?.get() ?: return false
+            if (flags and TOUCH_FLAG_DOWN != 0) {
+                activeTouches[contactId] = Pair(x, y)
+                return true
+            }
+            if (flags and TOUCH_FLAG_UP != 0) {
+                val start = activeTouches.remove(contactId) ?: Pair(x, y)
+                // MVP landing path: a completed single-contact lifecycle becomes a tap.
+                // Move/stroke coalescing remains pending until RDPEI contact frames are
+                // wired into richer Accessibility gesture descriptions.
+                return service.tap(start.first.toFloat(), start.second.toFloat())
+            }
+            activeTouches[contactId] = Pair(x, y)
+            return true
         }
     }
 }

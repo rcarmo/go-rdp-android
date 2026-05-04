@@ -24,6 +24,7 @@ var required = map[string]map[string]string{
 		"pointerButton": "(JJJZ)V",
 		"key":           "(JZ)V",
 		"unicode":       "(J)V",
+		"touchContact":  "(JJJJ)V",
 	},
 	"mobile/Server.class": {
 		"start":           "(J)V",
