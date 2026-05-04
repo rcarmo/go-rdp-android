@@ -3,6 +3,7 @@ package rdpserver
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net"
@@ -79,12 +80,13 @@ func performCredSSPWithBindings(conn net.Conn, auth Authenticator, tlsPublicKeys
 	if clientPubKeyAuth == nil {
 		return zero, fmt.Errorf("decrypt client pubKeyAuth")
 	}
-	matchedPubKey, ok := matchClientPubKeyAuth(authReq.Version, tlsPublicKeys, clientNonce, clientPubKeyAuth)
+	matchedBinding, ok := matchClientPubKeyAuth(authReq.Version, tlsPublicKeys, clientNonce, clientPubKeyAuth)
 	if !ok {
+		tracef("credssp_pubkeyauth_mismatch", "version=%d nonce_len=%d actual_len=%d candidates=%d", authReq.Version, len(clientNonce), len(clientPubKeyAuth), len(tlsPublicKeys))
 		return zero, fmt.Errorf("client pubKeyAuth binding mismatch")
 	}
 
-	serverPubKeyAuth := rdpauth.ComputeServerPubKeyAuth(authReq.Version, matchedPubKey, clientNonce)
+	serverPubKeyAuth := computeServerPubKeyAuthForBinding(authReq.Version, matchedBinding, clientNonce)
 	if _, err := conn.Write(rdpauth.EncodeTSRequestWithVersion(authReq.Version, nil, nil, security.GssEncrypt(serverPubKeyAuth), nil)); err != nil {
 		return zero, fmt.Errorf("write server pubKeyAuth: %w", err)
 	}
@@ -138,13 +140,50 @@ func compactPublicKeyCandidates(candidates [][]byte) [][]byte {
 	return out
 }
 
-func matchClientPubKeyAuth(version int, candidates [][]byte, nonce, actual []byte) ([]byte, bool) {
+type credSSPPubKeyBinding struct {
+	PublicKey []byte
+	Order     string
+}
+
+const (
+	credSSPHashNonceThenKey = "nonce-key"
+	credSSPHashKeyThenNonce = "key-nonce"
+)
+
+func matchClientPubKeyAuth(version int, candidates [][]byte, nonce, actual []byte) (credSSPPubKeyBinding, bool) {
 	for _, candidate := range candidates {
-		if bytes.Equal(actual, rdpauth.ComputeClientPubKeyAuth(version, candidate, nonce)) {
-			return candidate, true
+		standard := rdpauth.ComputeClientPubKeyAuth(version, candidate, nonce)
+		if bytes.Equal(actual, standard) {
+			return credSSPPubKeyBinding{PublicKey: candidate, Order: credSSPHashNonceThenKey}, true
+		}
+		if version >= 5 && len(nonce) > 0 {
+			alternate := computeCredSSPPubKeyHash(rdpauth.ClientServerHashMagic, candidate, nonce, credSSPHashKeyThenNonce)
+			if bytes.Equal(actual, alternate) {
+				return credSSPPubKeyBinding{PublicKey: candidate, Order: credSSPHashKeyThenNonce}, true
+			}
 		}
 	}
-	return nil, false
+	return credSSPPubKeyBinding{}, false
+}
+
+func computeServerPubKeyAuthForBinding(version int, binding credSSPPubKeyBinding, nonce []byte) []byte {
+	if binding.Order == credSSPHashKeyThenNonce && version >= 5 && len(nonce) > 0 {
+		return computeCredSSPPubKeyHash(rdpauth.ServerClientHashMagic, binding.PublicKey, nonce, credSSPHashKeyThenNonce)
+	}
+	return rdpauth.ComputeServerPubKeyAuth(version, binding.PublicKey, nonce)
+}
+
+func computeCredSSPPubKeyHash(magic, pubKey, nonce []byte, order string) []byte {
+	h := sha256.New()
+	h.Write(magic)
+	if order == credSSPHashKeyThenNonce {
+		h.Write(pubKey)
+		h.Write(nonce)
+	} else {
+		h.Write(nonce)
+		h.Write(pubKey)
+	}
+	return h.Sum(nil)
 }
 
 func staticCredentialPair(auth Authenticator) (string, string, bool) {

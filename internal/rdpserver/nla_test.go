@@ -85,11 +85,26 @@ func TestMatchClientPubKeyAuthCandidates(t *testing.T) {
 	fallback := []byte("subject-public-key-info")
 	actual := rdpauth.ComputeClientPubKeyAuth(6, fallback, nonce)
 	matched, ok := matchClientPubKeyAuth(6, [][]byte{primary, fallback}, nonce, actual)
-	if !ok || !bytes.Equal(matched, fallback) {
-		t.Fatalf("expected fallback public key match, got ok=%v matched=%q", ok, matched)
+	if !ok || !bytes.Equal(matched.PublicKey, fallback) || matched.Order != credSSPHashNonceThenKey {
+		t.Fatalf("expected fallback public key match, got ok=%v matched=%#v", ok, matched)
 	}
 	if _, ok := matchClientPubKeyAuth(6, [][]byte{primary}, nonce, actual); ok {
 		t.Fatal("unexpected match")
+	}
+}
+
+func TestMatchClientPubKeyAuthAlternateHashOrder(t *testing.T) {
+	nonce := bytes.Repeat([]byte{0x32}, 32)
+	pubKey := []byte("subject-public-key")
+	actual := computeCredSSPPubKeyHash(rdpauth.ClientServerHashMagic, pubKey, nonce, credSSPHashKeyThenNonce)
+	matched, ok := matchClientPubKeyAuth(6, [][]byte{pubKey}, nonce, actual)
+	if !ok || !bytes.Equal(matched.PublicKey, pubKey) || matched.Order != credSSPHashKeyThenNonce {
+		t.Fatalf("expected alternate hash-order match, got ok=%v matched=%#v", ok, matched)
+	}
+	serverAuth := computeServerPubKeyAuthForBinding(6, matched, nonce)
+	want := computeCredSSPPubKeyHash(rdpauth.ServerClientHashMagic, pubKey, nonce, credSSPHashKeyThenNonce)
+	if !bytes.Equal(serverAuth, want) {
+		t.Fatal("server pubKeyAuth should preserve matched hash order")
 	}
 }
 
