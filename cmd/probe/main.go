@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -834,7 +836,10 @@ func performClientCredSSP(conn net.Conn, tlsConn *tls.Conn, username, password, 
 	if len(state.PeerCertificates) == 0 {
 		return fmt.Errorf("NLA: server certificate unavailable")
 	}
-	pubKey := state.PeerCertificates[0].RawSubjectPublicKeyInfo
+	pubKey, err := extractSubjectPublicKey(state.PeerCertificates[0].RawSubjectPublicKeyInfo)
+	if err != nil {
+		return fmt.Errorf("NLA: extract TLS public key: %w", err)
+	}
 	ntlm := rdpauth.NewNTLMv2(domain, username, password)
 	clientNonce := make([]byte, 32)
 	if _, err := rand.Read(clientNonce); err != nil {
@@ -880,6 +885,17 @@ func performClientCredSSP(conn net.Conn, tlsConn *tls.Conn, username, password, 
 		return fmt.Errorf("NLA: send credentials: %w", err)
 	}
 	return nil
+}
+
+func extractSubjectPublicKey(rawSubjectPublicKeyInfo []byte) ([]byte, error) {
+	var spki struct {
+		Algorithm        pkix.AlgorithmIdentifier
+		SubjectPublicKey asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(rawSubjectPublicKeyInfo, &spki); err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), spki.SubjectPublicKey.Bytes...), nil
 }
 
 func readCredSSPMessage(r io.Reader) ([]byte, error) {

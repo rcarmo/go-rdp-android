@@ -2,7 +2,12 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
+	"math/big"
 	"net"
 	"testing"
 	"time"
@@ -41,6 +46,41 @@ func TestProbeBuilders(t *testing.T) {
 	confirm := buildConfirmActivePDU(0x000103ea, 1001)
 	if len(confirm) < 20 || confirm[2] != 0x13 {
 		t.Fatalf("bad confirm active: %x", confirm)
+	}
+}
+
+func TestExtractSubjectPublicKey(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "probe-test"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+	}, &x509.Certificate{SerialNumber: big.NewInt(1)}, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := extractSubjectPublicKey(cert.RawSubjectPublicKeyInfo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(got, cert.RawSubjectPublicKeyInfo) {
+		t.Fatal("expected SubjectPublicKey, not SubjectPublicKeyInfo")
+	}
+	rsaPub, ok := cert.PublicKey.(*rsa.PublicKey)
+	if !ok {
+		t.Fatalf("expected RSA public key, got %T", cert.PublicKey)
+	}
+	want := x509.MarshalPKCS1PublicKey(rsaPub)
+	if !bytes.Equal(got, want) {
+		t.Fatalf("unexpected public key length: got %d want %d", len(got), len(want))
 	}
 }
 
