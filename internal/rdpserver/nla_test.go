@@ -84,11 +84,11 @@ func TestMatchClientPubKeyAuthCandidates(t *testing.T) {
 	primary := []byte("subject-public-key")
 	fallback := []byte("subject-public-key-info")
 	actual := rdpauth.ComputeClientPubKeyAuth(6, fallback, nonce)
-	matched, ok := matchClientPubKeyAuth(6, [][]byte{primary, fallback}, nonce, actual)
+	matched, ok := matchClientPubKeyAuth(6, [][]byte{primary, fallback}, [][]byte{nonce}, actual)
 	if !ok || !bytes.Equal(matched.PublicKey, fallback) || matched.Order != credSSPHashNonceThenKey {
 		t.Fatalf("expected fallback public key match, got ok=%v matched=%#v", ok, matched)
 	}
-	if _, ok := matchClientPubKeyAuth(6, [][]byte{primary}, nonce, actual); ok {
+	if _, ok := matchClientPubKeyAuth(6, [][]byte{primary}, [][]byte{nonce}, actual); ok {
 		t.Fatal("unexpected match")
 	}
 }
@@ -97,14 +97,25 @@ func TestMatchClientPubKeyAuthAlternateHashOrder(t *testing.T) {
 	nonce := bytes.Repeat([]byte{0x32}, 32)
 	pubKey := []byte("subject-public-key")
 	actual := computeCredSSPPubKeyHash(rdpauth.ClientServerHashMagic, pubKey, nonce, credSSPHashKeyThenNonce)
-	matched, ok := matchClientPubKeyAuth(6, [][]byte{pubKey}, nonce, actual)
+	matched, ok := matchClientPubKeyAuth(6, [][]byte{pubKey}, [][]byte{nonce}, actual)
 	if !ok || !bytes.Equal(matched.PublicKey, pubKey) || matched.Order != credSSPHashKeyThenNonce {
 		t.Fatalf("expected alternate hash-order match, got ok=%v matched=%#v", ok, matched)
 	}
-	serverAuth := computeServerPubKeyAuthForBinding(6, matched, nonce)
+	serverAuth := computeServerPubKeyAuthForBinding(6, matched)
 	want := computeCredSSPPubKeyHash(rdpauth.ServerClientHashMagic, pubKey, nonce, credSSPHashKeyThenNonce)
 	if !bytes.Equal(serverAuth, want) {
 		t.Fatal("server pubKeyAuth should preserve matched hash order")
+	}
+}
+
+func TestMatchClientPubKeyAuthServerNonce(t *testing.T) {
+	clientNonce := bytes.Repeat([]byte{0x33}, 32)
+	serverNonce := bytes.Repeat([]byte{0x44}, 32)
+	pubKey := []byte("subject-public-key")
+	actual := rdpauth.ComputeClientPubKeyAuth(6, pubKey, serverNonce)
+	matched, ok := matchClientPubKeyAuth(6, [][]byte{pubKey}, [][]byte{clientNonce, serverNonce}, actual)
+	if !ok || !bytes.Equal(matched.Nonce, serverNonce) {
+		t.Fatalf("expected server nonce match, got ok=%v matched=%#v", ok, matched)
 	}
 }
 
