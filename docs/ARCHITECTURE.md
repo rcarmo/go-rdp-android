@@ -142,7 +142,7 @@ Current input support has two layers:
 1. Go decodes RDP slow-path and Fast-Path pointer, keyboard, and Unicode events into `input.Sink` calls. FreeRDP normally uses Fast-Path input after activation, so the server reads those transport PDUs directly instead of discarding them.
 2. gomobile forwards those events to Kotlin `RdpInputCallbacks` and `RdpAccessibilityService` landing methods.
 
-True RDP touch is separate from mouse/pointer input. Modern clients can send contact frames through MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so touch support needs dynamic-channel negotiation and a touch-contact event model rather than mapping all input to mouse buttons. That work is tracked in `/workspace/workitems/10-next/go-rdp-android-rdpei-touch-input.md`.
+True RDP touch is separate from mouse/pointer input. Modern clients can send contact frames through MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so touch support needs dynamic-channel negotiation and a touch-contact event model rather than mapping all input to mouse buttons. The first protocol scaffold now parses RDPEI headers, client-ready messages, touch-event frames, touch contacts, optional contact geometry/orientation/pressure fields, and dismiss-hovering-contact PDUs in `internal/rdpserver/rdpei.go`; dynamic virtual channel routing and Android touch-sink dispatch are still pending. That work is tracked in `/workspace/workitems/10-next/go-rdp-android-rdpei-touch-input.md`.
 
 CI currently validates emulator input using scripted Android input commands while RDP capture is running:
 

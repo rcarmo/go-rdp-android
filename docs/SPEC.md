@@ -159,7 +159,7 @@ Recommendation: start with Option A.
 
 ## Input pipeline
 
-Classic RDP keyboard and pointer events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures. True touch input is different: modern RDP clients can send touch contact frames using MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so it needs channel negotiation and a contact lifecycle decoder.
+Classic RDP keyboard and pointer events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures. True touch input is different: modern RDP clients can send touch contact frames using MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so it needs channel negotiation and a contact lifecycle decoder. `internal/rdpserver/rdpei.go` now contains the initial MS-RDPEI parser scaffold for server-ready/client-ready metadata, touch frames, touch contacts, optional geometry/orientation/pressure fields, and malformed-PDU handling; it is not yet wired to `drdynvc` or Android gesture dispatch.
 
 Map them to Android:
 
