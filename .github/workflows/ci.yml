@@ -271,7 +271,8 @@ jobs:
           set -euo pipefail
           mkdir -p freerdp-artifacts .gotmp
           GOTMPDIR="$PWD/.gotmp" go mod download
-          GO_RDP_ANDROID_TRACE=1 GOTMPDIR="$PWD/.gotmp" go run ./cmd/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          GOTMPDIR="$PWD/.gotmp" go build -o freerdp-artifacts/mock-server ./cmd/mock-server
+          GO_RDP_ANDROID_TRACE=1 ./freerdp-artifacts/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           for _ in $(seq 1 50); do
