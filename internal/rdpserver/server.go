@@ -115,7 +115,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator, info.SelectedProtocol); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}

@@ -28,8 +28,9 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, selectedProtocol uint32) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, selectedProtocol uint32, channels []clientChannel) error {
 	userID := uint16(defaultMCSUserID)
+	dvc := newDRDYNVCManager(channels)
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
 		pdu, err := readMCSDomainPDUOrFastPath(conn, sink)
@@ -57,6 +58,12 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 				return err
 			}
 		case mcsSendDataRequestApp:
+			if dvc.enabled() && pdu.ChannelID == dvc.staticChannelID {
+				if err := dvc.handleStaticPDU(conn, pdu.Data); err != nil {
+					return err
+				}
+				continue
+			}
 			if share, err := parseShareControlPDU(pdu.Data); err == nil {
 				switch share.PDUType {
 				case pduTypeConfirmActive:
