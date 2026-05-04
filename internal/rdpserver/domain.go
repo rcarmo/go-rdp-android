@@ -88,7 +88,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 						return fmt.Errorf("auth failed: %w", err)
 					}
 				}
-				if selectedProtocol == protocolRDP || selectedProtocol == protocolSSL {
+				if selectedProtocol == protocolRDP || selectedProtocol == protocolSSL || selectedProtocol == protocolHybrid {
 					if err := writeLicenseValidClient(conn); err != nil {
 						return err
 					}
