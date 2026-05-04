@@ -283,7 +283,6 @@ jobs:
 
           run_freerdp_mode() {
             mode="$1"
-            required="${2:-1}"
             pass=0
             best_attempt=0
             mkdir -p "freerdp-artifacts/${mode}"
@@ -328,16 +327,13 @@ jobs:
               cp "freerdp-artifacts/${mode}/attempt-${best_attempt}/summary.json" "freerdp-artifacts/${mode}-summary.json" || true
               echo "FreeRDP ${mode} compatibility gate failed: no attempt reached active bitmap streaming and stayed connected until timeout" >&2
               tail -n 160 "freerdp-artifacts/${mode}/attempt-${best_attempt}/xfreerdp.log" || true
-              if [ "$required" = "1" ]; then
-                exit 1
-              fi
-              echo "::warning::FreeRDP ${mode} exploratory probe failed; preserving logs without failing the workflow"
+              exit 1
             fi
           }
 
           run_freerdp_mode rdp
           run_freerdp_mode tls
-          run_freerdp_mode nla 0
+          run_freerdp_mode nla
           test -s freerdp-artifacts/rdp-summary.md
           test -s freerdp-artifacts/tls-summary.md
           test -s freerdp-artifacts/nla-summary.md
