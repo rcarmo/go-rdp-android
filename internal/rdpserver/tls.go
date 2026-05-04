@@ -53,6 +53,7 @@ func tlsPublicKeyCandidatesFromConfig(cfg *tls.Config) [][]byte {
 	var candidates [][]byte
 	if pubKey, err := extractSubjectPublicKey(cert.RawSubjectPublicKeyInfo); err == nil && len(pubKey) > 0 {
 		candidates = append(candidates, pubKey)
+		candidates = append(candidates, append([]byte{0}, pubKey...))
 	}
 	if len(cert.RawSubjectPublicKeyInfo) > 0 {
 		candidates = append(candidates, append([]byte(nil), cert.RawSubjectPublicKeyInfo...))

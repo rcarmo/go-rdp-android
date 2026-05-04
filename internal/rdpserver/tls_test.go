@@ -39,18 +39,21 @@ func TestTLSPublicKeyCandidatesFromConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	candidates := tlsPublicKeyCandidatesFromConfig(cfg)
-	if len(candidates) < 3 {
-		t.Fatalf("expected SubjectPublicKey, SubjectPublicKeyInfo, and cert candidates, got %d", len(candidates))
+	if len(candidates) < 4 {
+		t.Fatalf("expected SubjectPublicKey variants, SubjectPublicKeyInfo, and cert candidates, got %d", len(candidates))
 	}
 	cert, err := x509.ParseCertificate(cfg.Certificates[0].Certificate[0])
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(candidates[1], cert.RawSubjectPublicKeyInfo) {
-		t.Fatal("second candidate should be SubjectPublicKeyInfo for compatibility fallback")
+	if len(candidates[1]) != len(candidates[0])+1 || candidates[1][0] != 0 || !bytes.Equal(candidates[1][1:], candidates[0]) {
+		t.Fatal("second candidate should be BIT STRING content including unused-bits prefix")
 	}
-	if !bytes.Equal(candidates[2], cert.Raw) {
-		t.Fatal("third candidate should be certificate DER for compatibility fallback")
+	if !bytes.Equal(candidates[2], cert.RawSubjectPublicKeyInfo) {
+		t.Fatal("third candidate should be SubjectPublicKeyInfo for compatibility fallback")
+	}
+	if !bytes.Equal(candidates[3], cert.Raw) {
+		t.Fatal("fourth candidate should be certificate DER for compatibility fallback")
 	}
 }
 
