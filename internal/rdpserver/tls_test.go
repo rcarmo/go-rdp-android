@@ -33,6 +33,27 @@ func TestTLSPublicKeyFromConfigUsesSubjectPublicKey(t *testing.T) {
 	}
 }
 
+func TestTLSPublicKeyCandidatesFromConfig(t *testing.T) {
+	cfg, err := defaultTLSConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidates := tlsPublicKeyCandidatesFromConfig(cfg)
+	if len(candidates) < 3 {
+		t.Fatalf("expected SubjectPublicKey, SubjectPublicKeyInfo, and cert candidates, got %d", len(candidates))
+	}
+	cert, err := x509.ParseCertificate(cfg.Certificates[0].Certificate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(candidates[1], cert.RawSubjectPublicKeyInfo) {
+		t.Fatal("second candidate should be SubjectPublicKeyInfo for compatibility fallback")
+	}
+	if !bytes.Equal(candidates[2], cert.Raw) {
+		t.Fatal("third candidate should be certificate DER for compatibility fallback")
+	}
+}
+
 func TestExtractSubjectPublicKeyRejectsInvalidSPKI(t *testing.T) {
 	if _, err := extractSubjectPublicKey([]byte{0x30, 0x03, 0x01, 0x02, 0x03}); err == nil {
 		t.Fatal("expected invalid SPKI to fail")

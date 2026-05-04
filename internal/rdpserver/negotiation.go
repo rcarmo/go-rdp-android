@@ -34,10 +34,11 @@ type transportPDU struct {
 
 // HandshakeInfo captures the initial client negotiation request.
 type HandshakeInfo struct {
-	Cookie             string
-	RequestedProtocols uint32
-	SelectedProtocol   uint32
-	TLSPublicKey       []byte
+	Cookie                 string
+	RequestedProtocols     uint32
+	SelectedProtocol       uint32
+	TLSPublicKey           []byte
+	TLSPublicKeyCandidates [][]byte
 }
 
 func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
@@ -72,7 +73,10 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 		if err := tlsConn.Handshake(); err != nil {
 			return nil, nil, fmt.Errorf("tls handshake: %w", err)
 		}
-		info.TLSPublicKey = tlsPublicKeyFromConfig(cfg)
+		info.TLSPublicKeyCandidates = tlsPublicKeyCandidatesFromConfig(cfg)
+		if len(info.TLSPublicKeyCandidates) > 0 {
+			info.TLSPublicKey = info.TLSPublicKeyCandidates[0]
+		}
 		return &info, tlsConn, nil
 	}
 

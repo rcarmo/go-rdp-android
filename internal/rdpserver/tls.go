@@ -35,6 +35,14 @@ func defaultTLSConfig() (*tls.Config, error) {
 }
 
 func tlsPublicKeyFromConfig(cfg *tls.Config) []byte {
+	candidates := tlsPublicKeyCandidatesFromConfig(cfg)
+	if len(candidates) == 0 {
+		return nil
+	}
+	return candidates[0]
+}
+
+func tlsPublicKeyCandidatesFromConfig(cfg *tls.Config) [][]byte {
 	if cfg == nil || len(cfg.Certificates) == 0 || len(cfg.Certificates[0].Certificate) == 0 {
 		return nil
 	}
@@ -42,11 +50,17 @@ func tlsPublicKeyFromConfig(cfg *tls.Config) []byte {
 	if err != nil {
 		return nil
 	}
-	pubKey, err := extractSubjectPublicKey(cert.RawSubjectPublicKeyInfo)
-	if err != nil {
-		return nil
+	var candidates [][]byte
+	if pubKey, err := extractSubjectPublicKey(cert.RawSubjectPublicKeyInfo); err == nil && len(pubKey) > 0 {
+		candidates = append(candidates, pubKey)
 	}
-	return pubKey
+	if len(cert.RawSubjectPublicKeyInfo) > 0 {
+		candidates = append(candidates, append([]byte(nil), cert.RawSubjectPublicKeyInfo...))
+	}
+	if len(cert.Raw) > 0 {
+		candidates = append(candidates, append([]byte(nil), cert.Raw...))
+	}
+	return candidates
 }
 
 func extractSubjectPublicKey(rawSubjectPublicKeyInfo []byte) ([]byte, error) {

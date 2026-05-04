@@ -96,7 +96,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	conn = secureConn
 	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, info.Cookie)
 	if info.SelectedProtocol == protocolHybrid {
-		clientInfo, err := performCredSSP(conn, s.cfg.Authenticator, info.TLSPublicKey)
+		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
 		if err != nil {
 			log.Printf("rdp NLA/CredSSP failed from %s: %v", conn.RemoteAddr(), err)
 			return

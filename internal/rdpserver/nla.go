@@ -14,12 +14,17 @@ import (
 const maxCredSSPMessageSize = 64 * 1024
 
 func performCredSSP(conn net.Conn, auth Authenticator, tlsPublicKey []byte) (ClientInfo, error) {
+	return performCredSSPWithBindings(conn, auth, [][]byte{tlsPublicKey})
+}
+
+func performCredSSPWithBindings(conn net.Conn, auth Authenticator, tlsPublicKeys [][]byte) (ClientInfo, error) {
 	var zero ClientInfo
 	username, password, ok := staticCredentialPair(auth)
 	if !ok {
 		return zero, fmt.Errorf("NLA requires StaticCredentials")
 	}
-	if len(tlsPublicKey) == 0 {
+	tlsPublicKeys = compactPublicKeyCandidates(tlsPublicKeys)
+	if len(tlsPublicKeys) == 0 {
 		return zero, fmt.Errorf("NLA requires TLS public key binding")
 	}
 
@@ -74,11 +79,12 @@ func performCredSSP(conn net.Conn, auth Authenticator, tlsPublicKey []byte) (Cli
 	if clientPubKeyAuth == nil {
 		return zero, fmt.Errorf("decrypt client pubKeyAuth")
 	}
-	if !bytes.Equal(clientPubKeyAuth, rdpauth.ComputeClientPubKeyAuth(authReq.Version, tlsPublicKey, clientNonce)) {
+	matchedPubKey, ok := matchClientPubKeyAuth(authReq.Version, tlsPublicKeys, clientNonce, clientPubKeyAuth)
+	if !ok {
 		return zero, fmt.Errorf("client pubKeyAuth binding mismatch")
 	}
 
-	serverPubKeyAuth := rdpauth.ComputeServerPubKeyAuth(authReq.Version, tlsPublicKey, clientNonce)
+	serverPubKeyAuth := rdpauth.ComputeServerPubKeyAuth(authReq.Version, matchedPubKey, clientNonce)
 	if _, err := conn.Write(rdpauth.EncodeTSRequestWithVersion(authReq.Version, nil, nil, security.GssEncrypt(serverPubKeyAuth), nil)); err != nil {
 		return zero, fmt.Errorf("write server pubKeyAuth: %w", err)
 	}
@@ -110,6 +116,35 @@ func performCredSSP(conn net.Conn, auth Authenticator, tlsPublicKey []byte) (Cli
 		return zero, err
 	}
 	return info, nil
+}
+
+func compactPublicKeyCandidates(candidates [][]byte) [][]byte {
+	out := make([][]byte, 0, len(candidates))
+	for _, candidate := range candidates {
+		if len(candidate) == 0 {
+			continue
+		}
+		seen := false
+		for _, existing := range out {
+			if bytes.Equal(existing, candidate) {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			out = append(out, append([]byte(nil), candidate...))
+		}
+	}
+	return out
+}
+
+func matchClientPubKeyAuth(version int, candidates [][]byte, nonce, actual []byte) ([]byte, bool) {
+	for _, candidate := range candidates {
+		if bytes.Equal(actual, rdpauth.ComputeClientPubKeyAuth(version, candidate, nonce)) {
+			return candidate, true
+		}
+	}
+	return nil, false
 }
 
 func staticCredentialPair(auth Authenticator) (string, string, bool) {

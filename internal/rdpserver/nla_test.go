@@ -79,6 +79,27 @@ func TestPerformCredSSPRoundTrip(t *testing.T) {
 	}
 }
 
+func TestMatchClientPubKeyAuthCandidates(t *testing.T) {
+	nonce := bytes.Repeat([]byte{0x31}, 32)
+	primary := []byte("subject-public-key")
+	fallback := []byte("subject-public-key-info")
+	actual := rdpauth.ComputeClientPubKeyAuth(6, fallback, nonce)
+	matched, ok := matchClientPubKeyAuth(6, [][]byte{primary, fallback}, nonce, actual)
+	if !ok || !bytes.Equal(matched, fallback) {
+		t.Fatalf("expected fallback public key match, got ok=%v matched=%q", ok, matched)
+	}
+	if _, ok := matchClientPubKeyAuth(6, [][]byte{primary}, nonce, actual); ok {
+		t.Fatal("unexpected match")
+	}
+}
+
+func TestCompactPublicKeyCandidates(t *testing.T) {
+	candidates := compactPublicKeyCandidates([][]byte{nil, []byte("a"), []byte("a"), []byte("b")})
+	if len(candidates) != 2 || !bytes.Equal(candidates[0], []byte("a")) || !bytes.Equal(candidates[1], []byte("b")) {
+		t.Fatalf("unexpected candidates: %q", candidates)
+	}
+}
+
 func TestPerformCredSSPRejectsBadPassword(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
