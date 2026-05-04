@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"math/big"
 	"sync"
@@ -41,7 +42,22 @@ func tlsPublicKeyFromConfig(cfg *tls.Config) []byte {
 	if err != nil {
 		return nil
 	}
-	return append([]byte(nil), cert.RawSubjectPublicKeyInfo...)
+	pubKey, err := extractSubjectPublicKey(cert.RawSubjectPublicKeyInfo)
+	if err != nil {
+		return nil
+	}
+	return pubKey
+}
+
+func extractSubjectPublicKey(rawSubjectPublicKeyInfo []byte) ([]byte, error) {
+	var spki struct {
+		Algorithm        pkix.AlgorithmIdentifier
+		SubjectPublicKey asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(rawSubjectPublicKeyInfo, &spki); err != nil {
+		return nil, err
+	}
+	return append([]byte(nil), spki.SubjectPublicKey.Bytes...), nil
 }
 
 func generateSelfSignedCert() (tls.Certificate, error) {
