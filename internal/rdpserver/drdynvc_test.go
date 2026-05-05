@@ -74,6 +74,23 @@ func TestBuildDRDYNVCDataPDU(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCVariableLengthChannelIDs(t *testing.T) {
+	for _, channelID := range []uint32{0xff, 0x0100, 0xffff, 0x00010000, 0x01020304} {
+		data := []byte{1, 2, 3}
+		pdu, err := parseDRDYNVCPDU(buildDRDYNVCDataPDU(channelID, data))
+		if err != nil {
+			t.Fatalf("parse channel %d: %v", channelID, err)
+		}
+		if pdu.ChannelID != channelID || !bytes.Equal(pdu.Data, data) {
+			t.Fatalf("unexpected PDU for channel %d: %#v", channelID, pdu)
+		}
+		response := buildDRDYNVCCreateResponsePDU(channelID, drdynvcCreateOK)
+		if got := (drdynvcHeader{CbChID: response[0] & 0x03, Cmd: (response[0] >> 4) & 0x0f}); got.CbChID != drdynvcCbChID(channelID) || got.Cmd != drdynvcCmdCreate {
+			t.Fatalf("unexpected create response header for channel %d: %#v", channelID, got)
+		}
+	}
+}
+
 func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	server, client := net.Pipe()
 	defer server.Close()
@@ -125,8 +142,120 @@ func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("handleStaticPDU did not return")
 	}
-	if !m.hasRDPEIChannel || m.rdpeiChannelID != 7 {
+	if !m.hasRDPEIChannel || m.rdpeiChannelID != 7 || m.channels[7] != rdpeiDynamicChannelName {
 		t.Fatalf("RDPEI channel not tracked: %#v", m)
+	}
+}
+
+func TestDRDYNVCManagerRejectsDuplicateCreate(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	m.channels[7] = rdpeiDynamicChannelName
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 7
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
+	create = append(create, []byte(rdpeiDynamicChannelName)...)
+	create = append(create, 0)
+
+	done := make(chan error, 1)
+	go func() { done <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(create)) }()
+	pdu := readTestDomainPDUFromPipe(t, client)
+	staticPDU, err := parseStaticVirtualChannelPDU(pdu.Data)
+	if err != nil {
+		t.Fatalf("parse static duplicate response: %v", err)
+	}
+	if len(staticPDU.Data) != 6 {
+		t.Fatalf("unexpected duplicate response length: %x", staticPDU.Data)
+	}
+	if code := binary.LittleEndian.Uint32(staticPDU.Data[2:6]); code != drdynvcCreateAlreadyExists {
+		t.Fatalf("duplicate create code = 0x%x", code)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("duplicate create: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("duplicate create did not return")
+	}
+	if !m.hasRDPEIChannel || m.rdpeiChannelID != 7 || len(m.channels) != 1 {
+		t.Fatalf("duplicate create disturbed existing state: %#v", m)
+	}
+}
+
+func TestDRDYNVCManagerRejectsUnsupportedChannel(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 12}
+	create = append(create, []byte("unsupported")...)
+	create = append(create, 0)
+
+	done := make(chan error, 1)
+	go func() { done <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(create)) }()
+	pdu := readTestDomainPDUFromPipe(t, client)
+	staticPDU, err := parseStaticVirtualChannelPDU(pdu.Data)
+	if err != nil {
+		t.Fatalf("parse unsupported response: %v", err)
+	}
+	if code := binary.LittleEndian.Uint32(staticPDU.Data[2:6]); code != drdynvcCreateNoListener {
+		t.Fatalf("unsupported create code = 0x%x", code)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("unsupported create: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("unsupported create did not return")
+	}
+	if m.hasRDPEIChannel || len(m.channels) != 0 {
+		t.Fatalf("unsupported create changed state: %#v", m)
+	}
+}
+
+func TestDRDYNVCManagerCloseAndReopenRDPEI(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	m.channels[9] = rdpeiDynamicChannelName
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 9
+	m.touchLifecycle.ApplyFrame([]input.TouchContact{{ID: 1, X: 1, Y: 2, Flags: input.TouchDown}})
+	if err := m.handleDynamicDataFirst(9, 2, []byte{1}); err != nil {
+		t.Fatalf("fragment: %v", err)
+	}
+	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 9}
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(closePDU)); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if m.hasRDPEIChannel || m.rdpeiChannelID != 0 || len(m.channels) != 0 || len(m.fragments) != 0 || m.touchLifecycle.ActiveCount() != 0 {
+		t.Fatalf("close did not clear RDPEI state: %#v", m)
+	}
+
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 9}
+	create = append(create, []byte(rdpeiDynamicChannelName)...)
+	create = append(create, 0)
+	done := make(chan error, 1)
+	go func() { done <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(create)) }()
+	_ = readTestDomainPDUFromPipe(t, client)
+	_ = readTestDomainPDUFromPipe(t, client)
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("reopen: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("reopen did not return")
+	}
+	if !m.hasRDPEIChannel || m.rdpeiChannelID != 9 || m.channels[9] != rdpeiDynamicChannelName {
+		t.Fatalf("RDPEI channel not reopened: %#v", m)
 	}
 }
 
@@ -234,19 +363,18 @@ func TestDRDYNVCFragmentLimitAndCleanup(t *testing.T) {
 	}
 }
 
-func TestDRDYNVCCloseClearsRDPEIStateAndFragments(t *testing.T) {
+func TestDRDYNVCCloseClearsNonRDPEIFragment(t *testing.T) {
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
-	if err := m.handleDynamicDataFirst(9, 2, []byte{1}); err != nil {
+	m.channels[11] = "other"
+	if err := m.handleDynamicDataFirst(11, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment: %v", err)
 	}
-	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 9}
+	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 11}
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(closePDU)); err != nil {
 		t.Fatalf("close: %v", err)
 	}
-	if m.hasRDPEIChannel || len(m.fragments) != 0 {
-		t.Fatalf("close did not clear state: channel=%t fragments=%#v", m.hasRDPEIChannel, m.fragments)
+	if len(m.channels) != 0 || len(m.fragments) != 0 {
+		t.Fatalf("close did not clear non-RDPEI state: channels=%#v fragments=%#v", m.channels, m.fragments)
 	}
 }
 

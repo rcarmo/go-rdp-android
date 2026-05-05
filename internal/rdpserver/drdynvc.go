@@ -22,8 +22,9 @@ const (
 
 	drdynvcCapsVersion1 uint16 = 0x0001
 
-	drdynvcCreateOK         uint32 = 0x00000000
-	drdynvcCreateNoListener uint32 = 0x80070490
+	drdynvcCreateOK            uint32 = 0x00000000
+	drdynvcCreateAlreadyExists uint32 = 0x800700b7
+	drdynvcCreateNoListener    uint32 = 0x80070490
 
 	channelFlagFirst uint32 = 0x00000001
 	channelFlagLast  uint32 = 0x00000002
@@ -39,6 +40,7 @@ type drdynvcManager struct {
 	staticChannelID uint16
 	rdpeiChannelID  uint32
 	hasRDPEIChannel bool
+	channels        map[uint32]string
 	fragments       map[uint32]*drdynvcFragment
 	touchLifecycle  *input.TouchLifecycleCoalescer
 	sink            input.Sink
@@ -72,7 +74,7 @@ type drdynvcHeader struct {
 }
 
 func newDRDYNVCManager(channels []clientChannel, sink input.Sink) *drdynvcManager {
-	m := &drdynvcManager{fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink}
+	m := &drdynvcManager{channels: make(map[uint32]string), fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink}
 	for _, ch := range channels {
 		if strings.EqualFold(ch.Name, drdynvcStaticChannelName) {
 			m.staticChannelID = ch.ID
@@ -104,7 +106,11 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		return m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(drdynvcCapsVersion1))
 	case drdynvcCmdCreate:
 		code := drdynvcCreateNoListener
-		if pdu.Name == rdpeiDynamicChannelName {
+		if existing := m.channels[pdu.ChannelID]; existing != "" {
+			code = drdynvcCreateAlreadyExists
+			tracef("drdynvc_create", "channel=%d name=%q accepted=false duplicate=%q", pdu.ChannelID, pdu.Name, existing)
+		} else if pdu.Name == rdpeiDynamicChannelName {
+			m.channels[pdu.ChannelID] = pdu.Name
 			m.rdpeiChannelID = pdu.ChannelID
 			m.hasRDPEIChannel = true
 			code = drdynvcCreateOK
@@ -125,9 +131,11 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		return m.handleDynamicDataFirst(pdu.ChannelID, pdu.Length, pdu.Data)
 	case drdynvcCmdClose:
 		tracef("drdynvc_close", "channel=%d rdpei=%t", pdu.ChannelID, pdu.ChannelID == m.rdpeiChannelID)
+		delete(m.channels, pdu.ChannelID)
 		delete(m.fragments, pdu.ChannelID)
 		if pdu.ChannelID == m.rdpeiChannelID {
 			m.hasRDPEIChannel = false
+			m.rdpeiChannelID = 0
 			m.touchLifecycle.Reset()
 		}
 	}
