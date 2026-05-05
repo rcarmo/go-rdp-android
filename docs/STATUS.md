@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-05
-Current evidence commit: `12f5965` (`Document current production readiness status`)
-Latest referenced CI run: `25360223007` (`main` CI, success)
+Current evidence commit: `ec088ea` (`Bound RDPEI dynamic channel buffers`)
+Latest referenced CI run: `25363180319` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -26,7 +26,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25360223007`:
+Latest checked artifact from CI run `25363180319`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
