@@ -91,6 +91,95 @@ func TestDRDYNVCVariableLengthChannelIDs(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+
+	capsServer, capsClient := net.Pipe()
+	defer capsServer.Close()
+	defer capsClient.Close()
+	capsDone := make(chan error, 1)
+	go func() {
+		capsDone <- m.handleStaticPDU(capsServer, buildStaticVirtualChannelPDU(buildDRDYNVCCapsPDU(drdynvcCapsVersion1)))
+	}()
+	capsResponse := readTestDomainPDUFromPipe(t, capsClient)
+	capsStatic, err := parseStaticVirtualChannelPDU(capsResponse.Data)
+	if err != nil {
+		t.Fatalf("parse caps static response: %v", err)
+	}
+	capsDVC, err := parseDRDYNVCPDU(capsStatic.Data)
+	if err != nil {
+		t.Fatalf("parse caps response: %v", err)
+	}
+	if capsDVC.Header.Cmd != drdynvcCmdCapability || capsDVC.Version != drdynvcCapsVersion1 || !m.capsReceived {
+		t.Fatalf("unexpected caps state response=%#v manager=%#v", capsDVC, m)
+	}
+	waitForDRDYNVCTestHandler(t, capsDone, "caps")
+
+	createServer, createClient := net.Pipe()
+	defer createServer.Close()
+	defer createClient.Close()
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
+	create = append(create, []byte(rdpeiDynamicChannelName)...)
+	create = append(create, 0)
+	createDone := make(chan error, 1)
+	go func() { createDone <- m.handleStaticPDU(createServer, buildStaticVirtualChannelPDU(create)) }()
+	createResponse := readTestDomainPDUFromPipe(t, createClient)
+	createStatic, err := parseStaticVirtualChannelPDU(createResponse.Data)
+	if err != nil {
+		t.Fatalf("parse create static response: %v", err)
+	}
+	if code := binary.LittleEndian.Uint32(createStatic.Data[2:6]); code != drdynvcCreateOK {
+		t.Fatalf("create response code = 0x%x", code)
+	}
+	scReadyResponse := readTestDomainPDUFromPipe(t, createClient)
+	scReadyStatic, err := parseStaticVirtualChannelPDU(scReadyResponse.Data)
+	if err != nil {
+		t.Fatalf("parse SC_READY static response: %v", err)
+	}
+	scReadyDVC, err := parseDRDYNVCPDU(scReadyStatic.Data)
+	if err != nil {
+		t.Fatalf("parse SC_READY DVC: %v", err)
+	}
+	if scReadyDVC.ChannelID != 7 {
+		t.Fatalf("SC_READY channel = %d", scReadyDVC.ChannelID)
+	}
+	if rdpei, err := parseRDPEIPDU(scReadyDVC.Data); err != nil || rdpei.SCReady == nil {
+		t.Fatalf("expected SC_READY, got %#v err=%v", rdpei, err)
+	}
+	waitForDRDYNVCTestHandler(t, createDone, "create")
+
+	csReady := make([]byte, 10)
+	binary.LittleEndian.PutUint32(csReady[0:4], rdpeiCSReadyShowTouchVisuals)
+	binary.LittleEndian.PutUint32(csReady[4:8], rdpeiProtocolV300)
+	binary.LittleEndian.PutUint16(csReady[8:10], 5)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(7, withRDPEIHeader(rdpeiEventCSReady, csReady)))); err != nil {
+		t.Fatalf("CS_READY: %v", err)
+	}
+
+	down := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(2, 100, 200, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
+	first := buildDRDYNVCDataFirstPDUForTest(7, uint32(len(down)), down[:5])
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(first)); err != nil {
+		t.Fatalf("touch down data-first: %v", err)
+	}
+	if len(m.fragments) != 1 {
+		t.Fatalf("expected one pending fragment: %#v", m.fragments)
+	}
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(7, down[5:]))); err != nil {
+		t.Fatalf("touch down completion: %v", err)
+	}
+	up := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(2, 105, 205, rdpeiContactFlagUp|rdpeiContactFlagInRange))
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(7, up))); err != nil {
+		t.Fatalf("touch up: %v", err)
+	}
+	if len(m.fragments) != 0 {
+		t.Fatalf("fragments not cleared after integration sequence: %#v", m.fragments)
+	}
+	if len(sink.frames) != 2 || sink.frames[0][0].Flags&input.TouchDown == 0 || sink.frames[1][0].Flags&input.TouchUp == 0 {
+		t.Fatalf("expected down/up touch frames, got %#v", sink.frames)
+	}
+}
+
 func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	server, client := net.Pipe()
 	defer server.Close()
@@ -531,6 +620,18 @@ func readTestDomainPDUFromPipe(t *testing.T, conn net.Conn) testDomainPDU {
 		t.Fatalf("parse domain: %v", err)
 	}
 	return testDomainPDU{Application: pdu.Application, ChannelID: pdu.ChannelID, Data: pdu.Data}
+}
+
+func waitForDRDYNVCTestHandler(t *testing.T, done <-chan error, name string) {
+	t.Helper()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("%s handler: %v", name, err)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("%s handler did not return", name)
+	}
 }
 
 func buildDRDYNVCDataFirstPDUForTest(channelID uint32, totalLength uint32, data []byte) []byte {
