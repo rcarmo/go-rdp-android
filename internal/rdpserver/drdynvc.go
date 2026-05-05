@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/input"
 )
@@ -26,6 +27,12 @@ const (
 
 	channelFlagFirst uint32 = 0x00000001
 	channelFlagLast  uint32 = 0x00000002
+
+	drdynvcMaxStaticPayload = 1024 * 1024
+	drdynvcMaxPDUSize       = 1024 * 1024
+	drdynvcMaxFragmentSize  = 1024 * 1024
+	drdynvcMaxFragments     = 8
+	drdynvcFragmentTTL      = 30 * time.Second
 )
 
 type drdynvcManager struct {
@@ -38,8 +45,9 @@ type drdynvcManager struct {
 }
 
 type drdynvcFragment struct {
-	expected uint32
-	data     []byte
+	expected  uint32
+	data      []byte
+	updatedAt time.Time
 }
 
 type staticVirtualChannelPDU struct {
@@ -77,6 +85,7 @@ func newDRDYNVCManager(channels []clientChannel, sink input.Sink) *drdynvcManage
 func (m *drdynvcManager) enabled() bool { return m != nil && m.staticChannelID != 0 }
 
 func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
+	m.cleanupFragments(time.Now())
 	staticPDU, err := parseStaticVirtualChannelPDU(payload)
 	if err != nil {
 		return err
@@ -91,6 +100,7 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 	tracef("drdynvc_pdu", "cmd=%d channel=%d name=%q data_len=%d", pdu.Header.Cmd, pdu.ChannelID, pdu.Name, len(pdu.Data))
 	switch pdu.Header.Cmd {
 	case drdynvcCmdCapability:
+		tracef("drdynvc_caps", "version=%d", pdu.Version)
 		return m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(drdynvcCapsVersion1))
 	case drdynvcCmdCreate:
 		code := drdynvcCreateNoListener
@@ -98,6 +108,9 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 			m.rdpeiChannelID = pdu.ChannelID
 			m.hasRDPEIChannel = true
 			code = drdynvcCreateOK
+			tracef("drdynvc_create", "channel=%d name=%q accepted=true", pdu.ChannelID, pdu.Name)
+		} else {
+			tracef("drdynvc_create", "channel=%d name=%q accepted=false", pdu.ChannelID, pdu.Name)
 		}
 		if err := m.writeStaticPayload(conn, buildDRDYNVCCreateResponsePDU(pdu.ChannelID, code)); err != nil {
 			return err
@@ -108,8 +121,11 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 	case drdynvcCmdData:
 		return m.handleDynamicData(pdu.ChannelID, pdu.Data)
 	case drdynvcCmdDataFirst:
+		tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
 		return m.handleDynamicDataFirst(pdu.ChannelID, pdu.Length, pdu.Data)
 	case drdynvcCmdClose:
+		tracef("drdynvc_close", "channel=%d rdpei=%t", pdu.ChannelID, pdu.ChannelID == m.rdpeiChannelID)
+		delete(m.fragments, pdu.ChannelID)
 		if pdu.ChannelID == m.rdpeiChannelID {
 			m.hasRDPEIChannel = false
 			m.touchLifecycle.Reset()
@@ -119,19 +135,38 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 }
 
 func (m *drdynvcManager) handleDynamicDataFirst(channelID, expected uint32, data []byte) error {
+	m.cleanupFragments(time.Now())
+	if expected > drdynvcMaxFragmentSize {
+		return fmt.Errorf("drdynvc data-first length %d exceeds maximum %d", expected, drdynvcMaxFragmentSize)
+	}
+	if len(data) > drdynvcMaxFragmentSize {
+		return fmt.Errorf("drdynvc data-first fragment length %d exceeds maximum %d", len(data), drdynvcMaxFragmentSize)
+	}
 	if expected < uint32(len(data)) {
 		return fmt.Errorf("drdynvc data-first length %d smaller than fragment %d", expected, len(data))
 	}
 	if expected == uint32(len(data)) {
 		return m.handleDynamicData(channelID, data)
 	}
-	m.fragments[channelID] = &drdynvcFragment{expected: expected, data: append([]byte(nil), data...)}
+	if _, exists := m.fragments[channelID]; !exists && len(m.fragments) >= drdynvcMaxFragments {
+		return fmt.Errorf("drdynvc pending fragments %d exceeds maximum %d", len(m.fragments)+1, drdynvcMaxFragments)
+	}
+	m.fragments[channelID] = &drdynvcFragment{expected: expected, data: append([]byte(nil), data...), updatedAt: time.Now()}
 	return nil
 }
 
 func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error {
+	m.cleanupFragments(time.Now())
+	if len(data) > drdynvcMaxFragmentSize {
+		return fmt.Errorf("drdynvc data length %d exceeds maximum %d", len(data), drdynvcMaxFragmentSize)
+	}
 	if frag := m.fragments[channelID]; frag != nil {
+		if len(frag.data)+len(data) > drdynvcMaxFragmentSize {
+			delete(m.fragments, channelID)
+			return fmt.Errorf("drdynvc fragment length %d exceeds maximum %d", len(frag.data)+len(data), drdynvcMaxFragmentSize)
+		}
 		frag.data = append(frag.data, data...)
+		frag.updatedAt = time.Now()
 		if uint32(len(frag.data)) < frag.expected {
 			return nil
 		}
@@ -145,12 +180,27 @@ func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error 
 	if !m.hasRDPEIChannel || channelID != m.rdpeiChannelID {
 		return nil
 	}
+	if len(data) > rdpeiMaxPDUSize {
+		return fmt.Errorf("RDPEI dynamic data length %d exceeds maximum %d", len(data), rdpeiMaxPDUSize)
+	}
 	pdu, err := parseRDPEIPDU(data)
 	if err != nil {
 		return fmt.Errorf("parse RDPEI dynamic data: %w", err)
 	}
 	traceRDPEIPDU(pdu)
 	return dispatchRDPEITouchEvent(pdu, m.sink, m.touchLifecycle)
+}
+
+func (m *drdynvcManager) cleanupFragments(now time.Time) {
+	if m == nil || len(m.fragments) == 0 {
+		return
+	}
+	for channelID, frag := range m.fragments {
+		if now.Sub(frag.updatedAt) > drdynvcFragmentTTL {
+			delete(m.fragments, channelID)
+			tracef("drdynvc_fragment_expired", "channel=%d expected=%d buffered=%d", channelID, frag.expected, len(frag.data))
+		}
+	}
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
@@ -232,8 +282,14 @@ func parseStaticVirtualChannelPDU(data []byte) (*staticVirtualChannelPDU, error)
 		return nil, fmt.Errorf("short static virtual channel PDU")
 	}
 	length := binary.LittleEndian.Uint32(data[0:4])
+	if length > drdynvcMaxStaticPayload {
+		return nil, fmt.Errorf("static virtual channel length %d exceeds maximum %d", length, drdynvcMaxStaticPayload)
+	}
 	flags := binary.LittleEndian.Uint32(data[4:8])
 	payload := data[8:]
+	if len(payload) > drdynvcMaxStaticPayload {
+		return nil, fmt.Errorf("static virtual channel payload length %d exceeds maximum %d", len(payload), drdynvcMaxStaticPayload)
+	}
 	if flags&channelFlagLast != 0 && length != uint32(len(payload)) {
 		return nil, fmt.Errorf("static virtual channel length mismatch: header=%d payload=%d", length, len(payload))
 	}
@@ -251,6 +307,9 @@ func buildStaticVirtualChannelPDU(payload []byte) []byte {
 func parseDRDYNVCPDU(data []byte) (*drdynvcPDU, error) {
 	if len(data) < 1 {
 		return nil, fmt.Errorf("short drdynvc PDU")
+	}
+	if len(data) > drdynvcMaxPDUSize {
+		return nil, fmt.Errorf("drdynvc PDU length %d exceeds maximum %d", len(data), drdynvcMaxPDUSize)
 	}
 	header := drdynvcHeader{CbChID: data[0] & 0x03, Sp: (data[0] >> 2) & 0x03, Cmd: (data[0] >> 4) & 0x0f}
 	cur := &bytesCursor{data: data[1:]}

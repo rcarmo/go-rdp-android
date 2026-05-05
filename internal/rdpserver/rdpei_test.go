@@ -195,11 +195,14 @@ func TestParseRDPEIPDUErrors(t *testing.T) {
 		data []byte
 	}{
 		{name: "short header", data: []byte{0x01}},
+		{name: "oversized pdu", data: withOversizedRDPEIHeaderForTest(rdpeiMaxPDUSize + 1)},
 		{name: "short declared length", data: []byte{0x01, 0, 0x05, 0, 0, 0}},
 		{name: "length mismatch", data: []byte{0x02, 0, 0x10, 0, 0, 0}},
 		{name: "unsupported event", data: withRDPEIHeader(0xffff, nil)},
 		{name: "truncated CS_READY", data: withRDPEIHeader(rdpeiEventCSReady, []byte{1, 2, 3})},
 		{name: "truncated touch varint", data: withRDPEIHeader(rdpeiEventTouch, []byte{0xff})},
+		{name: "too many touch frames", data: withRDPEIHeader(rdpeiEventTouch, append(rdpeiTestVarUint32(0), rdpeiTestVarUint16(rdpeiMaxTouchFrames+1)...))},
+		{name: "too many contacts", data: withRDPEIHeader(rdpeiEventTouch, rdpeiTouchCountBoundsPayloadForTest(1, rdpeiMaxContactsPerFrame+1))},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -224,6 +227,22 @@ func withRDPEIHeader(eventID uint16, payload []byte) []byte {
 	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out))) // #nosec G115 -- test data is bounded.
 	copy(out[6:], payload)
 	return out
+}
+
+func withOversizedRDPEIHeaderForTest(length int) []byte {
+	out := make([]byte, length)
+	binary.LittleEndian.PutUint16(out[0:2], rdpeiEventTouch)
+	binary.LittleEndian.PutUint32(out[2:6], uint32(length)) // #nosec G115 -- test data is bounded.
+	return out
+}
+
+func rdpeiTouchCountBoundsPayloadForTest(frameCount, contactCount uint16) []byte {
+	payload := []byte{}
+	payload = append(payload, rdpeiTestVarUint32(0)...)
+	payload = append(payload, rdpeiTestVarUint16(frameCount)...)
+	payload = append(payload, rdpeiTestVarUint16(contactCount)...)
+	payload = append(payload, rdpeiTestVarUint64(0)...)
+	return payload
 }
 
 func le16(v uint16) []byte {

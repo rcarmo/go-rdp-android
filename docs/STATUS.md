@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-05  
-Current evidence commit: `ca9e3a7` (`Coalesce RDPEI touch lifecycle events`)  
-Latest referenced CI run: `25360083773` (`main` CI, success)
+Last updated: 2026-05-05
+Current evidence commit: `12f5965` (`Document current production readiness status`)
+Latest referenced CI run: `25360223007` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -19,14 +19,14 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:rdp` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
-| RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed. |
-| `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing and fragment assembly. |
+| RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds. |
+| `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, size bounds, fragment limits, and stale-fragment cleanup. |
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering. |
 | Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. |
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25360083773`:
+Latest checked artifact from CI run `25360223007`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -44,7 +44,7 @@ Latest checked artifact from CI run `25360083773`:
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Production credential storage/policy is pending. |
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
 | Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding; Android Accessibility behavior still needs device hardening. |
-| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses and routes contacts through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
+| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
 | Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Physical-device validation pending. |
 
 ## Production blockers

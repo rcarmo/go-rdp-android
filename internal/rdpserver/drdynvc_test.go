@@ -199,6 +199,57 @@ func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCSizeBounds(t *testing.T) {
+	if _, err := parseStaticVirtualChannelPDU(staticVirtualChannelHeaderForTest(drdynvcMaxStaticPayload+1, channelFlagFirst|channelFlagLast)); err == nil {
+		t.Fatal("expected oversized static virtual channel length error")
+	}
+	if _, err := parseDRDYNVCPDU(make([]byte, drdynvcMaxPDUSize+1)); err == nil {
+		t.Fatal("expected oversized drdynvc PDU error")
+	}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	if err := m.handleDynamicDataFirst(1, drdynvcMaxFragmentSize+1, []byte{1}); err == nil {
+		t.Fatal("expected oversized data-first length error")
+	}
+}
+
+func TestDRDYNVCFragmentLimitAndCleanup(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	for i := uint32(1); i <= drdynvcMaxFragments; i++ {
+		if err := m.handleDynamicDataFirst(i, 2, []byte{1}); err != nil {
+			t.Fatalf("fragment %d: %v", i, err)
+		}
+	}
+	if err := m.handleDynamicDataFirst(99, 2, []byte{1}); err == nil {
+		t.Fatal("expected pending fragment limit error")
+	}
+	for _, frag := range m.fragments {
+		frag.updatedAt = time.Now().Add(-drdynvcFragmentTTL - time.Second)
+	}
+	m.cleanupFragments(time.Now())
+	if len(m.fragments) != 0 {
+		t.Fatalf("expected stale fragments to be cleaned up: %#v", m.fragments)
+	}
+	if err := m.handleDynamicDataFirst(99, 2, []byte{1}); err != nil {
+		t.Fatalf("fragment after cleanup: %v", err)
+	}
+}
+
+func TestDRDYNVCCloseClearsRDPEIStateAndFragments(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 9
+	if err := m.handleDynamicDataFirst(9, 2, []byte{1}); err != nil {
+		t.Fatalf("fragment: %v", err)
+	}
+	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 9}
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(closePDU)); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if m.hasRDPEIChannel || len(m.fragments) != 0 {
+		t.Fatalf("close did not clear state: channel=%t fragments=%#v", m.hasRDPEIChannel, m.fragments)
+	}
+}
+
 func TestParseDRDYNVCErrors(t *testing.T) {
 	tests := []struct {
 		name string
@@ -253,6 +304,13 @@ func buildDRDYNVCDataFirstPDUForTest(channelID uint32, totalLength uint32, data 
 	out = appendDVCChannelID(out, cb, channelID)
 	out = appendLE32Bytes(out, totalLength)
 	out = append(out, data...)
+	return out
+}
+
+func staticVirtualChannelHeaderForTest(length uint32, flags uint32) []byte {
+	out := make([]byte, 8)
+	binary.LittleEndian.PutUint32(out[0:4], length)
+	binary.LittleEndian.PutUint32(out[4:8], flags)
 	return out
 }
 

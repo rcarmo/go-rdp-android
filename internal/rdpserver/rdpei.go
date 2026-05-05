@@ -35,6 +35,10 @@ const (
 	rdpeiContactFlagInRange   uint32 = 0x0008
 	rdpeiContactFlagInContact uint32 = 0x0010
 	rdpeiContactFlagCanceled  uint32 = 0x0020
+
+	rdpeiMaxPDUSize          = 256 * 1024
+	rdpeiMaxTouchFrames      = 256
+	rdpeiMaxContactsPerFrame = 64
 )
 
 type rdpeiPDU struct {
@@ -102,6 +106,9 @@ type rdpeiCursor struct {
 func parseRDPEIPDU(data []byte) (*rdpeiPDU, error) {
 	if len(data) < 6 {
 		return nil, fmt.Errorf("RDPEI PDU too short: %d", len(data))
+	}
+	if len(data) > rdpeiMaxPDUSize {
+		return nil, fmt.Errorf("RDPEI PDU length %d exceeds maximum %d", len(data), rdpeiMaxPDUSize)
 	}
 	header := rdpeiHeader{
 		EventID: binary.LittleEndian.Uint16(data[0:2]),
@@ -181,6 +188,9 @@ func parseRDPEITouchEvent(cur *rdpeiCursor) (*rdpeiTouchEventPDU, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read RDPEI touch frame count: %w", err)
 	}
+	if frameCount > rdpeiMaxTouchFrames {
+		return nil, fmt.Errorf("RDPEI touch frame count %d exceeds maximum %d", frameCount, rdpeiMaxTouchFrames)
+	}
 	frames := make([]rdpeiTouchFrame, 0, frameCount)
 	for i := 0; i < int(frameCount); i++ {
 		frame, err := parseRDPEITouchFrame(cur)
@@ -196,6 +206,9 @@ func parseRDPEITouchFrame(cur *rdpeiCursor) (rdpeiTouchFrame, error) {
 	contactCount, err := cur.readVarUint16()
 	if err != nil {
 		return rdpeiTouchFrame{}, fmt.Errorf("read contact count: %w", err)
+	}
+	if contactCount > rdpeiMaxContactsPerFrame {
+		return rdpeiTouchFrame{}, fmt.Errorf("RDPEI touch contact count %d exceeds maximum %d", contactCount, rdpeiMaxContactsPerFrame)
 	}
 	frameOffset, err := cur.readVarUint64()
 	if err != nil {
