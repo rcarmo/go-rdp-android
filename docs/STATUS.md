@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-05
-Current evidence commit: `8bdc908` (`Refresh status after DVC state gate`)
-Latest referenced CI run: `25400741208` (`main` CI, success)
+Current evidence commit: `6b21e1b` (`Add synthetic RDPEI DVC sequence test`)
+Latest referenced CI run: `25404382621` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -26,7 +26,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25400741208`:
+Latest checked artifact from CI run `25404382621`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
