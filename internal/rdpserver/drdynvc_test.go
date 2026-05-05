@@ -303,6 +303,53 @@ func TestDRDYNVCManagerDropsStrayTouchLifecycleEvents(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCManagerIgnoresUnexpectedDataChannel(t *testing.T) {
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+	m.channels[9] = rdpeiDynamicChannelName
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 9
+	data := buildDRDYNVCDataPDU(10, withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 10, 20, rdpeiContactFlagDown)))
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err != nil {
+		t.Fatalf("unexpected channel data: %v", err)
+	}
+	if len(sink.frames) != 0 {
+		t.Fatalf("unexpected channel should not dispatch touch frames: %#v", sink.frames)
+	}
+}
+
+func TestDRDYNVCManagerHandlesMultipleSimultaneousFragments(t *testing.T) {
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+	m.channels[9] = rdpeiDynamicChannelName
+	m.channels[10] = "other"
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 9
+	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 10, 20, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
+	other := []byte{1, 2, 3, 4}
+	if err := m.handleDynamicDataFirst(9, uint32(len(rdpei)), rdpei[:3]); err != nil {
+		t.Fatalf("rdpei data-first: %v", err)
+	}
+	if err := m.handleDynamicDataFirst(10, uint32(len(other)), other[:2]); err != nil {
+		t.Fatalf("other data-first: %v", err)
+	}
+	if len(m.fragments) != 2 {
+		t.Fatalf("expected two pending fragments: %#v", m.fragments)
+	}
+	if err := m.handleDynamicData(10, other[2:]); err != nil {
+		t.Fatalf("other completion: %v", err)
+	}
+	if len(sink.frames) != 0 || len(m.fragments) != 1 {
+		t.Fatalf("other channel should complete without RDPEI dispatch frames=%#v fragments=%#v", sink.frames, m.fragments)
+	}
+	if err := m.handleDynamicData(9, rdpei[3:]); err != nil {
+		t.Fatalf("rdpei completion: %v", err)
+	}
+	if len(m.fragments) != 0 || len(sink.frames) != 1 {
+		t.Fatalf("RDPEI channel should dispatch and clear fragments frames=%#v fragments=%#v", sink.frames, m.fragments)
+	}
+}
+
 func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
