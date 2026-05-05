@@ -429,6 +429,31 @@ func TestDRDYNVCManagerHandlesRDPEIData(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCManagerPreservesRDPEIOptionalContactMetadata(t *testing.T) {
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
+	payload := rdpeiTouchEventPayloadWithOptionalFieldsForTest(8, 123, 456, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
+	data := buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, payload))
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err != nil {
+		t.Fatalf("handle optional metadata: %v", err)
+	}
+	if len(sink.frames) != 1 || len(sink.frames[0]) != 1 {
+		t.Fatalf("expected one touch frame, got %#v", sink.frames)
+	}
+	contact := sink.frames[0][0]
+	if contact.Rect == nil || *contact.Rect != (input.TouchRect{Left: -4, Top: -5, Right: 6, Bottom: 7}) {
+		t.Fatalf("optional rect was not preserved: %#v", contact.Rect)
+	}
+	if contact.Orientation == nil || *contact.Orientation != 45 {
+		t.Fatalf("optional orientation was not preserved: %#v", contact.Orientation)
+	}
+	if contact.Pressure == nil || *contact.Pressure != 512 {
+		t.Fatalf("optional pressure was not preserved: %#v", contact.Pressure)
+	}
+}
+
 func TestDRDYNVCManagerDropsStrayTouchLifecycleEvents(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
@@ -663,16 +688,32 @@ func markRDPEIChannelForTest(m *drdynvcManager, channelID uint32) {
 }
 
 func rdpeiTouchEventPayloadForTest(contactID uint8, x, y int32, flags uint32) []byte {
+	return rdpeiTouchEventPayloadWithFieldsForTest(contactID, x, y, flags, 0, nil)
+}
+
+func rdpeiTouchEventPayloadWithOptionalFieldsForTest(contactID uint8, x, y int32, flags uint32) []byte {
+	optional := []byte{}
+	optional = append(optional, rdpeiTestVarInt16(-4)...)
+	optional = append(optional, rdpeiTestVarInt16(-5)...)
+	optional = append(optional, rdpeiTestVarInt16(6)...)
+	optional = append(optional, rdpeiTestVarInt16(7)...)
+	optional = append(optional, rdpeiTestVarUint32(45)...)
+	optional = append(optional, rdpeiTestVarUint32(512)...)
+	return rdpeiTouchEventPayloadWithFieldsForTest(contactID, x, y, flags, rdpeiTouchContactRectPresent|rdpeiTouchContactOrientationPresent|rdpeiTouchContactPressurePresent, optional)
+}
+
+func rdpeiTouchEventPayloadWithFieldsForTest(contactID uint8, x, y int32, flags uint32, fieldsPresent uint16, optional []byte) []byte {
 	payload := []byte{}
 	payload = append(payload, rdpeiTestVarUint32(0)...)
 	payload = append(payload, rdpeiTestVarUint16(1)...)
 	payload = append(payload, rdpeiTestVarUint16(1)...)
 	payload = append(payload, rdpeiTestVarUint64(0)...)
 	payload = append(payload, contactID)
-	payload = append(payload, rdpeiTestVarUint16(0)...)
+	payload = append(payload, rdpeiTestVarUint16(fieldsPresent)...)
 	payload = append(payload, rdpeiTestVarInt32(x)...)
 	payload = append(payload, rdpeiTestVarInt32(y)...)
 	payload = append(payload, rdpeiTestVarUint32(flags)...)
+	payload = append(payload, optional...)
 	return payload
 }
 

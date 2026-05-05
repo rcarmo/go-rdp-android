@@ -273,7 +273,7 @@ func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink, lifecycle *input.To
 	for _, frame := range pdu.TouchEvent.Frames {
 		contacts := make([]input.TouchContact, 0, len(frame.Contacts))
 		for _, contact := range frame.Contacts {
-			contacts = append(contacts, input.TouchContact{ID: contact.ContactID, X: int(contact.X), Y: int(contact.Y), Flags: rdpeiTouchFlagsToInput(contact.Flags)})
+			contacts = append(contacts, rdpeiContactToInput(contact))
 		}
 		if lifecycle != nil {
 			contacts = lifecycle.ApplyFrame(contacts)
@@ -286,6 +286,27 @@ func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink, lifecycle *input.To
 		}
 	}
 	return nil
+}
+
+func rdpeiContactToInput(contact rdpeiTouchContact) input.TouchContact {
+	out := input.TouchContact{ID: contact.ContactID, X: int(contact.X), Y: int(contact.Y), Flags: rdpeiTouchFlagsToInput(contact.Flags)}
+	if contact.ContactRect != nil {
+		out.Rect = &input.TouchRect{
+			Left:   int(contact.ContactRect.Left),
+			Top:    int(contact.ContactRect.Top),
+			Right:  int(contact.ContactRect.Right),
+			Bottom: int(contact.ContactRect.Bottom),
+		}
+	}
+	if contact.Orientation != nil {
+		orientation := *contact.Orientation
+		out.Orientation = &orientation
+	}
+	if contact.Pressure != nil {
+		pressure := *contact.Pressure
+		out.Pressure = &pressure
+	}
+	return out
 }
 
 func rdpeiTouchFlagsToInput(flags uint32) input.TouchFlags {

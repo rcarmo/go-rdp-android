@@ -65,6 +65,27 @@ func TestTouchLifecycleCoalescerCancelRemovesActiveContact(t *testing.T) {
 	}
 }
 
+func TestTouchLifecycleCoalescerPreservesOptionalMetadata(t *testing.T) {
+	c := NewTouchLifecycleCoalescer()
+	orientation := uint32(90)
+	pressure := uint32(512)
+	rect := &TouchRect{Left: -1, Top: -2, Right: 3, Bottom: 4}
+	out := c.ApplyFrame([]TouchContact{{ID: 5, X: 10, Y: 20, Flags: TouchDown | TouchInContact, Rect: rect, Orientation: &orientation, Pressure: &pressure}})
+	if len(out) != 1 {
+		t.Fatalf("expected metadata contact, got %#v", out)
+	}
+	got := out[0]
+	if got.Rect == nil || *got.Rect != *rect || got.Orientation == nil || *got.Orientation != orientation || got.Pressure == nil || *got.Pressure != pressure {
+		t.Fatalf("optional metadata was not preserved: %#v", got)
+	}
+
+	updatedPressure := uint32(768)
+	out = c.ApplyFrame([]TouchContact{{ID: 5, X: 11, Y: 21, Flags: TouchUpdate | TouchInContact, Pressure: &updatedPressure}})
+	if len(out) != 1 || out[0].Pressure == nil || *out[0].Pressure != updatedPressure {
+		t.Fatalf("updated optional metadata was not preserved: %#v", out)
+	}
+}
+
 func TestTouchLifecycleCoalescerPreservesMultiContactFrame(t *testing.T) {
 	c := NewTouchLifecycleCoalescer()
 	out := c.ApplyFrame([]TouchContact{

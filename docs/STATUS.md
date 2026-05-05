@@ -21,7 +21,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds. |
 | `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, caps-before-lifecycle enforcement, unsupported/duplicate/second RDPEI create rejection, size bounds, fragment limits, stale-fragment cleanup, unexpected channel IDs, simultaneous fragments, close/reopen, variable-length channel IDs, and synthetic caps→create→RDPEI touch integration sequence. |
-| RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering. |
+| RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
 | Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. |
 
 ## FreeRDP compatibility snapshot
@@ -44,7 +44,7 @@ Latest checked artifact from CI run `25404505340`:
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Production credential storage/policy is pending. |
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
 | Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding; Android Accessibility behavior still needs device hardening. |
-| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
+| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
 | Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Physical-device validation pending. |
 
 ## Production blockers
