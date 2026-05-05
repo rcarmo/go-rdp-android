@@ -149,12 +149,37 @@ func TestDRDYNVCManagerHandlesRDPEIData(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCManagerDropsStrayTouchLifecycleEvents(t *testing.T) {
+	sink := &recordingTouchSink{}
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = 9
+	strayUpdate := rdpeiTouchEventPayloadForTest(4, 11, 22, rdpeiContactFlagUpdate|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, strayUpdate)))); err != nil {
+		t.Fatalf("handle stray update: %v", err)
+	}
+	if len(sink.frames) != 0 {
+		t.Fatalf("stray update should not dispatch: %#v", sink.frames)
+	}
+	down := rdpeiTouchEventPayloadForTest(4, 11, 22, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, down)))); err != nil {
+		t.Fatalf("handle down: %v", err)
+	}
+	up := rdpeiTouchEventPayloadForTest(4, 12, 23, rdpeiContactFlagUp|rdpeiContactFlagInRange)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, up)))); err != nil {
+		t.Fatalf("handle up: %v", err)
+	}
+	if len(sink.frames) != 2 || sink.frames[0][0].Flags&input.TouchDown == 0 || sink.frames[1][0].Flags&input.TouchUp == 0 {
+		t.Fatalf("expected down/up after stray update, got %#v", sink.frames)
+	}
+}
+
 func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
 	m.hasRDPEIChannel = true
 	m.rdpeiChannelID = 9
-	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 100, 200, rdpeiContactFlagUp))
+	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 100, 200, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
 	firstPayload := buildDRDYNVCDataFirstPDUForTest(9, uint32(len(rdpei)), rdpei[:4])
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(firstPayload)); err != nil {
 		t.Fatalf("data first: %v", err)
@@ -169,7 +194,7 @@ func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	if len(m.fragments) != 0 {
 		t.Fatalf("fragments not cleared: %#v", m.fragments)
 	}
-	if len(sink.frames) != 1 || sink.frames[0][0].Flags&input.TouchUp == 0 {
+	if len(sink.frames) != 1 || sink.frames[0][0].Flags&input.TouchDown == 0 {
 		t.Fatalf("assembled RDPEI touch was not dispatched: %#v", sink.frames)
 	}
 }

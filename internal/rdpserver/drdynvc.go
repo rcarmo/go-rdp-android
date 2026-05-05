@@ -33,6 +33,7 @@ type drdynvcManager struct {
 	rdpeiChannelID  uint32
 	hasRDPEIChannel bool
 	fragments       map[uint32]*drdynvcFragment
+	touchLifecycle  *input.TouchLifecycleCoalescer
 	sink            input.Sink
 }
 
@@ -63,7 +64,7 @@ type drdynvcHeader struct {
 }
 
 func newDRDYNVCManager(channels []clientChannel, sink input.Sink) *drdynvcManager {
-	m := &drdynvcManager{fragments: make(map[uint32]*drdynvcFragment), sink: sink}
+	m := &drdynvcManager{fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink}
 	for _, ch := range channels {
 		if strings.EqualFold(ch.Name, drdynvcStaticChannelName) {
 			m.staticChannelID = ch.ID
@@ -111,6 +112,7 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 	case drdynvcCmdClose:
 		if pdu.ChannelID == m.rdpeiChannelID {
 			m.hasRDPEIChannel = false
+			m.touchLifecycle.Reset()
 		}
 	}
 	return nil
@@ -148,7 +150,7 @@ func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error 
 		return fmt.Errorf("parse RDPEI dynamic data: %w", err)
 	}
 	traceRDPEIPDU(pdu)
-	return dispatchRDPEITouchEvent(pdu, m.sink)
+	return dispatchRDPEITouchEvent(pdu, m.sink, m.touchLifecycle)
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
@@ -160,7 +162,7 @@ func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error
 	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
 }
 
-func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink) error {
+func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink, lifecycle *input.TouchLifecycleCoalescer) error {
 	if pdu == nil || pdu.TouchEvent == nil || sink == nil {
 		return nil
 	}
@@ -172,6 +174,12 @@ func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink) error {
 		contacts := make([]input.TouchContact, 0, len(frame.Contacts))
 		for _, contact := range frame.Contacts {
 			contacts = append(contacts, input.TouchContact{ID: contact.ContactID, X: int(contact.X), Y: int(contact.Y), Flags: rdpeiTouchFlagsToInput(contact.Flags)})
+		}
+		if lifecycle != nil {
+			contacts = lifecycle.ApplyFrame(contacts)
+		}
+		if len(contacts) == 0 {
+			continue
 		}
 		if err := touchSink.TouchFrame(contacts); err != nil {
 			return err
