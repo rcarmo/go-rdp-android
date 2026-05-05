@@ -59,6 +59,7 @@ docs/                            Architecture, testing, performance and release 
 ## Documentation
 
 - [Documentation index](docs/index.md)
+- [Current project status](docs/STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Android integration](docs/ANDROID.md)
 - [Testing and CI](docs/TESTING.md)
@@ -122,6 +123,14 @@ Default push/PR CI runs:
 - Android debug APK build and inspection.
 - gomobile AAR build, API verification, and Go-backed APK build.
 - Blocking FreeRDP compatibility probe requiring bitmap/update streaming evidence.
+
+Current blocking FreeRDP compatibility signals are tracked in [docs/STATUS.md](docs/STATUS.md):
+
+| Mode | Active | Bitmap/update | Fast-Path input | Screenshot | Current expected exit |
+| --- | --- | --- | --- | --- | --- |
+| `/sec:rdp` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
+| `/sec:tls` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
+| `/sec:nla` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
 
 Manual emulator UX run:
 

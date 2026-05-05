@@ -11,6 +11,7 @@ Start here when working on `go-rdp-android`.
 
 ## Validation and operations
 
+- [STATUS](STATUS.md) — compact current CI evidence, production-readiness matrix, blockers, and documentation update policy.
 - [TESTING](TESTING.md) — CI matrix, emulator UX tests, Gherkin/Playwright report pipeline, and artifact map.
 - [DEBUGGING](DEBUGGING.md) — protocol, Android, gomobile, emulator, input, UX report, performance, and release troubleshooting.
 - [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics, baselines, and optimization workstreams.

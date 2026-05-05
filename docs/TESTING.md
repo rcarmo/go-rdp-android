@@ -32,7 +32,7 @@ Default push/PR CI runs without a physical Android device:
 - Go-backed APK build against `mobile.aar` and native library/content inspection.
 - FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
-The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and remain connected until the CI timeout terminates the client (`exit_code=124`). The NLA mode uses static credentials (`runner` / `secret`) and exercises CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client.
+The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and remain connected until the CI timeout terminates the client (`exit_code=124`). The NLA mode uses static credentials (`runner` / `secret`) and exercises CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client. The current human-readable status matrix for these gates lives in [STATUS](STATUS.md) and should be refreshed whenever gate semantics or evidence changes.
 
 ## Manual and tag-driven emulator UX testing
 
