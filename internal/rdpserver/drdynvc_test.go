@@ -97,6 +97,7 @@ func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	defer client.Close()
 
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	markDRDYNVCCapsForTest(m)
 	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
 	create = append(create, []byte(rdpeiDynamicChannelName)...)
 	create = append(create, 0)
@@ -153,9 +154,8 @@ func TestDRDYNVCManagerRejectsDuplicateCreate(t *testing.T) {
 	defer client.Close()
 
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
-	m.channels[7] = rdpeiDynamicChannelName
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 7
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 7)
 	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
 	create = append(create, []byte(rdpeiDynamicChannelName)...)
 	create = append(create, 0)
@@ -186,12 +186,75 @@ func TestDRDYNVCManagerRejectsDuplicateCreate(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCManagerRequiresCapsBeforeLifecycleCommands(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 7}
+	create = append(create, []byte(rdpeiDynamicChannelName)...)
+	create = append(create, 0)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(create)); err == nil {
+		t.Fatal("expected create before caps to fail")
+	}
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(7, []byte{1}))); err == nil {
+		t.Fatal("expected data before caps to fail")
+	}
+	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 7}
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(closePDU)); err == nil {
+		t.Fatal("expected close before caps to fail")
+	}
+}
+
+func TestDRDYNVCManagerRejectsUnsupportedCapsVersion(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCCapsPDU(0))); err == nil {
+		t.Fatal("expected unsupported caps version error")
+	}
+	if m.capsReceived || m.negotiatedCapsVersion != 0 {
+		t.Fatalf("unsupported caps should not update state: %#v", m)
+	}
+}
+
+func TestDRDYNVCManagerRejectsSecondRDPEIChannel(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 7)
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 8}
+	create = append(create, []byte(rdpeiDynamicChannelName)...)
+	create = append(create, 0)
+
+	done := make(chan error, 1)
+	go func() { done <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(create)) }()
+	pdu := readTestDomainPDUFromPipe(t, client)
+	staticPDU, err := parseStaticVirtualChannelPDU(pdu.Data)
+	if err != nil {
+		t.Fatalf("parse second RDPEI response: %v", err)
+	}
+	if code := binary.LittleEndian.Uint32(staticPDU.Data[2:6]); code != drdynvcCreateAlreadyExists {
+		t.Fatalf("second RDPEI create code = 0x%x", code)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("second RDPEI create: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("second RDPEI create did not return")
+	}
+	if !m.hasRDPEIChannel || m.rdpeiChannelID != 7 || len(m.channels) != 1 {
+		t.Fatalf("second RDPEI create disturbed existing state: %#v", m)
+	}
+}
+
 func TestDRDYNVCManagerRejectsUnsupportedChannel(t *testing.T) {
 	server, client := net.Pipe()
 	defer server.Close()
 	defer client.Close()
 
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	markDRDYNVCCapsForTest(m)
 	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 12}
 	create = append(create, []byte("unsupported")...)
 	create = append(create, 0)
@@ -221,9 +284,8 @@ func TestDRDYNVCManagerRejectsUnsupportedChannel(t *testing.T) {
 
 func TestDRDYNVCManagerCloseAndReopenRDPEI(t *testing.T) {
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
-	m.channels[9] = rdpeiDynamicChannelName
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	m.touchLifecycle.ApplyFrame([]input.TouchContact{{ID: 1, X: 1, Y: 2, Flags: input.TouchDown}})
 	if err := m.handleDynamicDataFirst(9, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment: %v", err)
@@ -262,8 +324,8 @@ func TestDRDYNVCManagerCloseAndReopenRDPEI(t *testing.T) {
 func TestDRDYNVCManagerHandlesRDPEIData(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	touchPayload := rdpeiTouchEventPayloadForTest(4, 11, 22, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
 	data := buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, touchPayload))
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err != nil {
@@ -281,8 +343,8 @@ func TestDRDYNVCManagerHandlesRDPEIData(t *testing.T) {
 func TestDRDYNVCManagerDropsStrayTouchLifecycleEvents(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	strayUpdate := rdpeiTouchEventPayloadForTest(4, 11, 22, rdpeiContactFlagUpdate|rdpeiContactFlagInRange|rdpeiContactFlagInContact)
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(buildDRDYNVCDataPDU(9, withRDPEIHeader(rdpeiEventTouch, strayUpdate)))); err != nil {
 		t.Fatalf("handle stray update: %v", err)
@@ -303,15 +365,14 @@ func TestDRDYNVCManagerDropsStrayTouchLifecycleEvents(t *testing.T) {
 	}
 }
 
-func TestDRDYNVCManagerIgnoresUnexpectedDataChannel(t *testing.T) {
+func TestDRDYNVCManagerRejectsUnexpectedDataChannel(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
-	m.channels[9] = rdpeiDynamicChannelName
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	data := buildDRDYNVCDataPDU(10, withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 10, 20, rdpeiContactFlagDown)))
-	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err != nil {
-		t.Fatalf("unexpected channel data: %v", err)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(data)); err == nil {
+		t.Fatal("expected unopened data channel error")
 	}
 	if len(sink.frames) != 0 {
 		t.Fatalf("unexpected channel should not dispatch touch frames: %#v", sink.frames)
@@ -321,10 +382,9 @@ func TestDRDYNVCManagerIgnoresUnexpectedDataChannel(t *testing.T) {
 func TestDRDYNVCManagerHandlesMultipleSimultaneousFragments(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
-	m.channels[9] = rdpeiDynamicChannelName
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	m.channels[10] = "other"
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
 	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 10, 20, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
 	other := []byte{1, 2, 3, 4}
 	if err := m.handleDynamicDataFirst(9, uint32(len(rdpei)), rdpei[:3]); err != nil {
@@ -353,8 +413,8 @@ func TestDRDYNVCManagerHandlesMultipleSimultaneousFragments(t *testing.T) {
 func TestDRDYNVCDataFirstAssembly(t *testing.T) {
 	sink := &recordingTouchSink{}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
-	m.hasRDPEIChannel = true
-	m.rdpeiChannelID = 9
+	markDRDYNVCCapsForTest(m)
+	markRDPEIChannelForTest(m, 9)
 	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 100, 200, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
 	firstPayload := buildDRDYNVCDataFirstPDUForTest(9, uint32(len(rdpei)), rdpei[:4])
 	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(firstPayload)); err != nil {
@@ -412,6 +472,7 @@ func TestDRDYNVCFragmentLimitAndCleanup(t *testing.T) {
 
 func TestDRDYNVCCloseClearsNonRDPEIFragment(t *testing.T) {
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil)
+	markDRDYNVCCapsForTest(m)
 	m.channels[11] = "other"
 	if err := m.handleDynamicDataFirst(11, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment: %v", err)
@@ -487,6 +548,17 @@ func staticVirtualChannelHeaderForTest(length uint32, flags uint32) []byte {
 	binary.LittleEndian.PutUint32(out[0:4], length)
 	binary.LittleEndian.PutUint32(out[4:8], flags)
 	return out
+}
+
+func markDRDYNVCCapsForTest(m *drdynvcManager) {
+	m.capsReceived = true
+	m.negotiatedCapsVersion = drdynvcCapsVersion1
+}
+
+func markRDPEIChannelForTest(m *drdynvcManager, channelID uint32) {
+	m.channels[channelID] = rdpeiDynamicChannelName
+	m.hasRDPEIChannel = true
+	m.rdpeiChannelID = channelID
 }
 
 func rdpeiTouchEventPayloadForTest(contactID uint8, x, y int32, flags uint32) []byte {

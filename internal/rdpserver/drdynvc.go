@@ -37,13 +37,15 @@ const (
 )
 
 type drdynvcManager struct {
-	staticChannelID uint16
-	rdpeiChannelID  uint32
-	hasRDPEIChannel bool
-	channels        map[uint32]string
-	fragments       map[uint32]*drdynvcFragment
-	touchLifecycle  *input.TouchLifecycleCoalescer
-	sink            input.Sink
+	staticChannelID       uint16
+	capsReceived          bool
+	negotiatedCapsVersion uint16
+	rdpeiChannelID        uint32
+	hasRDPEIChannel       bool
+	channels              map[uint32]string
+	fragments             map[uint32]*drdynvcFragment
+	touchLifecycle        *input.TouchLifecycleCoalescer
+	sink                  input.Sink
 }
 
 type drdynvcFragment struct {
@@ -102,19 +104,33 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 	tracef("drdynvc_pdu", "cmd=%d channel=%d name=%q data_len=%d", pdu.Header.Cmd, pdu.ChannelID, pdu.Name, len(pdu.Data))
 	switch pdu.Header.Cmd {
 	case drdynvcCmdCapability:
-		tracef("drdynvc_caps", "version=%d", pdu.Version)
-		return m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(drdynvcCapsVersion1))
+		if pdu.Version < drdynvcCapsVersion1 {
+			return fmt.Errorf("unsupported drdynvc capability version %d", pdu.Version)
+		}
+		m.capsReceived = true
+		m.negotiatedCapsVersion = drdynvcCapsVersion1
+		tracef("drdynvc_caps", "version=%d negotiated=%d", pdu.Version, m.negotiatedCapsVersion)
+		return m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion))
 	case drdynvcCmdCreate:
+		if err := m.requireCaps(pdu.Header.Cmd); err != nil {
+			return err
+		}
 		code := drdynvcCreateNoListener
 		if existing := m.channels[pdu.ChannelID]; existing != "" {
 			code = drdynvcCreateAlreadyExists
 			tracef("drdynvc_create", "channel=%d name=%q accepted=false duplicate=%q", pdu.ChannelID, pdu.Name, existing)
 		} else if pdu.Name == rdpeiDynamicChannelName {
-			m.channels[pdu.ChannelID] = pdu.Name
-			m.rdpeiChannelID = pdu.ChannelID
-			m.hasRDPEIChannel = true
-			code = drdynvcCreateOK
-			tracef("drdynvc_create", "channel=%d name=%q accepted=true", pdu.ChannelID, pdu.Name)
+			if m.hasRDPEIChannel {
+				code = drdynvcCreateAlreadyExists
+				tracef("drdynvc_create", "channel=%d name=%q accepted=false active_rdpei=%d", pdu.ChannelID, pdu.Name, m.rdpeiChannelID)
+			} else {
+				m.channels[pdu.ChannelID] = pdu.Name
+				m.rdpeiChannelID = pdu.ChannelID
+				m.hasRDPEIChannel = true
+				m.touchLifecycle.Reset()
+				code = drdynvcCreateOK
+				tracef("drdynvc_create", "channel=%d name=%q accepted=true", pdu.ChannelID, pdu.Name)
+			}
 		} else {
 			tracef("drdynvc_create", "channel=%d name=%q accepted=false", pdu.ChannelID, pdu.Name)
 		}
@@ -125,11 +141,20 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 			return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(pdu.ChannelID, buildRDPEISCReadyPDU(rdpeiProtocolV300, nil)))
 		}
 	case drdynvcCmdData:
+		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {
+			return err
+		}
 		return m.handleDynamicData(pdu.ChannelID, pdu.Data)
 	case drdynvcCmdDataFirst:
+		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {
+			return err
+		}
 		tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
 		return m.handleDynamicDataFirst(pdu.ChannelID, pdu.Length, pdu.Data)
 	case drdynvcCmdClose:
+		if err := m.requireCaps(pdu.Header.Cmd); err != nil {
+			return err
+		}
 		tracef("drdynvc_close", "channel=%d rdpei=%t", pdu.ChannelID, pdu.ChannelID == m.rdpeiChannelID)
 		delete(m.channels, pdu.ChannelID)
 		delete(m.fragments, pdu.ChannelID)
@@ -138,6 +163,23 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 			m.rdpeiChannelID = 0
 			m.touchLifecycle.Reset()
 		}
+	}
+	return nil
+}
+
+func (m *drdynvcManager) requireCaps(cmd uint8) error {
+	if !m.capsReceived {
+		return fmt.Errorf("drdynvc command 0x%x before capability negotiation", cmd)
+	}
+	return nil
+}
+
+func (m *drdynvcManager) requireOpenChannel(cmd uint8, channelID uint32) error {
+	if err := m.requireCaps(cmd); err != nil {
+		return err
+	}
+	if _, ok := m.channels[channelID]; !ok {
+		return fmt.Errorf("drdynvc command 0x%x for unopened channel %d", cmd, channelID)
 	}
 	return nil
 }
