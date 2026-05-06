@@ -18,6 +18,11 @@ type recordingInputSink struct {
 		down     bool
 	}
 	unicode []rune
+	wheels  []struct {
+		x, y       int
+		delta      int
+		horizontal bool
+	}
 }
 
 func (s *recordingInputSink) PointerMove(x, y int) error {
@@ -41,6 +46,14 @@ func (s *recordingInputSink) Key(scancode uint16, down bool) error {
 }
 func (s *recordingInputSink) Unicode(r rune) error {
 	s.unicode = append(s.unicode, r)
+	return nil
+}
+func (s *recordingInputSink) PointerWheel(x, y int, delta int, horizontal bool) error {
+	s.wheels = append(s.wheels, struct {
+		x, y       int
+		delta      int
+		horizontal bool
+	}{x: x, y: y, delta: delta, horizontal: horizontal})
 	return nil
 }
 
@@ -141,6 +154,26 @@ func TestDispatchFastPathAndSlowPathInputEquivalence(t *testing.T) {
 	assertInputSinksEqual(t, slowSink, fastSink)
 }
 
+func TestDispatchPointerWheelInput(t *testing.T) {
+	sink := &recordingInputSink{}
+	payload := buildSlowPathInputPDU(
+		buildSlowPathInputEvent(slowInputMouse, slowPointerFlagWheel|0x0078, 20, 30),
+		buildSlowPathInputEvent(slowInputMouse, slowPointerFlagHWheel|0x0188, 21, 31),
+	)
+	if err := dispatchSlowPathInput(payload, sink); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.wheels) != 2 {
+		t.Fatalf("unexpected wheels: %#v", sink.wheels)
+	}
+	if sink.wheels[0].x != 20 || sink.wheels[0].y != 30 || sink.wheels[0].delta != 120 || sink.wheels[0].horizontal {
+		t.Fatalf("unexpected vertical wheel: %#v", sink.wheels[0])
+	}
+	if sink.wheels[1].x != 21 || sink.wheels[1].y != 31 || sink.wheels[1].delta != -120 || !sink.wheels[1].horizontal {
+		t.Fatalf("unexpected horizontal wheel: %#v", sink.wheels[1])
+	}
+}
+
 func TestDispatchFastPathInputExtendedEventCount(t *testing.T) {
 	sink := &recordingInputSink{}
 	payload := []byte{1, byte(fastPathInputEventScanCode << 5), 0x47}
@@ -184,6 +217,14 @@ func assertInputSinksEqual(t *testing.T, a, b *recordingInputSink) {
 	for i := range a.unicode {
 		if a.unicode[i] != b.unicode[i] {
 			t.Fatalf("unicode %d mismatch: %#v != %#v", i, a.unicode[i], b.unicode[i])
+		}
+	}
+	if len(a.wheels) != len(b.wheels) {
+		t.Fatalf("wheel count mismatch: %#v != %#v", a.wheels, b.wheels)
+	}
+	for i := range a.wheels {
+		if a.wheels[i] != b.wheels[i] {
+			t.Fatalf("wheel %d mismatch: %#v != %#v", i, a.wheels[i], b.wheels[i])
 		}
 	}
 }

@@ -210,6 +210,7 @@ func (q *FrameQueue) Close() error {
 type InputHandler interface {
 	PointerMove(x int, y int)
 	PointerButton(x int, y int, buttons int, down bool)
+	PointerWheel(x int, y int, delta int, horizontal bool)
 	Key(scancode int, down bool)
 	Unicode(codepoint int)
 	TouchContact(contactID int, x int, y int, flags int)
@@ -242,6 +243,13 @@ func (s *mobileInputSink) PointerMove(x, y int) error {
 func (s *mobileInputSink) PointerButton(x, y int, buttons input.ButtonState, down bool) error {
 	if handler := s.getHandler(); handler != nil {
 		handler.PointerButton(x, y, int(buttons), down)
+	}
+	return nil
+}
+
+func (s *mobileInputSink) PointerWheel(x, y int, delta int, horizontal bool) error {
+	if handler := s.getHandler(); handler != nil {
+		handler.PointerWheel(x, y, delta, horizontal)
 	}
 	return nil
 }

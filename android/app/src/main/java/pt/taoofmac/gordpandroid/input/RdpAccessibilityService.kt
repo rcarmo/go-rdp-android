@@ -91,6 +91,13 @@ class RdpAccessibilityService : AccessibilityService() {
             return service.dispatchPathGesture(state.path, now - state.startedAtMs)
         }
 
+        fun handlePointerWheel(x: Int, y: Int, delta: Int, horizontal: Boolean): Boolean {
+            Log.d(TAG, "pointerWheel($x,$y delta=$delta horizontal=$horizontal)")
+            // AccessibilityService has no reliable generic wheel injection primitive.
+            // Keep the event visible in diagnostics and degrade safely.
+            return activeService?.get() != null
+        }
+
         fun handleKey(scancode: Int, down: Boolean): Boolean {
             Log.d(TAG, "key(scancode=$scancode down=$down)")
             val service = activeService?.get() ?: return false

@@ -28,11 +28,15 @@ const (
 
 	slowKeyboardFlagRelease = 0x8000
 
-	slowPointerFlagMove    = 0x0800
-	slowPointerFlagDown    = 0x8000
-	slowPointerFlagButton1 = 0x1000
-	slowPointerFlagButton2 = 0x2000
-	slowPointerFlagButton3 = 0x4000
+	slowPointerFlagWheel         = 0x0200
+	slowPointerFlagHWheel        = 0x0400
+	slowPointerFlagMove          = 0x0800
+	slowPointerFlagDown          = 0x8000
+	slowPointerFlagButton1       = 0x1000
+	slowPointerFlagButton2       = 0x2000
+	slowPointerFlagButton3       = 0x4000
+	slowPointerWheelNegative     = 0x0100
+	slowPointerWheelRotationMask = 0x01ff
 )
 
 type decodedInputEvent struct {
@@ -159,6 +163,13 @@ func dispatchDecodedInputEvents(events []decodedInputEvent, sink input.Sink) err
 					return err
 				}
 			}
+			if event.MessageType == slowInputMouse && event.Flags&(slowPointerFlagWheel|slowPointerFlagHWheel) != 0 {
+				if wheelSink, ok := sink.(input.WheelSink); ok {
+					if err := wheelSink.PointerWheel(int(event.X), int(event.Y), pointerWheelDelta(event.Flags), event.Flags&slowPointerFlagHWheel != 0); err != nil {
+						return err
+					}
+				}
+			}
 			buttons := pointerButtons(event.Flags)
 			if buttons != 0 {
 				if err := sink.PointerButton(int(event.X), int(event.Y), buttons, event.Flags&slowPointerFlagDown != 0); err != nil {
@@ -200,6 +211,14 @@ func parseSlowPathInput(payload []byte) ([]decodedInputEvent, error) {
 		offset += 12
 	}
 	return events, nil
+}
+
+func pointerWheelDelta(flags uint16) int {
+	value := int(flags & slowPointerWheelRotationMask)
+	if flags&slowPointerWheelNegative != 0 {
+		value -= slowPointerWheelRotationMask + 1
+	}
+	return value
 }
 
 func pointerButtons(flags uint16) input.ButtonState {

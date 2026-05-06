@@ -43,6 +43,10 @@ object NativeRdpBridge : RdpInputCallbacks {
         RdpAccessibilityService.handlePointerButton(x * inputCoordinateScale, y * inputCoordinateScale, buttons, down)
     }
 
+    override fun onPointerWheel(x: Int, y: Int, delta: Int, horizontal: Boolean) {
+        RdpAccessibilityService.handlePointerWheel(x * inputCoordinateScale, y * inputCoordinateScale, delta, horizontal)
+    }
+
     override fun onKey(scancode: Int, down: Boolean) {
         RdpAccessibilityService.handleKey(scancode, down)
     }

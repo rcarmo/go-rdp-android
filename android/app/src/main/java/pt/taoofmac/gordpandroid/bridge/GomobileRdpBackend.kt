@@ -20,6 +20,7 @@ class GomobileRdpBackend : RdpBackend {
             when (invoked.name.lowercase()) {
                 "pointermove" -> callbacks.onPointerMove(values.intAt(0), values.intAt(1))
                 "pointerbutton" -> callbacks.onPointerButton(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
+                "pointerwheel" -> callbacks.onPointerWheel(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
                 "key" -> callbacks.onKey(values.intAt(0), values.boolAt(1))
                 "unicode" -> callbacks.onUnicode(values.intAt(0))
                 "touchcontact" -> callbacks.onTouchContact(values.intAt(0), values.intAt(1), values.intAt(2), values.intAt(3))

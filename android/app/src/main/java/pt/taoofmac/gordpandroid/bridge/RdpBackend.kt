@@ -3,6 +3,7 @@ package io.carmo.go.rdp.android.bridge
 interface RdpInputCallbacks {
     fun onPointerMove(x: Int, y: Int)
     fun onPointerButton(x: Int, y: Int, buttons: Int, down: Boolean)
+    fun onPointerWheel(x: Int, y: Int, delta: Int, horizontal: Boolean)
     fun onKey(scancode: Int, down: Boolean)
     fun onUnicode(codepoint: Int)
     fun onTouchContact(contactId: Int, x: Int, y: Int, flags: Int)

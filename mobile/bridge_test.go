@@ -54,6 +54,11 @@ type recordingMobileInputHandler struct {
 		down     bool
 	}
 	unicode []int
+	wheels  []struct {
+		x, y       int
+		delta      int
+		horizontal bool
+	}
 	touches []struct {
 		contactID int
 		x, y      int
@@ -70,6 +75,13 @@ func (h *recordingMobileInputHandler) PointerButton(x int, y int, buttons int, d
 		buttons int
 		down    bool
 	}{x: x, y: y, buttons: buttons, down: down})
+}
+func (h *recordingMobileInputHandler) PointerWheel(x int, y int, delta int, horizontal bool) {
+	h.wheels = append(h.wheels, struct {
+		x, y       int
+		delta      int
+		horizontal bool
+	}{x: x, y: y, delta: delta, horizontal: horizontal})
 }
 func (h *recordingMobileInputHandler) Key(scancode int, down bool) {
 	h.keys = append(h.keys, struct {
@@ -98,6 +110,9 @@ func TestMobileInputHandler(t *testing.T) {
 	if err := srv.input.PointerButton(10, 20, 1, true); err != nil {
 		t.Fatal(err)
 	}
+	if err := srv.input.PointerWheel(10, 20, -120, false); err != nil {
+		t.Fatal(err)
+	}
 	if err := srv.input.Key(0x1e, true); err != nil {
 		t.Fatal(err)
 	}
@@ -112,6 +127,9 @@ func TestMobileInputHandler(t *testing.T) {
 	}
 	if len(handler.buttons) != 1 || handler.buttons[0].buttons != 1 || !handler.buttons[0].down {
 		t.Fatalf("unexpected buttons: %#v", handler.buttons)
+	}
+	if len(handler.wheels) != 1 || handler.wheels[0].delta != -120 || handler.wheels[0].horizontal {
+		t.Fatalf("unexpected wheels: %#v", handler.wheels)
 	}
 	if len(handler.keys) != 1 || handler.keys[0].scancode != 0x1e || !handler.keys[0].down {
 		t.Fatalf("unexpected keys: %#v", handler.keys)

@@ -150,7 +150,7 @@ CI currently validates emulator input using scripted Android input commands whil
 - mouse-source tap at a deterministic target;
 - touchscreen swipe to reveal notifications.
 
-Pointer input now coalesces primary-button down/move/up into bounded Accessibility gesture paths, preserving tap behavior while enabling basic drag strokes. Full production input injection still needs richer keyboard/text handling, secondary/wheel behavior, gesture failure callbacks, and physical-device validation.
+Pointer input now coalesces primary-button down/move/up into bounded Accessibility gesture paths, preserving tap behavior while enabling basic drag strokes. Wheel events are decoded and carried through the Go/mobile/Kotlin bridge, then logged/degraded safely on Android because generic wheel injection is not available through Accessibility. Full production input injection still needs richer keyboard/text handling, secondary-button behavior, gesture failure callbacks, and physical-device validation.
 
 ## CI architecture
 

@@ -48,6 +48,11 @@ type Sink interface {
 	Unicode(r rune) error
 }
 
+// WheelSink is optionally implemented by sinks that can receive pointer wheel events.
+type WheelSink interface {
+	PointerWheel(x, y int, delta int, horizontal bool) error
+}
+
 // TouchSink is optionally implemented by sinks that can receive true RDPEI
 // touch contacts separately from classic pointer events.
 type TouchSink interface {

@@ -22,6 +22,7 @@ var required = map[string]map[string]string{
 	"mobile/InputHandler.class": {
 		"pointerMove":   "(JJ)V",
 		"pointerButton": "(JJJZ)V",
+		"pointerWheel":  "(JJJZ)V",
 		"key":           "(JZ)V",
 		"unicode":       "(J)V",
 		"touchContact":  "(JJJJ)V",
