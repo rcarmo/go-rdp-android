@@ -7,6 +7,7 @@
 | Layer | Purpose | Main commands / artifacts |
 | --- | --- | --- |
 | Go unit tests | Parser, graphics, input, bridge, lifecycle coverage | `go test ./...` |
+| RDPEI/drdynvc summary | Machine-readable evidence for RDPEI parser, DVC routing, synthetic touch sequence, and touch lifecycle metadata | `test-artifacts/go/rdpei-tests.json`, `test-artifacts/go/rdpei-test-summary.md` |
 | Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth | `mock-probe-artifacts` |
@@ -21,6 +22,7 @@
 Default push/PR CI runs without a physical Android device:
 
 - Go vet/build/test with coverage threshold.
+- RDPEI/`drdynvc` test JSON plus Markdown summary covering parser, synthetic channel sequence, and touch lifecycle metadata.
 - Go race tests and short parser fuzz smoke.
 - Mock server + probe TCP smoke test.
 - TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection.

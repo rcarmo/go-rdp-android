@@ -86,6 +86,12 @@ jobs:
           mkdir -p test-artifacts/go
           make coverage COVERAGE_MIN=75.0 | tee test-artifacts/go/coverage.log
           cp coverage.out coverage.func.txt test-artifacts/go/
+      - name: RDPEI/drdynvc test summary
+        run: |
+          mkdir -p test-artifacts/go .gotmp
+          GOTMPDIR="$PWD/.gotmp" go test -json ./internal/input ./internal/rdpserver > test-artifacts/go/rdpei-tests.json
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-rdpei-tests.go test-artifacts/go/rdpei-tests.json test-artifacts/go/rdpei-test-summary.md
+          test -s test-artifacts/go/rdpei-test-summary.md
       - name: Upload Go test artifacts
         uses: actions/upload-artifact@v4
         with:
