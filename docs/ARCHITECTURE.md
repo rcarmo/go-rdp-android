@@ -150,7 +150,7 @@ CI currently validates emulator input using scripted Android input commands whil
 - mouse-source tap at a deterministic target;
 - touchscreen swipe to reveal notifications.
 
-Full production input injection still needs richer Accessibility handling and physical-device validation.
+Pointer input now coalesces primary-button down/move/up into bounded Accessibility gesture paths, preserving tap behavior while enabling basic drag strokes. Full production input injection still needs richer keyboard/text handling, secondary/wheel behavior, gesture failure callbacks, and physical-device validation.
 
 ## CI architecture
 

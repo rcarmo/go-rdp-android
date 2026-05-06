@@ -46,9 +46,12 @@ class RdpAccessibilityService : AccessibilityService() {
         private const val TOUCH_FLAG_UPDATE = 0x2
         private const val TOUCH_FLAG_UP = 0x4
         private const val TOUCH_FLAG_CANCELED = 0x20
+        private const val POINTER_BUTTON_PRIMARY = 0x1
+        private const val POINTER_PRIMARY_CONTACT_ID = 1
         private const val MIN_TOUCH_DURATION_MS = 50L
         private const val MAX_TOUCH_DURATION_MS = 1_500L
         private val activeTouches = ConcurrentHashMap<Int, TouchPathState>()
+        private val activePointerGestures = ConcurrentHashMap<Int, TouchPathState>()
 
         private data class TouchPathState(
             val path: Path,
@@ -59,16 +62,33 @@ class RdpAccessibilityService : AccessibilityService() {
         )
 
         fun handlePointerMove(x: Int, y: Int): Boolean {
-            // Accessibility gesture dispatch has no hover/move equivalent suitable for a cheap MVP.
             Log.d(TAG, "pointerMove($x,$y)")
+            activePointerGestures[POINTER_PRIMARY_CONTACT_ID]?.let { appendTouchPoint(it, x, y) }
             return activeService?.get() != null
         }
 
         fun handlePointerButton(x: Int, y: Int, buttons: Int, down: Boolean): Boolean {
             Log.d(TAG, "pointerButton($x,$y buttons=$buttons down=$down)")
             val service = activeService?.get() ?: return false
-            val primaryButton = buttons and 0x1 != 0
-            return if (down && primaryButton) service.tap(x.toFloat(), y.toFloat()) else true
+            val primaryButton = (buttons and POINTER_BUTTON_PRIMARY) != 0
+            if (!primaryButton) return true
+            val now = SystemClock.uptimeMillis()
+            if (down) {
+                activePointerGestures[POINTER_PRIMARY_CONTACT_ID] = TouchPathState(
+                    path = Path().apply { moveTo(x.toFloat(), y.toFloat()) },
+                    startedAtMs = now,
+                    lastX = x,
+                    lastY = y,
+                )
+                return true
+            }
+            val state = activePointerGestures.remove(POINTER_PRIMARY_CONTACT_ID)
+            if (state == null) {
+                Log.w(TAG, "dropping stray primary pointer up at $x,$y")
+                return true
+            }
+            appendTouchPoint(state, x, y)
+            return service.dispatchPathGesture(state.path, now - state.startedAtMs)
         }
 
         fun handleKey(scancode: Int, down: Boolean): Boolean {

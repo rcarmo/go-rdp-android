@@ -43,7 +43,7 @@ Latest checked artifact from CI run `25419118096`:
 | RDP negotiation | Prototype-compatible | X.224, TLS, Hybrid/NLA, MCS, GCC response, licensing, activation, bitmap streaming. |
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Production credential storage/policy is pending. |
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
-| Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; Android Accessibility behavior still needs device hardening. |
+| Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; Android coalesces primary pointer down/move/up into bounded Accessibility strokes, but keyboard/text, secondary/wheel behavior, and physical-device validation remain pending. |
 | True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
 | Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Physical-device validation pending. |
 
