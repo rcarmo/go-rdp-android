@@ -108,6 +108,39 @@ func TestDispatchFastPathInput(t *testing.T) {
 	}
 }
 
+func TestDispatchFastPathAndSlowPathInputEquivalence(t *testing.T) {
+	slowSink := &recordingInputSink{}
+	fastSink := &recordingInputSink{}
+	slowPayload := buildSlowPathInputPDU(
+		buildSlowPathInputEvent(slowInputScanCode, 0, 0x1e, 0),
+		buildSlowPathInputEvent(slowInputScanCode, slowKeyboardFlagRelease, 0x1e, 0),
+		buildSlowPathInputEvent(slowInputUnicode, 0, 'A', 0),
+		buildSlowPathInputEvent(slowInputMouse, slowPointerFlagMove, 12, 34),
+		buildSlowPathInputEvent(slowInputMouse, slowPointerFlagDown|slowPointerFlagButton1, 12, 34),
+	)
+	fastPayload := []byte{
+		byte(fastPathInputEventScanCode<<5) | 0x00, 0x1e,
+		byte(fastPathInputEventScanCode<<5) | fastPathKeyboardFlagRelease, 0x1e,
+		byte(fastPathInputEventUnicode << 5), 'A', 0,
+		byte(fastPathInputEventMouse << 5),
+	}
+	fastPayload = appendLE16Bytes(fastPayload, slowPointerFlagMove)
+	fastPayload = appendLE16Bytes(fastPayload, 12)
+	fastPayload = appendLE16Bytes(fastPayload, 34)
+	fastPayload = append(fastPayload, byte(fastPathInputEventMouse<<5))
+	fastPayload = appendLE16Bytes(fastPayload, slowPointerFlagDown|slowPointerFlagButton1)
+	fastPayload = appendLE16Bytes(fastPayload, 12)
+	fastPayload = appendLE16Bytes(fastPayload, 34)
+
+	if err := dispatchSlowPathInput(slowPayload, slowSink); err != nil {
+		t.Fatalf("slow path: %v", err)
+	}
+	if err := dispatchFastPathInput(byte(5<<2), fastPayload, fastSink); err != nil {
+		t.Fatalf("fast path: %v", err)
+	}
+	assertInputSinksEqual(t, slowSink, fastSink)
+}
+
 func TestDispatchFastPathInputExtendedEventCount(t *testing.T) {
 	sink := &recordingInputSink{}
 	payload := []byte{1, byte(fastPathInputEventScanCode << 5), 0x47}
@@ -116,6 +149,42 @@ func TestDispatchFastPathInputExtendedEventCount(t *testing.T) {
 	}
 	if len(sink.keys) != 1 || sink.keys[0].scancode != 0x47 || !sink.keys[0].down {
 		t.Fatalf("unexpected keys: %#v", sink.keys)
+	}
+}
+
+func assertInputSinksEqual(t *testing.T, a, b *recordingInputSink) {
+	t.Helper()
+	if len(a.moves) != len(b.moves) {
+		t.Fatalf("move count mismatch: %#v != %#v", a.moves, b.moves)
+	}
+	for i := range a.moves {
+		if a.moves[i] != b.moves[i] {
+			t.Fatalf("move %d mismatch: %#v != %#v", i, a.moves[i], b.moves[i])
+		}
+	}
+	if len(a.buttons) != len(b.buttons) {
+		t.Fatalf("button count mismatch: %#v != %#v", a.buttons, b.buttons)
+	}
+	for i := range a.buttons {
+		if a.buttons[i] != b.buttons[i] {
+			t.Fatalf("button %d mismatch: %#v != %#v", i, a.buttons[i], b.buttons[i])
+		}
+	}
+	if len(a.keys) != len(b.keys) {
+		t.Fatalf("key count mismatch: %#v != %#v", a.keys, b.keys)
+	}
+	for i := range a.keys {
+		if a.keys[i] != b.keys[i] {
+			t.Fatalf("key %d mismatch: %#v != %#v", i, a.keys[i], b.keys[i])
+		}
+	}
+	if len(a.unicode) != len(b.unicode) {
+		t.Fatalf("unicode count mismatch: %#v != %#v", a.unicode, b.unicode)
+	}
+	for i := range a.unicode {
+		if a.unicode[i] != b.unicode[i] {
+			t.Fatalf("unicode %d mismatch: %#v != %#v", i, a.unicode[i], b.unicode[i])
+		}
 	}
 }
 

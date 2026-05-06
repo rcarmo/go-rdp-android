@@ -6,7 +6,7 @@
 
 | Layer | Purpose | Main commands / artifacts |
 | --- | --- | --- |
-| Go unit tests | Parser, graphics, input, bridge, lifecycle coverage | `go test ./...` |
+| Go unit tests | Parser, graphics, input, bridge, lifecycle coverage, including slow-path/Fast-Path input sink equivalence | `go test ./...` |
 | RDPEI/drdynvc summary | Machine-readable evidence for RDPEI parser, DVC routing, synthetic touch sequence, and touch lifecycle metadata | `test-artifacts/go/rdpei-tests.json`, `test-artifacts/go/rdpei-test-summary.md` |
 | Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
