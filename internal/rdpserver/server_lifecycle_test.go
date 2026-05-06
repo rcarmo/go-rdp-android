@@ -2,6 +2,7 @@ package rdpserver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -31,9 +32,46 @@ func TestServerListenAddrAndClose(t *testing.T) {
 		t.Fatal(err)
 	}
 	select {
-	case <-done:
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("unexpected listen error after close: %v", err)
+		}
 	case <-time.After(time.Second):
 		t.Fatal("server did not stop")
+	}
+	if srv.Addr() != nil {
+		t.Fatalf("expected nil addr after close, got %v", srv.Addr())
+	}
+}
+
+func TestServerAddrClearedOnContextCancel(t *testing.T) {
+	srv, err := New(Config{Addr: "127.0.0.1:0", Width: 320, Height: 240}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- srv.Listen(ctx) }()
+
+	deadline := time.Now().Add(time.Second)
+	for srv.Addr() == nil && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if srv.Addr() == nil {
+		t.Fatal("server did not expose listener address")
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context canceled, got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("server did not stop on context cancel")
+	}
+	if srv.Addr() != nil {
+		t.Fatalf("expected nil addr after context cancel, got %v", srv.Addr())
 	}
 }
 

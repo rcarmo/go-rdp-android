@@ -13,10 +13,14 @@ class RdpAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         activeService = WeakReference(this)
+        activeTouches.clear()
+        activePointerGestures.clear()
         Log.i(TAG, "Accessibility service connected")
     }
 
     override fun onDestroy() {
+        activeTouches.clear()
+        activePointerGestures.clear()
         activeService?.clear()
         activeService = null
         super.onDestroy()
@@ -63,8 +67,9 @@ class RdpAccessibilityService : AccessibilityService() {
 
         fun handlePointerMove(x: Int, y: Int): Boolean {
             Log.d(TAG, "pointerMove($x,$y)")
+            if (activeService?.get() == null) return false
             activePointerGestures[POINTER_PRIMARY_CONTACT_ID]?.let { appendTouchPoint(it, x, y) }
-            return activeService?.get() != null
+            return true
         }
 
         fun handlePointerButton(x: Int, y: Int, buttons: Int, down: Boolean): Boolean {

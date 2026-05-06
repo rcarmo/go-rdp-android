@@ -57,7 +57,14 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.ln = ln
 	s.mu.Unlock()
-	defer ln.Close()
+	defer func() {
+		_ = ln.Close()
+		s.mu.Lock()
+		if s.ln == ln {
+			s.ln = nil
+		}
+		s.mu.Unlock()
+	}()
 
 	go func() {
 		<-ctx.Done()
@@ -69,6 +76,9 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
+			}
+			if errors.Is(err, net.ErrClosed) {
+				return nil
 			}
 			return err
 		}
@@ -126,9 +136,11 @@ func (s *Server) handleConn(conn net.Conn) {
 // Close stops the listener.
 func (s *Server) Close() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.ln != nil {
-		return s.ln.Close()
+	ln := s.ln
+	s.ln = nil
+	s.mu.Unlock()
+	if ln != nil {
+		return ln.Close()
 	}
 	return nil
 }
