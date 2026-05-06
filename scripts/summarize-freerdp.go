@@ -55,7 +55,8 @@ func main() {
 			s.ServerPhases = appendLimited(s.ServerPhases, line, 60)
 		}
 	}
-	jsonData, _ := json.MarshalIndent(s, "", "  ")
+	jsonData, err := json.MarshalIndent(s, "", "  ")
+	must(err)
 	must(os.WriteFile(filepath.Join(dir, "summary.json"), append(jsonData, '\n'), 0o644))
 	md := fmt.Sprintf("# FreeRDP compatibility probe\n\n"+
 		"- Exit code: `%s`\n"+
@@ -87,7 +88,8 @@ func readTrim(path string) string {
 func exists(path string) bool { st, err := os.Stat(path); return err == nil && st.Size() > 0 }
 func must(err error) {
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 }
 func appendLimited(v []string, s string, max int) []string {
