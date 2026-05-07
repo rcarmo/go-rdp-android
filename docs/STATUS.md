@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-07
-Current evidence commit: `908391c` (`Harden FreeRDP summary script error handling`)
-Latest referenced CI run: `25458853967` (`main` CI, success)
+Current evidence commit: `ffe2473` (`Add synthetic RDPEI tap injection to probe and emulator smoke`)
+Latest referenced CI run: `25479788162` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -22,7 +22,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
 | `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, caps-before-lifecycle enforcement, unsupported/duplicate/second RDPEI create rejection, size bounds, fragment limits, stale-fragment cleanup, unexpected channel IDs, simultaneous fragments, close/reopen, variable-length channel IDs, and synthetic caps→create→RDPEI touch integration sequence. |
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
-| Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. |
+| Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. |
 
 ## FreeRDP compatibility snapshot
 
@@ -44,7 +44,7 @@ Latest checked artifact from CI run `25458853967`:
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Production credential storage/policy is pending. |
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
 | Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; Android coalesces primary pointer down/move/up into bounded Accessibility strokes; wheel events are decoded/bridged/logged with safe Android degradation; keyboard/text, secondary-button behavior, and physical-device validation remain pending. |
-| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Coordinated multi-touch and real-client touch evidence are pending. |
+| True RDP touch | Scaffolded through Android bridge | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; Android builds bounded single-contact Accessibility strokes. Emulator UX automation now includes synthetic RDPEI tap injection through the probe path; coordinated multi-touch and real-client touch evidence are pending. |
 | Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Physical-device validation pending. |
 
 ## Production blockers
