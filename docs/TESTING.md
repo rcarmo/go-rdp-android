@@ -55,10 +55,10 @@ The emulator job:
 2. Installs and launches the app.
 3. Requests and accepts MediaProjection permission.
 4. Starts the Go RDP server inside the app.
-5. Enables the app AccessibilityService in the emulator so RDP input callbacks can execute Home and tap gestures.
+5. Enables the app AccessibilityService in the emulator so RDP input callbacks can execute Home, pointer, and RDPEI touch gestures.
 6. Forwards runner TCP/3390 to emulator TCP/3390.
 7. Captures a home RDP screenshot.
-8. Drives Android Settings, Settings search, mouse tap, notification swipe, and browser scenes. Browser launch is driven by RDP Home scancode `0x47` plus an RDP pointer tap on the browser icon.
+8. Drives Android Settings, Settings search, mouse tap, notification swipe, and browser scenes. Browser launch is driven by RDP Home scancode `0x47` plus a synthetic RDPEI touch tap on the browser icon.
 9. Captures paired Android and RDP screenshots.
 10. Generates `rdp-probe-summary.json` and `performance-summary.md`.
 11. Validates `features/ux/*.feature` and generates the Playwright PDF report.
@@ -88,7 +88,7 @@ Current scenarios cover:
 - searching Android Settings with keyboard text input;
 - hitting a deterministic Settings target using mouse input;
 - swiping down to reveal notifications using touchscreen input;
-- returning to the Android home screen with the RDP Home scancode and opening the browser with an RDP pointer tap, verifying the browser comes foreground;
+- returning to the Android home screen with the RDP Home scancode and opening the browser with a synthetic RDPEI touch tap, verifying the browser comes foreground;
 - validating per-scene performance and screenshot sections in the report.
 
 ## UX report artifacts
@@ -122,7 +122,7 @@ frame1=ok
 screen_capture=ok
 fatal_exception=none
 keyboard_settings_search=ok
-mouse_target_tap=ok
+rdpei_browser_tap=ok
 touch_notification_swipe=ok
 rdp_input_screenshots=ok
 ```

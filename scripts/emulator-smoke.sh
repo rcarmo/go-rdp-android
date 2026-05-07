@@ -146,7 +146,7 @@ if [ "$GO_BACKED" = "true" ]; then
 keyboard=settings search for wifi
 mouse=tap ${mouse_target_x},${mouse_target_y}
 touch=swipe ${swipe_x},${swipe_start_y} to ${swipe_x},${swipe_end_y}
-rdp_browser=home scancode 0x47 then tap ${rdp_chrome_x},${rdp_chrome_y}
+rdp_browser=home scancode 0x47 then rdpei-tap ${rdp_chrome_x},${rdp_chrome_y}
 EOF
     scene_updates=$((updates * 4))
     cat > emulator-artifacts/scene-plan.json <<JSON
@@ -156,7 +156,7 @@ EOF
     "command": "sleep 8 && adb shell dumpsys activity activities > emulator-artifacts/browser-activity.txt && adb shell dumpsys window > emulator-artifacts/browser-window.txt && adb exec-out screencap -p > emulator-artifacts/android-browser.png",
     "actions": [
       { "type": "key-home", "delay_ms": 200 },
-      { "type": "tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
+      { "type": "rdpei-tap", "x": $rdp_chrome_x, "y": $rdp_chrome_y, "delay_ms": 1500 }
     ],
     "wait_ms": 200,
     "max_updates": $scene_updates
@@ -209,7 +209,7 @@ JSON
 
     {
       echo 'keyboard_settings_search=ok'
-      echo 'mouse_target_tap=ok'
+      echo 'rdpei_browser_tap=ok'
       echo 'touch_notification_swipe=ok'
       echo 'rdp_input_screenshots=ok'
     } | tee -a emulator-artifacts/checks.txt
@@ -270,7 +270,7 @@ fi
 grep -q 'fatal_exception=none' emulator-artifacts/checks.txt
 if [ "$GO_BACKED" = "true" ] && [ "$CAPTURE" = "true" ]; then
   grep -q 'keyboard_settings_search=ok' emulator-artifacts/checks.txt
-  grep -q 'mouse_target_tap=ok' emulator-artifacts/checks.txt
+  grep -q 'rdpei_browser_tap=ok' emulator-artifacts/checks.txt
   grep -q 'touch_notification_swipe=ok' emulator-artifacts/checks.txt
   grep -q 'rdp_input_screenshots=ok' emulator-artifacts/checks.txt
 fi

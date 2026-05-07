@@ -87,6 +87,27 @@ type probeSceneSummary struct {
 
 var summary probeSummary
 
+const (
+	probeMCSUserID              = 1001
+	probeGlobalChannelID        = 1003
+	probeDRDYNVCStaticChannelID = 1004
+	probeRDPEIDynamicChannelID  = 7
+
+	probeDRDYNVCCmdCreate     = 0x01
+	probeDRDYNVCCmdData       = 0x03
+	probeDRDYNVCCmdCapability = 0x05
+
+	probeRDPEIEventCSReady = 0x0002
+	probeRDPEIEventTouch   = 0x0003
+
+	probeRDPEIProtocolV300 = 0x00030000
+
+	probeRDPEIContactFlagDown      = 0x0001
+	probeRDPEIContactFlagUp        = 0x0004
+	probeRDPEIContactFlagInRange   = 0x0008
+	probeRDPEIContactFlagInContact = 0x0010
+)
+
 func main() {
 	started := time.Now()
 	addr := flag.String("addr", "127.0.0.1:3390", "RDP server address")
@@ -115,6 +136,11 @@ func main() {
 			log.Fatal(err)
 		}
 		traceOut.Store(*traceDir)
+	}
+
+	requiresRDPEI, err := scenePlanRequiresRDPEI(*scenePlanPath)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	conn, err := net.DialTimeout("tcp", *addr, 3*time.Second)
@@ -147,7 +173,7 @@ func main() {
 		}
 	}
 
-	if err := sendMCSConnectInitial(conn); err != nil {
+	if err := sendMCSConnectInitialWithChannels(conn, requiresRDPEI); err != nil {
 		log.Fatal(err)
 	}
 	mcsResp, err := readTPKT(conn)
@@ -170,7 +196,7 @@ func main() {
 	}
 	fmt.Printf("AttachUserConfirm: %x\n", attachResp)
 
-	joinBody := append(encodePERInteger16(1001, 1001), encodePERInteger16(1003, 0)...)
+	joinBody := append(encodePERInteger16(probeMCSUserID, probeMCSUserID), encodePERInteger16(probeGlobalChannelID, 0)...)
 	if err := sendMCSDomainPDU(conn, 14, joinBody); err != nil {
 		log.Fatal(err)
 	}
@@ -180,8 +206,24 @@ func main() {
 	}
 	fmt.Printf("ChannelJoinConfirm: %x\n", joinResp)
 
+	if requiresRDPEI {
+		drdynvcJoin := append(encodePERInteger16(probeMCSUserID, probeMCSUserID), encodePERInteger16(probeDRDYNVCStaticChannelID, 0)...)
+		if err := sendMCSDomainPDU(conn, 14, drdynvcJoin); err != nil {
+			log.Fatal(err)
+		}
+		drdynvcJoinResp, err := readTPKT(conn)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("DRDYNVC ChannelJoinConfirm: %x\n", drdynvcJoinResp)
+		if err := negotiateProbeRDPEI(conn, probeMCSUserID, probeDRDYNVCStaticChannelID, probeRDPEIDynamicChannelID); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("RDPEI ready on static=%d dynamic=%d\n", probeDRDYNVCStaticChannelID, probeRDPEIDynamicChannelID)
+	}
+
 	clientInfo := append([]byte{0x40, 0, 0, 0}, buildClientInfoPayload(*username, *password, *domain)...)
-	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, clientInfo)); err != nil {
+	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(probeMCSUserID, probeGlobalChannelID, clientInfo)); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("sent minimal Client Info security PDU")
@@ -191,8 +233,8 @@ func main() {
 	}
 	fmt.Printf("DemandActive: %x\n", demand)
 
-	confirm := buildConfirmActivePDU(0x000103ea, 1001)
-	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, confirm)); err != nil {
+	confirm := buildConfirmActivePDU(0x000103ea, probeMCSUserID)
+	if err := sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(probeMCSUserID, probeGlobalChannelID, confirm)); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("sent minimal Confirm Active PDU")
@@ -237,7 +279,11 @@ func main() {
 				log.Fatal(err)
 			}
 		}
-		if err := runScenePlan(conn, *scenePlanPath, *artifactDir, screenshot, *sceneIdleTimeout, *sceneMaxUpdates); err != nil {
+		rdpeiChannel := uint32(0)
+		if requiresRDPEI {
+			rdpeiChannel = probeRDPEIDynamicChannelID
+		}
+		if err := runScenePlan(conn, *scenePlanPath, *artifactDir, screenshot, *sceneIdleTimeout, *sceneMaxUpdates, rdpeiChannel); err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -313,7 +359,29 @@ func readBitmapUpdates(conn net.Conn, count int, screenshot *image.RGBA) error {
 	return nil
 }
 
-func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGBA, idleTimeoutMs, defaultMaxUpdates int) error {
+func scenePlanRequiresRDPEI(path string) (bool, error) {
+	if path == "" {
+		return false, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	var scenes []probeScenePlan
+	if err := json.Unmarshal(data, &scenes); err != nil {
+		return false, err
+	}
+	for _, scene := range scenes {
+		for _, action := range scene.Actions {
+			if action.Type == "rdpei-tap" {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGBA, idleTimeoutMs, defaultMaxUpdates int, rdpeiChannelID uint32) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -339,7 +407,7 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 			}
 		}
 		actionErr := make(chan error, 1)
-		go func() { actionErr <- runRDPSceneActions(conn, scene.Actions) }()
+		go func() { actionErr <- runRDPSceneActions(conn, scene.Actions, rdpeiChannelID) }()
 		if scene.WaitMs > 0 {
 			time.Sleep(time.Duration(scene.WaitMs) * time.Millisecond)
 		}
@@ -365,7 +433,7 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 	return nil
 }
 
-func runRDPSceneActions(conn net.Conn, actions []probeSceneAction) error {
+func runRDPSceneActions(conn net.Conn, actions []probeSceneAction, rdpeiChannelID uint32) error {
 	for _, action := range actions {
 		if action.DelayMs > 0 {
 			time.Sleep(time.Duration(action.DelayMs) * time.Millisecond)
@@ -381,6 +449,13 @@ func runRDPSceneActions(conn net.Conn, actions []probeSceneAction) error {
 			}
 		case "tap":
 			if err := sendRDPTap(conn, action.X, action.Y); err != nil {
+				return err
+			}
+		case "rdpei-tap":
+			if rdpeiChannelID == 0 {
+				return fmt.Errorf("rdpei-tap requested without negotiated RDPEI channel")
+			}
+			if err := sendRDPEITap(conn, probeMCSUserID, probeDRDYNVCStaticChannelID, rdpeiChannelID, action.X, action.Y); err != nil {
 				return err
 			}
 		case "wait", "":
@@ -409,6 +484,189 @@ func sendRDPTap(conn net.Conn, x, y uint16) error {
 		buildSlowPathInputEvent(0x8001, 0x9000, x, y),
 		buildSlowPathInputEvent(0x8001, 0x1000, x, y),
 	))
+}
+
+func negotiateProbeRDPEI(conn net.Conn, initiator, staticChannelID uint16, dynamicChannelID uint32) error {
+	if err := sendProbeDRDYNVCStatic(conn, initiator, staticChannelID, buildProbeDRDYNVCCapsPDU()); err != nil {
+		return fmt.Errorf("send drdynvc caps: %w", err)
+	}
+	if _, err := readTPKT(conn); err != nil {
+		return fmt.Errorf("read drdynvc caps response: %w", err)
+	}
+	if err := sendProbeDRDYNVCStatic(conn, initiator, staticChannelID, buildProbeDRDYNVCCreatePDU(dynamicChannelID, "Microsoft::Windows::RDS::Input")); err != nil {
+		return fmt.Errorf("send drdynvc create: %w", err)
+	}
+	if _, err := readTPKT(conn); err != nil {
+		return fmt.Errorf("read drdynvc create response: %w", err)
+	}
+	if _, err := readTPKT(conn); err != nil {
+		return fmt.Errorf("read rdpei sc_ready: %w", err)
+	}
+	if err := sendProbeDRDYNVCStatic(conn, initiator, staticChannelID, buildProbeDRDYNVCDataPDU(dynamicChannelID, buildProbeRDPEICSReadyPDU())); err != nil {
+		return fmt.Errorf("send rdpei cs_ready: %w", err)
+	}
+	return nil
+}
+
+func sendRDPEITap(conn net.Conn, initiator, staticChannelID uint16, dynamicChannelID uint32, x, y uint16) error {
+	down := buildProbeRDPEITouchPDU(1, int32(x), int32(y), probeRDPEIContactFlagDown|probeRDPEIContactFlagInRange|probeRDPEIContactFlagInContact)
+	if err := sendProbeDRDYNVCStatic(conn, initiator, staticChannelID, buildProbeDRDYNVCDataPDU(dynamicChannelID, down)); err != nil {
+		return fmt.Errorf("send rdpei touch down: %w", err)
+	}
+	up := buildProbeRDPEITouchPDU(1, int32(x), int32(y), probeRDPEIContactFlagUp|probeRDPEIContactFlagInRange)
+	if err := sendProbeDRDYNVCStatic(conn, initiator, staticChannelID, buildProbeDRDYNVCDataPDU(dynamicChannelID, up)); err != nil {
+		return fmt.Errorf("send rdpei touch up: %w", err)
+	}
+	return nil
+}
+
+func sendProbeDRDYNVCStatic(conn net.Conn, initiator, staticChannelID uint16, payload []byte) error {
+	static := buildProbeStaticVirtualChannelPDU(payload)
+	return sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(initiator, staticChannelID, static))
+}
+
+func buildProbeStaticVirtualChannelPDU(payload []byte) []byte {
+	out := make([]byte, 8+len(payload))
+	binary.LittleEndian.PutUint32(out[0:4], uint32(len(payload)))
+	binary.LittleEndian.PutUint32(out[4:8], 0x00000001|0x00000002)
+	copy(out[8:], payload)
+	return out
+}
+
+func buildProbeDRDYNVCCapsPDU() []byte {
+	out := []byte{buildProbeDRDYNVCHeader(0, 0, probeDRDYNVCCmdCapability), 0}
+	out = append(out, 0x01, 0x00)
+	return out
+}
+
+func buildProbeDRDYNVCCreatePDU(channelID uint32, name string) []byte {
+	cb := probeDRDYNVCCbChID(channelID)
+	out := []byte{buildProbeDRDYNVCHeader(cb, 0, probeDRDYNVCCmdCreate)}
+	out = appendProbeDRDYNVCChannelID(out, cb, channelID)
+	out = append(out, []byte(name)...)
+	out = append(out, 0)
+	return out
+}
+
+func buildProbeDRDYNVCDataPDU(channelID uint32, data []byte) []byte {
+	cb := probeDRDYNVCCbChID(channelID)
+	out := []byte{buildProbeDRDYNVCHeader(cb, 0, probeDRDYNVCCmdData)}
+	out = appendProbeDRDYNVCChannelID(out, cb, channelID)
+	out = append(out, data...)
+	return out
+}
+
+func buildProbeDRDYNVCHeader(cbChID, sp, cmd uint8) byte {
+	return (cbChID & 0x03) | ((sp & 0x03) << 2) | ((cmd & 0x0f) << 4)
+}
+
+func probeDRDYNVCCbChID(channelID uint32) uint8 {
+	switch {
+	case channelID <= 0xff:
+		return 0
+	case channelID <= 0xffff:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func appendProbeDRDYNVCChannelID(out []byte, cb uint8, channelID uint32) []byte {
+	switch cb {
+	case 0:
+		out = append(out, byte(channelID))
+	case 1:
+		out = appendLE16(out, uint16(channelID))
+	default:
+		out = appendLE32(out, channelID)
+	}
+	return out
+}
+
+func buildProbeRDPEICSReadyPDU() []byte {
+	payload := append(append(append([]byte{}, appendLE32(nil, 0)...), appendLE32(nil, probeRDPEIProtocolV300)...), appendLE16(nil, 10)...)
+	return withProbeRDPEIHeader(probeRDPEIEventCSReady, payload)
+}
+
+func buildProbeRDPEITouchPDU(contactID byte, x, y int32, flags uint32) []byte {
+	payload := []byte{}
+	payload = append(payload, probeRDPEIVarUint32(0)...)
+	payload = append(payload, probeRDPEIVarUint16(1)...)
+	payload = append(payload, probeRDPEIVarUint16(1)...)
+	payload = append(payload, probeRDPEIVarUint64(0)...)
+	payload = append(payload, contactID)
+	payload = append(payload, probeRDPEIVarUint16(0)...)
+	payload = append(payload, probeRDPEIVarInt32(x)...)
+	payload = append(payload, probeRDPEIVarInt32(y)...)
+	payload = append(payload, probeRDPEIVarUint32(flags)...)
+	return withProbeRDPEIHeader(probeRDPEIEventTouch, payload)
+}
+
+func withProbeRDPEIHeader(eventID uint16, payload []byte) []byte {
+	out := make([]byte, 6+len(payload))
+	binary.LittleEndian.PutUint16(out[0:2], eventID)
+	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
+	copy(out[6:], payload)
+	return out
+}
+
+func probeRDPEIVarUint16(v uint16) []byte {
+	if v <= 0x7f {
+		return []byte{byte(v)}
+	}
+	return []byte{0x80 | byte(v>>8), byte(v)}
+}
+
+func probeRDPEIVarUint32(v uint32) []byte {
+	switch {
+	case v <= 0x3f:
+		return []byte{byte(v)}
+	case v <= 0x3fff:
+		return []byte{0x40 | byte(v>>8), byte(v)}
+	case v <= 0x3fffff:
+		return []byte{0x80 | byte(v>>16), byte(v >> 8), byte(v)}
+	default:
+		return []byte{0xc0 | byte(v>>24), byte(v >> 16), byte(v >> 8), byte(v)}
+	}
+}
+
+func probeRDPEIVarInt32(v int32) []byte {
+	neg := v < 0
+	mag := uint32(v)
+	if neg {
+		mag = uint32(-v)
+	}
+	sign := byte(0)
+	if neg {
+		sign = 0x20
+	}
+	switch {
+	case mag <= 0x1f:
+		return []byte{sign | byte(mag)}
+	case mag <= 0x1fff:
+		return []byte{0x40 | sign | byte(mag>>8), byte(mag)}
+	case mag <= 0x1fffff:
+		return []byte{0x80 | sign | byte(mag>>16), byte(mag >> 8), byte(mag)}
+	default:
+		return []byte{0xc0 | sign | byte(mag>>24), byte(mag >> 16), byte(mag >> 8), byte(mag)}
+	}
+}
+
+func probeRDPEIVarUint64(v uint64) []byte {
+	bytesNeeded := 1
+	limits := []uint64{0x1f, 0x1fff, 0x1fffff, 0x1fffffff, 0x1fffffffff, 0x1fffffffffff, 0x1fffffffffffff, 0x1fffffffffffffff}
+	for bytesNeeded < len(limits) && v > limits[bytesNeeded-1] {
+		bytesNeeded++
+	}
+	out := make([]byte, bytesNeeded)
+	out[0] = byte(bytesNeeded-1) << 5
+	shift := uint((bytesNeeded - 1) * 8)
+	out[0] |= byte(v >> shift)
+	for i := 1; i < bytesNeeded; i++ {
+		shift -= 8
+		out[i] = byte(v >> shift)
+	}
+	return out
 }
 
 func captureScene(conn net.Conn, scene probeScenePlan, screenshot *image.RGBA, shot string, idleTimeoutMs, maxUpdates int) (probeSceneSummary, error) {
@@ -549,7 +807,47 @@ func sendX224ConnectionRequest(conn net.Conn, nla bool) error {
 }
 
 func sendMCSConnectInitial(conn net.Conn) error {
-	return writeTPKT(conn, []byte{0x02, 0xf0, 0x80, 0x7f, 0x65, 0x00})
+	return sendMCSConnectInitialWithChannels(conn, false)
+}
+
+func sendMCSConnectInitialWithChannels(conn net.Conn, includeDRDYNVC bool) error {
+	return writeTPKT(conn, buildMCSConnectInitial(includeDRDYNVC))
+}
+
+func buildMCSConnectInitial(includeDRDYNVC bool) []byte {
+	payload := []byte{}
+	if includeDRDYNVC {
+		payload = append(payload, buildProbeCSNetUserData("drdynvc")...)
+	}
+	ber := []byte{0x7f, 0x65}
+	ber = append(ber, encodeBERLength(len(payload))...)
+	ber = append(ber, payload...)
+	return append([]byte{0x02, 0xf0, 0x80}, ber...)
+}
+
+func buildProbeCSNetUserData(names ...string) []byte {
+	count := len(names)
+	blockLen := 8 + count*12
+	out := make([]byte, 8, blockLen)
+	binary.LittleEndian.PutUint16(out[0:2], 0xc003)
+	binary.LittleEndian.PutUint16(out[2:4], uint16(blockLen))
+	binary.LittleEndian.PutUint32(out[4:8], uint32(count))
+	for _, name := range names {
+		entry := make([]byte, 12)
+		copy(entry[:8], []byte(name))
+		out = append(out, entry...)
+	}
+	return out
+}
+
+func encodeBERLength(length int) []byte {
+	if length <= 0x7f {
+		return []byte{byte(length)}
+	}
+	if length <= 0xff {
+		return []byte{0x81, byte(length)}
+	}
+	return []byte{0x82, byte(length >> 8), byte(length)}
 }
 
 func sendMCSDomainPDU(conn net.Conn, application int, body []byte) error {
@@ -564,7 +862,7 @@ func encodePERInteger16(value, minimum uint16) []byte {
 }
 
 func buildMCSSendDataRequest(initiator, channelID uint16, data []byte) []byte {
-	body := encodePERInteger16(initiator, 1001)
+	body := encodePERInteger16(initiator, probeMCSUserID)
 	body = append(body, encodePERInteger16(channelID, 0)...)
 	body = append(body, 0x70)
 	body = append(body, encodePERLength(len(data))...)
@@ -731,7 +1029,7 @@ func buildSlowPathInputPDU(events ...[]byte) []byte {
 
 func sendShareData(conn net.Conn, pduType2 byte, payload []byte) error {
 	pdu := buildShareDataPDU(pduType2, payload)
-	return sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(1001, 1003, pdu))
+	return sendMCSDomainPDU(conn, 25, buildMCSSendDataRequest(probeMCSUserID, probeGlobalChannelID, pdu))
 }
 
 func buildClientInfoPayload(username, password, domain string) []byte {
@@ -766,7 +1064,7 @@ func buildShareDataPDU(pduType2 byte, payload []byte) []byte {
 	totalLength := 18 + len(payload)
 	out := appendLE16(nil, uint16(totalLength))
 	out = appendLE16(out, 0x0017)
-	out = appendLE16(out, 1001)
+	out = appendLE16(out, probeMCSUserID)
 	out = appendLE32(out, 0x000103ea)
 	out = append(out, 0, 1)
 	out = appendLE16(out, uint16(4+len(payload)))

@@ -9,6 +9,8 @@ import (
 	"encoding/binary"
 	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -130,6 +132,47 @@ func TestReadTPKTShortRead(t *testing.T) {
 	_, err := readTPKT(bytes.NewReader([]byte{3, 0}))
 	if err == nil {
 		t.Fatal("expected short read error")
+	}
+}
+
+func TestBuildMCSConnectInitialWithDRDYNVC(t *testing.T) {
+	wire := buildMCSConnectInitial(true)
+	if len(wire) < 3 || wire[0] != 0x02 || wire[1] != 0xf0 || wire[2] != 0x80 {
+		t.Fatalf("bad x224 wrapper: %x", wire)
+	}
+	if !bytes.Contains(wire, []byte{0x03, 0xc0}) {
+		t.Fatalf("missing CS_NET block: %x", wire)
+	}
+	if !bytes.Contains(wire, []byte("drdynvc")) {
+		t.Fatalf("missing drdynvc channel name: %x", wire)
+	}
+}
+
+func TestScenePlanRequiresRDPEI(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "scene.json")
+	if err := os.WriteFile(path, []byte(`[
+  {"name":"a","actions":[{"type":"tap"}]},
+  {"name":"b","actions":[{"type":"rdpei-tap"}]}
+]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requires, err := scenePlanRequiresRDPEI(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !requires {
+		t.Fatal("expected rdpei requirement")
+	}
+}
+
+func TestRunRDPSceneActionsRequiresNegotiatedRDPEI(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	actions := []probeSceneAction{{Type: "rdpei-tap", X: 10, Y: 20}}
+	if err := runRDPSceneActions(client, actions, 0); err == nil {
+		t.Fatal("expected rdpei-tap negotiation error")
 	}
 }
 
