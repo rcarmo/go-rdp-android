@@ -213,7 +213,9 @@ type InputHandler interface {
 	PointerWheel(x int, y int, delta int, horizontal bool)
 	Key(scancode int, down bool)
 	Unicode(codepoint int)
+	TouchFrameStart(contactCount int)
 	TouchContact(contactID int, x int, y int, flags int)
+	TouchFrameEnd()
 }
 
 type mobileInputSink struct {
@@ -270,9 +272,11 @@ func (s *mobileInputSink) Unicode(r rune) error {
 
 func (s *mobileInputSink) TouchFrame(contacts []input.TouchContact) error {
 	if handler := s.getHandler(); handler != nil {
+		handler.TouchFrameStart(len(contacts))
 		for _, contact := range contacts {
 			handler.TouchContact(int(contact.ID), contact.X, contact.Y, int(contact.Flags))
 		}
+		handler.TouchFrameEnd()
 	}
 	return nil
 }

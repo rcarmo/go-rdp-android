@@ -13,14 +13,26 @@ class RdpAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         activeService = WeakReference(this)
-        activeTouches.clear()
-        activePointerGestures.clear()
+        synchronized(touchDispatchLock) {
+            activeTouches.clear()
+            activePointerGestures.clear()
+            inProgressFrameEvents = null
+            inProgressFrameExpectedContacts = 0
+            dispatchInFlight = false
+            dispatchRequested = false
+        }
         Log.i(TAG, "Accessibility service connected")
     }
 
     override fun onDestroy() {
-        activeTouches.clear()
-        activePointerGestures.clear()
+        synchronized(touchDispatchLock) {
+            activeTouches.clear()
+            activePointerGestures.clear()
+            inProgressFrameEvents = null
+            inProgressFrameExpectedContacts = 0
+            dispatchInFlight = false
+            dispatchRequested = false
+        }
         activeService?.clear()
         activeService = null
         super.onDestroy()
@@ -54,15 +66,39 @@ class RdpAccessibilityService : AccessibilityService() {
         private const val POINTER_PRIMARY_CONTACT_ID = 1
         private const val MIN_TOUCH_DURATION_MS = 50L
         private const val MAX_TOUCH_DURATION_MS = 1_500L
+
         private val activeTouches = ConcurrentHashMap<Int, TouchPathState>()
         private val activePointerGestures = ConcurrentHashMap<Int, TouchPathState>()
+        private val touchDispatchLock = Any()
+
+        private var inProgressFrameEvents: MutableList<TouchContactEvent>? = null
+        private var inProgressFrameExpectedContacts: Int = 0
+        private var dispatchInFlight = false
+        private var dispatchRequested = false
 
         private data class TouchPathState(
-            val path: Path,
+            var path: Path,
             val startedAtMs: Long,
+            var segmentStartedAtMs: Long,
             var lastX: Int,
             var lastY: Int,
             var pointCount: Int = 1,
+            var dirty: Boolean = true,
+            var ending: Boolean = false,
+            var previousStroke: GestureDescription.StrokeDescription? = null,
+        )
+
+        private data class TouchContactEvent(
+            val contactId: Int,
+            val x: Int,
+            val y: Int,
+            val flags: Int,
+        )
+
+        private data class DispatchedTouchStroke(
+            val contactId: Int,
+            val continuing: Boolean,
+            val descriptor: GestureDescription.StrokeDescription,
         )
 
         fun handlePointerMove(x: Int, y: Int): Boolean {
@@ -82,6 +118,7 @@ class RdpAccessibilityService : AccessibilityService() {
                 activePointerGestures[POINTER_PRIMARY_CONTACT_ID] = TouchPathState(
                     path = Path().apply { moveTo(x.toFloat(), y.toFloat()) },
                     startedAtMs = now,
+                    segmentStartedAtMs = now,
                     lastX = x,
                     lastY = y,
                 )
@@ -119,41 +156,175 @@ class RdpAccessibilityService : AccessibilityService() {
             return activeService?.get() != null
         }
 
+        fun handleTouchFrameStart(contactCount: Int): Boolean {
+            synchronized(touchDispatchLock) {
+                inProgressFrameExpectedContacts = contactCount.coerceAtLeast(0)
+                inProgressFrameEvents = ArrayList(inProgressFrameExpectedContacts)
+            }
+            return activeService?.get() != null
+        }
+
         fun handleTouchContact(contactId: Int, x: Int, y: Int, flags: Int): Boolean {
             Log.d(TAG, "touchContact(id=$contactId x=$x y=$y flags=$flags)")
             val service = activeService?.get() ?: return false
-            val now = SystemClock.uptimeMillis()
-            if ((flags and TOUCH_FLAG_DOWN) != 0) {
-                activeTouches[contactId] = TouchPathState(
-                    path = Path().apply { moveTo(x.toFloat(), y.toFloat()) },
-                    startedAtMs = now,
-                    lastX = x,
-                    lastY = y,
-                )
-                return true
+            synchronized(touchDispatchLock) {
+                val event = TouchContactEvent(contactId = contactId, x = x, y = y, flags = flags)
+                val frameEvents = inProgressFrameEvents
+                if (frameEvents != null) {
+                    frameEvents.add(event)
+                    return true
+                }
+                processTouchEventsLocked(listOf(event), SystemClock.uptimeMillis())
+                return scheduleTouchDispatchLocked(service)
             }
-
-            val state = activeTouches[contactId]
-            if (state == null) {
-                Log.w(TAG, "dropping stray touch contact id=$contactId flags=$flags")
-                return true
-            }
-
-            if ((flags and TOUCH_FLAG_CANCELED) != 0) {
-                activeTouches.remove(contactId)
-                return true
-            }
-
-            if ((flags and TOUCH_FLAG_UPDATE) != 0 || (flags and TOUCH_FLAG_UP) != 0) {
-                appendTouchPoint(state, x, y)
-            }
-
-            if ((flags and TOUCH_FLAG_UP) != 0) {
-                activeTouches.remove(contactId)
-                return service.dispatchPathGesture(state.path, now - state.startedAtMs)
-            }
-            return true
         }
+
+        fun handleTouchFrameEnd(): Boolean {
+            val service = activeService?.get() ?: return false
+            synchronized(touchDispatchLock) {
+                val frameEvents = inProgressFrameEvents ?: return true
+                val expectedContacts = inProgressFrameExpectedContacts
+                inProgressFrameExpectedContacts = 0
+                inProgressFrameEvents = null
+                if (expectedContacts > 0 && frameEvents.size != expectedContacts) {
+                    Log.w(TAG, "touch frame contact mismatch expected=$expectedContacts actual=${frameEvents.size}")
+                }
+                processTouchEventsLocked(frameEvents, SystemClock.uptimeMillis())
+                return scheduleTouchDispatchLocked(service)
+            }
+        }
+
+        private fun processTouchEventsLocked(events: List<TouchContactEvent>, nowMs: Long) {
+            for (event in events) {
+                val isDown = (event.flags and TOUCH_FLAG_DOWN) != 0
+                val isUpdate = (event.flags and TOUCH_FLAG_UPDATE) != 0
+                val isUp = (event.flags and TOUCH_FLAG_UP) != 0
+                val isCanceled = (event.flags and TOUCH_FLAG_CANCELED) != 0
+
+                if (isDown) {
+                    activeTouches[event.contactId] = TouchPathState(
+                        path = Path().apply { moveTo(event.x.toFloat(), event.y.toFloat()) },
+                        startedAtMs = nowMs,
+                        segmentStartedAtMs = nowMs,
+                        lastX = event.x,
+                        lastY = event.y,
+                    )
+                }
+
+                val state = activeTouches[event.contactId]
+                if (state == null) {
+                    Log.w(TAG, "dropping stray touch contact id=${event.contactId} flags=${event.flags}")
+                    continue
+                }
+
+                if (isCanceled) {
+                    activeTouches.remove(event.contactId)
+                    continue
+                }
+
+                if (isDown || isUpdate || isUp) {
+                    appendTouchPoint(state, event.x, event.y)
+                    state.dirty = true
+                }
+                if (isUp) {
+                    state.ending = true
+                }
+            }
+        }
+
+        private fun scheduleTouchDispatchLocked(service: RdpAccessibilityService): Boolean {
+            if (dispatchInFlight) {
+                dispatchRequested = true
+                return true
+            }
+            val built = buildTouchDispatchBatchLocked(SystemClock.uptimeMillis())
+            if (built.isEmpty()) {
+                return true
+            }
+
+            val gestureBuilder = GestureDescription.Builder()
+            built.forEach { gestureBuilder.addStroke(it.descriptor) }
+            val gesture = gestureBuilder.build()
+
+            dispatchInFlight = true
+            dispatchRequested = false
+            val callback = object : GestureDescription.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    finishTouchDispatch(built, canceled = false)
+                }
+
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    finishTouchDispatch(built, canceled = true)
+                }
+            }
+
+            val dispatched = service.dispatchGesture(gesture, callback, null)
+            if (!dispatched) {
+                dispatchInFlight = false
+                built.filter { it.continuing }.forEach { stroke ->
+                    activeTouches[stroke.contactId]?.previousStroke = null
+                }
+                if (dispatchRequested || hasDirtyTouchStateLocked()) {
+                    dispatchRequested = false
+                    return scheduleTouchDispatchLocked(service)
+                }
+            }
+            return dispatched
+        }
+
+        private fun finishTouchDispatch(dispatched: List<DispatchedTouchStroke>, canceled: Boolean) {
+            synchronized(touchDispatchLock) {
+                dispatchInFlight = false
+                if (canceled) {
+                    dispatched.filter { it.continuing }.forEach { stroke ->
+                        activeTouches[stroke.contactId]?.previousStroke = null
+                    }
+                }
+                val service = activeService?.get()
+                if (service != null && (dispatchRequested || hasDirtyTouchStateLocked())) {
+                    dispatchRequested = false
+                    scheduleTouchDispatchLocked(service)
+                } else {
+                    dispatchRequested = false
+                }
+            }
+        }
+
+        private fun buildTouchDispatchBatchLocked(nowMs: Long): List<DispatchedTouchStroke> {
+            if (activeTouches.isEmpty()) {
+                return emptyList()
+            }
+            val out = ArrayList<DispatchedTouchStroke>(activeTouches.size)
+            val endingContactIDs = ArrayList<Int>()
+            activeTouches.entries.sortedBy { it.key }.forEach { (contactId, state) ->
+                if (!state.dirty && !state.ending) return@forEach
+
+                val durationMs = (nowMs - state.segmentStartedAtMs).coerceIn(MIN_TOUCH_DURATION_MS, MAX_TOUCH_DURATION_MS)
+                val continueAfter = !state.ending
+                val segmentPath = Path(state.path)
+                val descriptor = runCatching {
+                    state.previousStroke?.continueStroke(segmentPath, 0, durationMs, continueAfter)
+                        ?: GestureDescription.StrokeDescription(segmentPath, 0, durationMs, continueAfter)
+                }.getOrElse {
+                    GestureDescription.StrokeDescription(segmentPath, 0, durationMs, continueAfter)
+                }
+
+                out += DispatchedTouchStroke(contactId = contactId, continuing = continueAfter, descriptor = descriptor)
+
+                state.previousStroke = if (continueAfter) descriptor else null
+                state.path = Path().apply { moveTo(state.lastX.toFloat(), state.lastY.toFloat()) }
+                state.segmentStartedAtMs = nowMs
+                state.dirty = false
+
+                if (state.ending) {
+                    endingContactIDs += contactId
+                }
+            }
+            endingContactIDs.forEach(activeTouches::remove)
+            return out
+        }
+
+        private fun hasDirtyTouchStateLocked(): Boolean = activeTouches.values.any { it.dirty || it.ending }
 
         private fun appendTouchPoint(state: TouchPathState, x: Int, y: Int) {
             if (state.lastX == x && state.lastY == y) return

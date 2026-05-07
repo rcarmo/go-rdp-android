@@ -55,8 +55,16 @@ object NativeRdpBridge : RdpInputCallbacks {
         RdpAccessibilityService.handleUnicode(codepoint)
     }
 
+    override fun onTouchFrameStart(contactCount: Int) {
+        RdpAccessibilityService.handleTouchFrameStart(contactCount)
+    }
+
     override fun onTouchContact(contactId: Int, x: Int, y: Int, flags: Int) {
         RdpAccessibilityService.handleTouchContact(contactId, x * inputCoordinateScale, y * inputCoordinateScale, flags)
+    }
+
+    override fun onTouchFrameEnd() {
+        RdpAccessibilityService.handleTouchFrameEnd()
     }
 
     fun stopServer() {
