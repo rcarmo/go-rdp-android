@@ -80,10 +80,17 @@ check-aar-artifact: ## Verify generated gomobile AAR contents
 .PHONY: check-apk-artifact
 check-apk-artifact: ## Verify debug APK contents; set REQUIRE_GO_LIBS=1 for Go-backed APK
 	mkdir -p .gotmp
-	@if [ "$(REQUIRE_GO_LIBS)" = "1" ]; then \
-		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk --require-go-libs; \
+	@APK_PATH="$$(find android/app/build/outputs/apk -type f -name '*debug*.apk' | sort | head -n1)"; \
+	if [ -z "$$APK_PATH" ]; then \
+		echo "debug APK not found under android/app/build/outputs/apk"; \
+		find android/app/build/outputs -maxdepth 6 -type f || true; \
+		exit 1; \
+	fi; \
+	echo "Using APK: $$APK_PATH"; \
+	if [ "$(REQUIRE_GO_LIBS)" = "1" ]; then \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk "$$APK_PATH" --require-go-libs; \
 	else \
-		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk android/app/build/outputs/apk/debug/app-debug.apk; \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go apk "$$APK_PATH"; \
 	fi
 	rm -rf .gotmp
 
