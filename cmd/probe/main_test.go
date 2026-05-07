@@ -205,6 +205,50 @@ func TestRunRDPSceneActionsRequiresNegotiatedRDPEI(t *testing.T) {
 	}
 }
 
+func TestRegressionLicensingSkipFixture(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+
+	license := regressionLicensePDU()
+	demand := []byte{0x02, 0xf0, 0x80, 0x01, 0x02, 0x03}
+	go func() {
+		defer server.Close()
+		_ = writeTPKT(server, license)
+		_ = writeTPKT(server, demand)
+	}()
+
+	got, err := readDemandActiveOrSkipLicense(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, demand) {
+		t.Fatalf("unexpected demand payload: %x", got)
+	}
+}
+
+func TestRegressionNLALicensingSkipFixture(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+
+	demand := []byte{0x02, 0xf0, 0x80, 0xaa, 0xbb, 0xcc}
+	go func() {
+		defer server.Close()
+		_ = writeTPKT(server, regressionLicensePDU())
+		_ = writeTPKT(server, regressionLicensePDU())
+		_ = writeTPKT(server, demand)
+	}()
+
+	got, err := readDemandActiveOrSkipLicense(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, demand) {
+		t.Fatalf("unexpected demand payload: %x", got)
+	}
+}
+
 func TestReadAndPrintReadsPacket(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
@@ -222,4 +266,8 @@ func TestReadAndPrintReadsPacket(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("readAndPrint did not return")
 	}
+}
+
+func regressionLicensePDU() []byte {
+	return []byte{0x10, 0x80, 0x00, 0x00, 0x00, 0xff, 0x03, 0x20}
 }
