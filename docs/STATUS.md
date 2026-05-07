@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-07
-Current evidence commit: `e1748ec` (`Keep UX report mouse check while asserting RDPEI tap`)
-Latest referenced CI run: `25481041563` (`main` CI, success)
+Current evidence commit: `96c5202` (`Handle graceful disconnects and remove FreeRDP timeout gate`)
+Latest referenced CI run: `25517008733` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -16,25 +16,25 @@ This page is the compact, human-readable status matrix for production readiness.
 | Android debug APK | Passing in CI | Gradle debug build plus APK inspection artifact. |
 | gomobile AAR/API | Passing in CI | `mobile.aar` build plus `scripts/check-aar-api.go`; includes `TouchContact`. |
 | Go-backed APK | Passing in CI | Go-backed debug APK build and native-library inspection. |
-| FreeRDP `/sec:rdp` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
-| FreeRDP `/sec:tls` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
-| FreeRDP `/sec:nla` | Blocking/pass | `exit_code=124`, `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
+| FreeRDP `/sec:rdp` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
+| FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
+| FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
 | `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, caps-before-lifecycle enforcement, unsupported/duplicate/second RDPEI create rejection, size bounds, fragment limits, stale-fragment cleanup, unexpected channel IDs, simultaneous fragments, close/reopen, variable-length channel IDs, and synthetic caps→create→RDPEI touch integration sequence. |
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
-| Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. Latest on-demand `workflow_dispatch` evidence (`25481329541`) passed with Go-backed capture + UX report generation. |
+| Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. Latest on-demand `workflow_dispatch` evidence (`25517361134`) passed with Go-backed capture + UX report generation. |
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25458853967`:
+Latest checked artifact from CI run `25517008733`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/sec:rdp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `124` |
-| `/sec:tls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `124` |
-| `/sec:nla` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `124` |
+| `/sec:rdp` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `131` |
+| `/sec:tls` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `131` |
+| `/sec:nla` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `131` |
 
-`124` is still expected because the compatibility job treats sustained active streaming until the CI timeout as success. A future production-readiness milestone is graceful disconnect/logoff handling so this can become a clean-shutdown gate.
+The compatibility gate now performs a non-timeout clean stop of the FreeRDP client after active streaming/screenshot capture and requires `exit_code != 124`.
 
 ## Protocol and input readiness
 
@@ -51,7 +51,7 @@ Latest checked artifact from CI run `25458853967`:
 
 - No physical Android device validation yet.
 - Microsoft Remote Desktop compatibility is not yet validated.
-- FreeRDP gate still uses timeout-based success (`exit_code=124`) instead of clean disconnect/logoff.
+- FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
 - Security defaults are not production-safe yet: credential setup/storage, TLS certificate persistence, auth policy, rate limiting, and threat model remain pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending.

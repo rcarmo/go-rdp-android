@@ -128,9 +128,9 @@ Current blocking FreeRDP compatibility signals are tracked in [docs/STATUS.md](d
 
 | Mode | Active | Bitmap/update | Fast-Path input | Screenshot | Current expected exit |
 | --- | --- | --- | --- | --- | --- |
-| `/sec:rdp` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
-| `/sec:tls` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
-| `/sec:nla` | ✅ | ✅ | ✅ | ✅ | `124` timeout while streaming |
+| `/sec:rdp` | ✅ | ✅ | ✅ | ✅ | `131` non-timeout shutdown after capture |
+| `/sec:tls` | ✅ | ✅ | ✅ | ✅ | `131` non-timeout shutdown after capture |
+| `/sec:nla` | ✅ | ✅ | ✅ | ✅ | `131` non-timeout shutdown after capture |
 
 Manual emulator UX run:
 
