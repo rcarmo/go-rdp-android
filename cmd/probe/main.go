@@ -972,18 +972,31 @@ func applyBitmapUpdate(dst *image.RGBA, payload []byte) (bitmapStats, error) {
 		if _, err := io.ReadFull(r, data); err != nil {
 			return bitmapStats{}, err
 		}
-		if bpp != 32 || flags != 0 {
+		if flags != 0 {
+			return bitmapStats{}, fmt.Errorf("unsupported bitmap rect flags=0x%04x", flags)
+		}
+		rowBytes := 0
+		switch bpp {
+		case 24:
+			rowBytes = ((int(width)*24 + 31) / 32) * 4
+		case 32:
+			rowBytes = int(width) * 4
+		default:
 			return bitmapStats{}, fmt.Errorf("unsupported bitmap rect bpp=%d flags=0x%04x", bpp, flags)
 		}
-		if int(width)*int(height)*4 > len(data) {
+		if rowBytes*int(height) > len(data) {
 			return bitmapStats{}, fmt.Errorf("short bitmap rect data")
 		}
 		_ = right
 		_ = bottom
 		for y := 0; y < int(height); y++ {
 			for x := 0; x < int(width); x++ {
-				si := (y*int(width) + x) * 4
-				dst.SetRGBA(int(left)+x, int(top)+y, color.RGBA{R: data[si+2], G: data[si+1], B: data[si], A: data[si+3]})
+				si := y*rowBytes + x*int(bpp/8)
+				px := color.RGBA{R: data[si+2], G: data[si+1], B: data[si], A: 0xff}
+				if bpp == 32 {
+					px.A = data[si+3]
+				}
+				dst.SetRGBA(int(left)+x, int(top)+y, px)
 			}
 		}
 	}

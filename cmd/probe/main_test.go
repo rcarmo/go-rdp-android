@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
+	"image"
 	"math/big"
 	"net"
 	"os"
@@ -163,6 +164,34 @@ func TestScenePlanRequiresRDPEI(t *testing.T) {
 	}
 	if !requires {
 		t.Fatal("expected rdpei requirement")
+	}
+}
+
+func TestApplyBitmapUpdatePacketSupports24BPP(t *testing.T) {
+	update := appendLE16(nil, 0x0001)
+	update = appendLE16(update, 1)
+	update = appendLE16(update, 0) // left
+	update = appendLE16(update, 0) // top
+	update = appendLE16(update, 0) // right
+	update = appendLE16(update, 0) // bottom
+	update = appendLE16(update, 1) // width
+	update = appendLE16(update, 1) // height
+	update = appendLE16(update, 24)
+	update = appendLE16(update, 0)
+	update = appendLE16(update, 4)
+	update = append(update, 0x11, 0x22, 0x33, 0x00) // BGR + alignment padding
+
+	share := buildShareDataPDU(0x02, update)
+	mcsData := buildMCSSendDataRequest(probeMCSUserID, probeGlobalChannelID, share)
+	pkt := append([]byte{0x02, 0xf0, 0x80, byte(26 << 2)}, mcsData...)
+
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	if _, err := applyBitmapUpdatePacket(img, pkt); err != nil {
+		t.Fatalf("applyBitmapUpdatePacket: %v", err)
+	}
+	got := img.RGBAAt(0, 0)
+	if got.R != 0x33 || got.G != 0x22 || got.B != 0x11 || got.A != 0xff {
+		t.Fatalf("unexpected pixel %#v", got)
 	}
 }
 
