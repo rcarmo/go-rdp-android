@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-05
-Current evidence commit: `b2d7f8e` (`Bridge pointer wheel input safely`)
-Latest referenced CI run: `25422636820` (`main` CI, success)
+Last updated: 2026-05-07
+Current evidence commit: `908391c` (`Harden FreeRDP summary script error handling`)
+Latest referenced CI run: `25458853967` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -26,7 +26,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25422636820`:
+Latest checked artifact from CI run `25458853967`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
