@@ -173,7 +173,9 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         working-directory: android
-        run: gradle :app:assembleDebug | tee ../android-build.log
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug | tee ../android-build.log
       - name: Inspect debug APK
         run: |
           mkdir -p test-artifacts/android
@@ -235,7 +237,9 @@ jobs:
           test -s test-artifacts/gomobile/aar-summary.md
       - name: Build APK with Go AAR
         working-directory: android
-        run: gradle :app:assembleDebug | tee ../gomobile-android-build.log
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug | tee ../gomobile-android-build.log
       - name: Inspect Go-backed APK
         run: |
           make check-apk-artifact REQUIRE_GO_LIBS=1 | tee test-artifacts/gomobile/go-backed-apk-inspection.log

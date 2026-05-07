@@ -248,7 +248,7 @@ class RdpAccessibilityService : AccessibilityService() {
 
             dispatchInFlight = true
             dispatchRequested = false
-            val callback = object : GestureDescription.GestureResultCallback() {
+            val callback = object : AccessibilityService.GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
                     finishTouchDispatch(built, canceled = false)
                 }
