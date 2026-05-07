@@ -301,11 +301,14 @@ jobs:
               set +e
               xvfb-run -a bash -c "
                 set +e
-                timeout 20s xfreerdp /v:127.0.0.1:3390 /sec:${mode} /cert:ignore /u:runner /p:secret /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
+                xfreerdp /v:127.0.0.1:3390 /sec:${mode} /cert:ignore /u:runner /p:secret /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
                 rdp_pid=\$!
                 sleep 8
                 xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
                 (convert '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png' || magick '$dir/xfreerdp-root.xwd' '$dir/xfreerdp-root.png') >'$dir/convert.log' 2>&1
+                if kill -0 \$rdp_pid >/dev/null 2>&1; then
+                  kill -INT \$rdp_pid >/dev/null 2>&1 || true
+                fi
                 wait \$rdp_pid
                 echo \$? > '$dir/exit-code.txt'
               "
@@ -315,7 +318,7 @@ jobs:
               cp freerdp-artifacts/mock-server.log "$dir/mock-server.log"
               GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go "$dir"
               cat "$dir/summary.md"
-              if grep -q '"bitmap_seen": true' "$dir/summary.json" && grep -q '"active_seen": true' "$dir/summary.json" && grep -q '"exit_code": "124"' "$dir/summary.json"; then
+              if jq -e '.bitmap_seen == true and .active_seen == true and .screenshot_png == true and .exit_code != "124"' "$dir/summary.json" >/dev/null; then
                 pass=1
                 best_attempt=$attempt
                 cp "$dir/summary.md" "freerdp-artifacts/${mode}-summary.md"
@@ -333,7 +336,7 @@ jobs:
             if [ "$pass" -ne 1 ]; then
               cp "freerdp-artifacts/${mode}/attempt-${best_attempt}/summary.md" "freerdp-artifacts/${mode}-summary.md" || true
               cp "freerdp-artifacts/${mode}/attempt-${best_attempt}/summary.json" "freerdp-artifacts/${mode}-summary.json" || true
-              echo "FreeRDP ${mode} compatibility gate failed: no attempt reached active bitmap streaming and stayed connected until timeout" >&2
+              echo "FreeRDP ${mode} compatibility gate failed: no attempt reached active bitmap streaming plus non-timeout clean disconnect" >&2
               tail -n 160 "freerdp-artifacts/${mode}/attempt-${best_attempt}/xfreerdp.log" || true
               exit 1
             fi

@@ -10,6 +10,7 @@ import (
 const (
 	pduTypeDemandActive  = 0x0011
 	pduTypeConfirmActive = 0x0013
+	pduTypeDeactivateAll = 0x0016
 	pduTypeData          = 0x0017
 
 	pduType2Synchronize = 0x1f

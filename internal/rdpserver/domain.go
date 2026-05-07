@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"syscall"
 	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -12,13 +14,16 @@ import (
 )
 
 const (
-	mcsErectDomainRequestApp = 1
-	mcsAttachUserRequestApp  = 10
-	mcsAttachUserConfirmApp  = 11
-	mcsChannelJoinRequestApp = 14
-	mcsChannelJoinConfirmApp = 15
-	defaultMCSUserID         = 1001
-	domainReadTimeout        = 2 * time.Minute
+	mcsErectDomainRequestApp          = 1
+	mcsDisconnectProviderUltimatumApp = 8
+	mcsAttachUserRequestApp           = 10
+	mcsAttachUserConfirmApp           = 11
+	mcsDetachUserRequestApp           = 12
+	mcsDetachUserIndicationApp        = 13
+	mcsChannelJoinRequestApp          = 14
+	mcsChannelJoinConfirmApp          = 15
+	defaultMCSUserID                  = 1001
+	domainReadTimeout                 = 2 * time.Minute
 )
 
 type domainPDU struct {
@@ -42,6 +47,10 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			if errors.As(err, &netErr) && netErr.Timeout() {
 				return nil
 			}
+			if isGracefulDomainDisconnect(err) {
+				tracef("mcs_domain_disconnect", "reason=%v", err)
+				return nil
+			}
 			return err
 		}
 
@@ -49,6 +58,9 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 		switch pdu.Application {
 		case mcsErectDomainRequestApp:
 			// No response for ErectDomainRequest.
+		case mcsDisconnectProviderUltimatumApp, mcsDetachUserRequestApp, mcsDetachUserIndicationApp:
+			tracef("mcs_domain_disconnect", "application=%d", pdu.Application)
+			return nil
 		case mcsAttachUserRequestApp:
 			if err := writeMCSAttachUserConfirm(conn, userID); err != nil {
 				return err
@@ -71,6 +83,9 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 						return err
 					}
 					continue
+				case pduTypeDeactivateAll:
+					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
+					return nil
 				case pduTypeData:
 					if err := handleShareDataPDU(conn, share, frames, sink, width, height); err != nil {
 						return err
@@ -108,6 +123,14 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			return fmt.Errorf("unsupported MCS domain PDU application %d", pdu.Application)
 		}
 	}
+}
+
+func isGracefulDomainDisconnect(err error) bool {
+	return errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE)
 }
 
 func readMCSDomainPDU(conn net.Conn) (*domainPDU, error) {
