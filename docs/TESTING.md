@@ -122,6 +122,7 @@ frame1=ok
 screen_capture=ok
 fatal_exception=none
 keyboard_settings_search=ok
+mouse_target_tap=ok
 rdpei_browser_tap=ok
 touch_notification_swipe=ok
 rdp_input_screenshots=ok

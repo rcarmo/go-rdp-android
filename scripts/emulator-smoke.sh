@@ -209,6 +209,7 @@ JSON
 
     {
       echo 'keyboard_settings_search=ok'
+      echo 'mouse_target_tap=ok'
       echo 'rdpei_browser_tap=ok'
       echo 'touch_notification_swipe=ok'
       echo 'rdp_input_screenshots=ok'
@@ -270,6 +271,7 @@ fi
 grep -q 'fatal_exception=none' emulator-artifacts/checks.txt
 if [ "$GO_BACKED" = "true" ] && [ "$CAPTURE" = "true" ]; then
   grep -q 'keyboard_settings_search=ok' emulator-artifacts/checks.txt
+  grep -q 'mouse_target_tap=ok' emulator-artifacts/checks.txt
   grep -q 'rdpei_browser_tap=ok' emulator-artifacts/checks.txt
   grep -q 'touch_notification_swipe=ok' emulator-artifacts/checks.txt
   grep -q 'rdp_input_screenshots=ok' emulator-artifacts/checks.txt
