@@ -206,19 +206,16 @@ func TestRunRDPSceneActionsRequiresNegotiatedRDPEI(t *testing.T) {
 }
 
 func TestRegressionLicensingSkipFixture(t *testing.T) {
-	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
-
+	buf := new(bytes.Buffer)
 	license := regressionLicensePDU()
 	demand := []byte{0x02, 0xf0, 0x80, 0x01, 0x02, 0x03}
-	go func() {
-		defer server.Close()
-		_ = writeTPKT(server, license)
-		_ = writeTPKT(server, demand)
-	}()
-
-	got, err := readDemandActiveOrSkipLicense(client)
+	if err := writeTPKT(buf, license); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeTPKT(buf, demand); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readDemandActiveOrSkipLicense(&bufferNetConn{Reader: bytes.NewReader(buf.Bytes())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -228,19 +225,18 @@ func TestRegressionLicensingSkipFixture(t *testing.T) {
 }
 
 func TestRegressionNLALicensingSkipFixture(t *testing.T) {
-	client, server := net.Pipe()
-	defer client.Close()
-	defer server.Close()
-
+	buf := new(bytes.Buffer)
 	demand := []byte{0x02, 0xf0, 0x80, 0xaa, 0xbb, 0xcc}
-	go func() {
-		defer server.Close()
-		_ = writeTPKT(server, regressionLicensePDU())
-		_ = writeTPKT(server, regressionLicensePDU())
-		_ = writeTPKT(server, demand)
-	}()
-
-	got, err := readDemandActiveOrSkipLicense(client)
+	if err := writeTPKT(buf, regressionLicensePDU()); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeTPKT(buf, regressionLicensePDU()); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeTPKT(buf, demand); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readDemandActiveOrSkipLicense(&bufferNetConn{Reader: bytes.NewReader(buf.Bytes())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,3 +267,20 @@ func TestReadAndPrintReadsPacket(t *testing.T) {
 func regressionLicensePDU() []byte {
 	return []byte{0x10, 0x80, 0x00, 0x00, 0x00, 0xff, 0x03, 0x20}
 }
+
+type bufferNetConn struct {
+	*bytes.Reader
+}
+
+func (c *bufferNetConn) Write(p []byte) (int, error)      { return len(p), nil }
+func (c *bufferNetConn) Close() error                     { return nil }
+func (c *bufferNetConn) LocalAddr() net.Addr              { return bufferAddr("local") }
+func (c *bufferNetConn) RemoteAddr() net.Addr             { return bufferAddr("remote") }
+func (c *bufferNetConn) SetDeadline(time.Time) error      { return nil }
+func (c *bufferNetConn) SetReadDeadline(time.Time) error  { return nil }
+func (c *bufferNetConn) SetWriteDeadline(time.Time) error { return nil }
+
+type bufferAddr string
+
+func (a bufferAddr) Network() string { return "buffer" }
+func (a bufferAddr) String() string  { return string(a) }
