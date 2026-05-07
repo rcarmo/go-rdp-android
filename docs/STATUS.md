@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-07
-Current evidence commit: `999f71c` (`Fix race-safe probe licensing regression fixtures`)
-Latest referenced CI run: `25522551651` (`main` CI, success)
+Current evidence commit: `efce042` (`Fix Android touch callback type and CI pipefail`)
+Latest referenced CI run: `25525635597` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -27,7 +27,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25522551651`:
+Latest checked artifact from CI run `25525635597`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
