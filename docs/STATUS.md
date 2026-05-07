@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-07
-Current evidence commit: `96c5202` (`Handle graceful disconnects and remove FreeRDP timeout gate`)
-Latest referenced CI run: `25517008733` (`main` CI, success)
+Current evidence commit: `999f71c` (`Fix race-safe probe licensing regression fixtures`)
+Latest referenced CI run: `25522551651` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -20,13 +20,14 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
+| Protocol regression fixtures | Covered in unit/probe tests | Explicit fixtures now lock in prior bugfix behavior for licensing skip (including NLA path), Client Info external terminators, Fast-Path vs slow-path input equivalence, CredSSP server-nonce `PubKeyAuth`, and `drdynvc` DATA_FIRST fragmentation reassembly. |
 | `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, caps-before-lifecycle enforcement, unsupported/duplicate/second RDPEI create rejection, size bounds, fragment limits, stale-fragment cleanup, unexpected channel IDs, simultaneous fragments, close/reopen, variable-length channel IDs, and synthetic caps→create→RDPEI touch integration sequence. |
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
 | Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. Latest on-demand `workflow_dispatch` evidence (`25517361134`) passed with Go-backed capture + UX report generation. |
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25517008733`:
+Latest checked artifact from CI run `25522551651`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
