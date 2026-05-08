@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-08
-Current evidence commit: `23bebd0` (`Parse Confirm Active client capability sets for compatibility`)
-Latest referenced CI run: `25541825315` (`main` CI, success)
+Current evidence commit: `e0b8e22` (`Propagate client desktop settings into bitmap encoding path`)
+Latest referenced CI run: `25567460384` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -27,7 +27,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25541825315`:
+Latest checked artifact from CI run `25567460384`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
