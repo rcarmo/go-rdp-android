@@ -451,6 +451,13 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Download release APK artifact
         uses: actions/download-artifact@v4
         with:
@@ -461,7 +468,7 @@ jobs:
         with:
           name: go-rdp-android-release-ux-report
           path: downloaded/ux-report
-      - name: Generate release notes and stage files
+      - name: Generate release notes, checksums, SBOM, and signature report
         env:
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
@@ -485,6 +492,9 @@ jobs:
             echo
             echo "- go-rdp-android-${TAG}.apk"
             echo "- go-rdp-android-${TAG}-ux-report.pdf"
+            echo "- go-rdp-android-${TAG}-apk-signature.txt"
+            echo "- go-rdp-android-${TAG}-sbom-go.cdx.json"
+            echo "- go-rdp-android-${TAG}-sha256.txt"
             echo
             if [ -n "$previous" ]; then
               echo "## Commits since ${previous}"
@@ -498,12 +508,27 @@ jobs:
             echo
           } > "release-files/go-rdp-android-${TAG}-release-notes.md"
 
+          jarsigner -verify -certs "release-files/go-rdp-android-${TAG}.apk" > "release-files/go-rdp-android-${TAG}-apk-signature.txt"
+
+          mkdir -p .gotmp
+          GOTMPDIR="$PWD/.gotmp" go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+          "$(go env GOPATH)/bin/cyclonedx-gomod" mod -licenses -json -output "release-files/go-rdp-android-${TAG}-sbom-go.cdx.json" .
+
+          sha256sum \
+            "release-files/go-rdp-android-${TAG}.apk" \
+            "release-files/go-rdp-android-${TAG}-ux-report.pdf" \
+            "release-files/go-rdp-android-${TAG}-release-notes.md" \
+            "release-files/go-rdp-android-${TAG}-apk-signature.txt" \
+            "release-files/go-rdp-android-${TAG}-sbom-go.cdx.json" \
+            > "release-files/go-rdp-android-${TAG}-sha256.txt"
+
           ls -lh release-files
       - name: Upload release files
         uses: actions/upload-artifact@v4
         with:
           name: go-rdp-android-release-files
           path: release-files/*
+          retention-days: 180
       - name: Publish GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}

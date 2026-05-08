@@ -8,7 +8,7 @@ The repository uses tag suffixes to select CI/CD depth.
 | --- | --- | --- |
 | `*-ux` | Full UX validation | Runs the Go-backed Android emulator MediaProjection flow, scripted input validation, RDP screenshot capture, Gherkin validation, and Playwright PDF report generation. |
 | `*-build` | Build validation/artifact production | Runs normal build/test jobs and uploads build artifacts/APKs/AARs. Emulator UX is not run by default. |
-| `vX.X.X` | Release APK | First prunes pre-existing GitHub Actions artifacts from prior inter-release/non-release runs, then runs normal build/test jobs, Go-backed emulator UX validation, Playwright PDF report generation, and final release-file staging. Release files include `go-rdp-android-vX.X.X.apk`, `go-rdp-android-vX.X.X-ux-report.pdf`, and `go-rdp-android-vX.X.X-release-notes.md`. Version should match `VERSION`, Android `versionName`, and package metadata. |
+| `vX.X.X` | Release APK | First prunes pre-existing GitHub Actions artifacts from prior inter-release/non-release runs, then runs normal build/test jobs, Go-backed emulator UX validation, Playwright PDF report generation, and final release-file staging. Release files include `go-rdp-android-vX.X.X.apk`, `go-rdp-android-vX.X.X-ux-report.pdf`, `go-rdp-android-vX.X.X-release-notes.md`, `go-rdp-android-vX.X.X-apk-signature.txt`, `go-rdp-android-vX.X.X-sbom-go.cdx.json`, and `go-rdp-android-vX.X.X-sha256.txt`. Version should match `VERSION`, Android `versionName`, and package metadata. |
 
 Examples:
 
@@ -31,11 +31,14 @@ This cleanup only runs for release tags. Non-release CI keeps its normal artifac
 
 ## Release files and notes
 
-Release tags (`vX.X.X`) produce a consolidated `go-rdp-android-release-files` artifact containing:
+Release tags (`vX.X.X`) produce a consolidated `go-rdp-android-release-files` artifact (retention: 180 days) containing:
 
 - `go-rdp-android-vX.X.X.apk`
 - `go-rdp-android-vX.X.X-ux-report.pdf`
 - `go-rdp-android-vX.X.X-release-notes.md`
+- `go-rdp-android-vX.X.X-apk-signature.txt` (from `jarsigner -verify -certs`)
+- `go-rdp-android-vX.X.X-sbom-go.cdx.json` (CycloneDX Go module SBOM)
+- `go-rdp-android-vX.X.X-sha256.txt` (checksums for release assets)
 
 Release notes are generated from Git history and list commits since the previous `v*` release tag, with GitHub commit links. For the first release, notes list commits reachable from the release tag.
 
