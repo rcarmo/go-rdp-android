@@ -79,9 +79,24 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			if share, err := parseShareControlPDU(pdu.Data); err == nil {
 				switch share.PDUType {
 				case pduTypeConfirmActive:
-					if _, err := parseConfirmActive(pdu.Data); err != nil {
+					info, err := parseConfirmActive(pdu.Data)
+					if err != nil {
 						return err
 					}
+					tracef(
+						"confirm_active",
+						"source=%q caps=%d bitmap=%t %dx%d resize=%t input_flags=0x%04x order_flags=0x%04x vc_flags=0x%08x large_pointer_flags=0x%04x",
+						info.SourceDescriptor,
+						info.CapabilitySetCount,
+						info.Capabilities.Bitmap.Present,
+						info.Capabilities.Bitmap.DesktopWidth,
+						info.Capabilities.Bitmap.DesktopHeight,
+						info.Capabilities.Bitmap.DesktopResize,
+						info.Capabilities.Input.Flags,
+						info.Capabilities.Order.Flags,
+						info.Capabilities.VirtualChannel.Flags,
+						info.Capabilities.LargePointer.Flags,
+					)
 					continue
 				case pduTypeDeactivateAll:
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)

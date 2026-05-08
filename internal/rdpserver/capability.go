@@ -18,12 +18,15 @@ const (
 	pduType2FontList    = 0x27
 	pduType2FontMap     = 0x28
 
-	capTypeGeneral = 0x0001
-	capTypeBitmap  = 0x0002
-	capTypePointer = 0x0008
-	capTypeInput   = 0x000d
-	capTypeFont    = 0x000e
-	capTypeShare   = 0x0009
+	capTypeGeneral        = 0x0001
+	capTypeBitmap         = 0x0002
+	capTypeOrder          = 0x0003
+	capTypePointer        = 0x0008
+	capTypeShare          = 0x0009
+	capTypeInput          = 0x000d
+	capTypeFont           = 0x000e
+	capTypeVirtualChannel = 0x0014
+	capTypeLargePointer   = 0x001b
 
 	defaultShareID   = 0x000103ea
 	serverChannelID  = 1002
@@ -43,6 +46,46 @@ type confirmActiveInfo struct {
 	OriginatorID       uint16
 	SourceDescriptor   string
 	CapabilitySetCount uint16
+	Capabilities       confirmActiveCapabilities
+}
+
+type confirmActiveCapabilities struct {
+	Bitmap         bitmapCapabilityInfo
+	Input          inputCapabilityInfo
+	Order          orderCapabilityInfo
+	VirtualChannel virtualChannelCapabilityInfo
+	LargePointer   largePointerCapabilityInfo
+}
+
+type bitmapCapabilityInfo struct {
+	Present               bool
+	PreferredBitsPerPixel uint16
+	DesktopWidth          uint16
+	DesktopHeight         uint16
+	DesktopResize         bool
+}
+
+type inputCapabilityInfo struct {
+	Present bool
+	Flags   uint16
+}
+
+type orderCapabilityInfo struct {
+	Present         bool
+	Flags           uint16
+	SupportExFlags  uint16
+	DesktopSaveSize uint32
+}
+
+type virtualChannelCapabilityInfo struct {
+	Present   bool
+	Flags     uint32
+	ChunkSize uint32
+}
+
+type largePointerCapabilityInfo struct {
+	Present bool
+	Flags   uint16
 }
 
 func writeDemandActive(conn net.Conn, width, height int) error {
@@ -210,9 +253,106 @@ func parseConfirmActive(data []byte) (*confirmActiveInfo, error) {
 	if len(share.Payload) < 10+sourceLen+4 || len(share.Payload) < 10+sourceLen+combinedCapsLen {
 		return nil, fmt.Errorf("short Confirm Active variable payload")
 	}
-	info.SourceDescriptor = string(share.Payload[10 : 10+sourceLen])
-	info.CapabilitySetCount = binary.LittleEndian.Uint16(share.Payload[10+sourceLen : 12+sourceLen])
+	sourceEnd := 10 + sourceLen
+	capsEnd := 10 + sourceLen + combinedCapsLen
+	info.SourceDescriptor = string(share.Payload[10:sourceEnd])
+	info.CapabilitySetCount = binary.LittleEndian.Uint16(share.Payload[sourceEnd : sourceEnd+2])
+	caps, err := parseConfirmActiveCapabilities(share.Payload[sourceEnd+4:capsEnd], info.CapabilitySetCount)
+	if err != nil {
+		return nil, err
+	}
+	info.Capabilities = caps
 	return info, nil
+}
+
+func parseConfirmActiveCapabilities(data []byte, declaredCount uint16) (confirmActiveCapabilities, error) {
+	var caps confirmActiveCapabilities
+	if declaredCount == 0 {
+		return caps, nil
+	}
+	off := 0
+	parsed := 0
+	for off+4 <= len(data) && parsed < int(declaredCount) {
+		capType := binary.LittleEndian.Uint16(data[off : off+2])
+		capLen := int(binary.LittleEndian.Uint16(data[off+2 : off+4]))
+		if capLen < 4 {
+			return caps, fmt.Errorf("invalid Confirm Active capability length %d for type 0x%04x", capLen, capType)
+		}
+		if off+capLen > len(data) {
+			return caps, fmt.Errorf("truncated Confirm Active capability type 0x%04x length=%d remaining=%d", capType, capLen, len(data)-off)
+		}
+		payload := data[off+4 : off+capLen]
+		switch capType {
+		case capTypeBitmap:
+			parseBitmapCapability(payload, &caps)
+		case capTypeInput:
+			parseInputCapability(payload, &caps)
+		case capTypeOrder:
+			parseOrderCapability(payload, &caps)
+		case capTypeVirtualChannel:
+			parseVirtualChannelCapability(payload, &caps)
+		case capTypeLargePointer:
+			parseLargePointerCapability(payload, &caps)
+		}
+		off += capLen
+		parsed++
+	}
+	if parsed < int(declaredCount) {
+		return caps, fmt.Errorf("short Confirm Active capability payload: parsed=%d declared=%d", parsed, declaredCount)
+	}
+	return caps, nil
+}
+
+func parseBitmapCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 16 {
+		return
+	}
+	caps.Bitmap.Present = true
+	caps.Bitmap.PreferredBitsPerPixel = binary.LittleEndian.Uint16(payload[0:2])
+	caps.Bitmap.DesktopWidth = binary.LittleEndian.Uint16(payload[8:10])
+	caps.Bitmap.DesktopHeight = binary.LittleEndian.Uint16(payload[10:12])
+	caps.Bitmap.DesktopResize = binary.LittleEndian.Uint16(payload[14:16]) != 0
+}
+
+func parseInputCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 2 {
+		return
+	}
+	caps.Input.Present = true
+	caps.Input.Flags = binary.LittleEndian.Uint16(payload[0:2])
+}
+
+func parseOrderCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 32 {
+		return
+	}
+	caps.Order.Present = true
+	caps.Order.Flags = binary.LittleEndian.Uint16(payload[30:32])
+	if len(payload) >= 68 {
+		caps.Order.SupportExFlags = binary.LittleEndian.Uint16(payload[66:68])
+	}
+	if len(payload) >= 76 {
+		caps.Order.DesktopSaveSize = binary.LittleEndian.Uint32(payload[72:76])
+	}
+}
+
+func parseVirtualChannelCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 4 {
+		return
+	}
+	caps.VirtualChannel.Present = true
+	caps.VirtualChannel.Flags = binary.LittleEndian.Uint32(payload[0:4])
+	if len(payload) >= 8 {
+		caps.VirtualChannel.ChunkSize = binary.LittleEndian.Uint32(payload[4:8])
+	}
+}
+
+func parseLargePointerCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 2 {
+		return
+	}
+	caps.LargePointer.Present = true
+	caps.LargePointer.Flags = binary.LittleEndian.Uint16(payload[0:2])
 }
 
 func writeShareControlHeader(buf *bytes.Buffer, totalLength int, pduType uint16, source uint16) {

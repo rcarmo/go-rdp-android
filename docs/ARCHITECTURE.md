@@ -94,7 +94,7 @@ TCP
 → ChannelJoin
 → Client Info
 → Demand Active
-→ Confirm Active
+→ Confirm Active (client bitmap/input/order/virtual-channel/large-pointer capability summary parsed)
 → Synchronize
 → Control
 → FontList / FontMap
