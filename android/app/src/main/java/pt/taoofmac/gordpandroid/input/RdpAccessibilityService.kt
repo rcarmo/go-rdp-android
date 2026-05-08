@@ -237,39 +237,105 @@ class RdpAccessibilityService : AccessibilityService() {
                 dispatchRequested = true
                 return true
             }
-            val built = buildTouchDispatchBatchLocked(SystemClock.uptimeMillis())
+            val dispatchAtMs = SystemClock.uptimeMillis()
+            val built = buildTouchDispatchBatchLocked(dispatchAtMs)
             if (built.isEmpty()) {
                 return true
             }
+            if (dispatchTouchStrokesLocked(service, built, dispatchAtMs)) {
+                return true
+            }
+            return handleFailedTouchDispatchLocked(service, built, dispatchAtMs)
+        }
 
+        private fun dispatchTouchStrokesLocked(
+            service: RdpAccessibilityService,
+            strokes: List<DispatchedTouchStroke>,
+            dispatchAtMs: Long,
+        ): Boolean {
             val gestureBuilder = GestureDescription.Builder()
-            built.forEach { gestureBuilder.addStroke(it.descriptor) }
+            strokes.forEach { gestureBuilder.addStroke(it.descriptor) }
             val gesture = gestureBuilder.build()
 
             dispatchInFlight = true
             dispatchRequested = false
             val callback = object : AccessibilityService.GestureResultCallback() {
                 override fun onCompleted(gestureDescription: GestureDescription?) {
-                    finishTouchDispatch(built, canceled = false)
+                    finishTouchDispatch(strokes, canceled = false)
                 }
 
                 override fun onCancelled(gestureDescription: GestureDescription?) {
-                    finishTouchDispatch(built, canceled = true)
+                    finishTouchDispatch(strokes, canceled = true)
                 }
             }
 
             val dispatched = service.dispatchGesture(gesture, callback, null)
             if (!dispatched) {
                 dispatchInFlight = false
-                built.filter { it.continuing }.forEach { stroke ->
-                    activeTouches[stroke.contactId]?.previousStroke = null
-                }
-                if (dispatchRequested || hasDirtyTouchStateLocked()) {
-                    dispatchRequested = false
-                    return scheduleTouchDispatchLocked(service)
+                return false
+            }
+            commitTouchDispatchLocked(strokes, dispatchAtMs)
+            return true
+        }
+
+        private fun commitTouchDispatchLocked(strokes: List<DispatchedTouchStroke>, dispatchAtMs: Long) {
+            val endingContactIDs = ArrayList<Int>()
+            for (stroke in strokes) {
+                val state = activeTouches[stroke.contactId] ?: continue
+                state.previousStroke = if (stroke.continuing) stroke.descriptor else null
+                state.path = Path().apply { moveTo(state.lastX.toFloat(), state.lastY.toFloat()) }
+                state.segmentStartedAtMs = dispatchAtMs
+                state.dirty = false
+                if (!stroke.continuing || state.ending) {
+                    endingContactIDs += stroke.contactId
                 }
             }
-            return dispatched
+            endingContactIDs.forEach(activeTouches::remove)
+        }
+
+        private fun handleFailedTouchDispatchLocked(
+            service: RdpAccessibilityService,
+            attempted: List<DispatchedTouchStroke>,
+            dispatchAtMs: Long,
+        ): Boolean {
+            attempted.filter { it.continuing }.forEach { stroke ->
+                activeTouches[stroke.contactId]?.previousStroke = null
+            }
+
+            if (attempted.size > 1) {
+                val primary = attempted.first()
+                val dropped = attempted.drop(1)
+                dropped.forEach { activeTouches.remove(it.contactId) }
+                Log.w(
+                    TAG,
+                    "multi-touch dispatch unsupported; falling back to single contact id=${primary.contactId} dropped=${dropped.size}",
+                )
+                if (dispatchTouchStrokesLocked(service, listOf(primary), dispatchAtMs)) {
+                    return true
+                }
+            }
+
+            markDroppedTouchDispatchLocked(attempted, dispatchAtMs)
+            if (dispatchRequested || hasDirtyTouchStateLocked()) {
+                dispatchRequested = false
+                return scheduleTouchDispatchLocked(service)
+            }
+            return false
+        }
+
+        private fun markDroppedTouchDispatchLocked(strokes: List<DispatchedTouchStroke>, dispatchAtMs: Long) {
+            val endingContactIDs = ArrayList<Int>()
+            for (stroke in strokes) {
+                val state = activeTouches[stroke.contactId] ?: continue
+                state.previousStroke = null
+                state.path = Path().apply { moveTo(state.lastX.toFloat(), state.lastY.toFloat()) }
+                state.segmentStartedAtMs = dispatchAtMs
+                state.dirty = false
+                if (!stroke.continuing || state.ending) {
+                    endingContactIDs += stroke.contactId
+                }
+            }
+            endingContactIDs.forEach(activeTouches::remove)
         }
 
         private fun finishTouchDispatch(dispatched: List<DispatchedTouchStroke>, canceled: Boolean) {
@@ -295,7 +361,6 @@ class RdpAccessibilityService : AccessibilityService() {
                 return emptyList()
             }
             val out = ArrayList<DispatchedTouchStroke>(activeTouches.size)
-            val endingContactIDs = ArrayList<Int>()
             activeTouches.entries.sortedBy { it.key }.forEach { (contactId, state) ->
                 if (!state.dirty && !state.ending) return@forEach
 
@@ -310,17 +375,7 @@ class RdpAccessibilityService : AccessibilityService() {
                 }
 
                 out += DispatchedTouchStroke(contactId = contactId, continuing = continueAfter, descriptor = descriptor)
-
-                state.previousStroke = if (continueAfter) descriptor else null
-                state.path = Path().apply { moveTo(state.lastX.toFloat(), state.lastY.toFloat()) }
-                state.segmentStartedAtMs = nowMs
-                state.dirty = false
-
-                if (state.ending) {
-                    endingContactIDs += contactId
-                }
             }
-            endingContactIDs.forEach(activeTouches::remove)
             return out
         }
 
