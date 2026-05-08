@@ -87,7 +87,7 @@ TCP
 → X.224 negotiation
 → TLS when `PROTOCOL_SSL` or `PROTOCOL_HYBRID` is selected
 → CredSSP/NTLMv2 when `PROTOCOL_HYBRID` is selected
-→ MCS Connect
+→ MCS Connect (client core desktop settings + monitor-layout metadata parsed)
 → GCC response with server core/security/network data
 → ErectDomain
 → AttachUser
@@ -112,7 +112,7 @@ Client static channel request for drdynvc
 → Android gesture dispatch
 ```
 
-Graphics currently use classic slow-path bitmap updates. Frames are split into 80x80 tiles to stay within safe packet/length envelopes. After the first frame, a per-session tile cache skips unchanged tiles.
+Graphics currently use classic slow-path bitmap updates. Frames are split into 80x80 tiles to stay within safe packet/length envelopes. After the first frame, a per-session tile cache skips unchanged tiles. The server now selects session desktop dimensions from client core settings (and Confirm Active bitmap caps when present) and scales captured frames to negotiated desktop size before tile encoding.
 
 ## Capture and graphics pipeline
 

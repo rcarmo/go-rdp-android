@@ -36,6 +36,8 @@ type domainPDU struct {
 func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, selectedProtocol uint32, channels []clientChannel) error {
 	userID := uint16(defaultMCSUserID)
 	dvc := newDRDYNVCManager(channels, sink)
+	sessionWidth := clampDesktopDimension(width, width)
+	sessionHeight := clampDesktopDimension(height, height)
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
 		pdu, err := readMCSDomainPDUOrFastPath(conn, sink)
@@ -83,9 +85,17 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					if err != nil {
 						return err
 					}
+					if info.Capabilities.Bitmap.Present {
+						if info.Capabilities.Bitmap.DesktopWidth > 0 {
+							sessionWidth = clampDesktopDimension(int(info.Capabilities.Bitmap.DesktopWidth), sessionWidth)
+						}
+						if info.Capabilities.Bitmap.DesktopHeight > 0 {
+							sessionHeight = clampDesktopDimension(int(info.Capabilities.Bitmap.DesktopHeight), sessionHeight)
+						}
+					}
 					tracef(
 						"confirm_active",
-						"source=%q caps=%d bitmap=%t %dx%d resize=%t input_flags=0x%04x order_flags=0x%04x vc_flags=0x%08x large_pointer_flags=0x%04x",
+						"source=%q caps=%d bitmap=%t %dx%d resize=%t input_flags=0x%04x order_flags=0x%04x vc_flags=0x%08x large_pointer_flags=0x%04x session_desktop=%dx%d",
 						info.SourceDescriptor,
 						info.CapabilitySetCount,
 						info.Capabilities.Bitmap.Present,
@@ -96,13 +106,15 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 						info.Capabilities.Order.Flags,
 						info.Capabilities.VirtualChannel.Flags,
 						info.Capabilities.LargePointer.Flags,
+						sessionWidth,
+						sessionHeight,
 					)
 					continue
 				case pduTypeDeactivateAll:
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
 					return nil
 				case pduTypeData:
-					if err := handleShareDataPDU(conn, share, frames, sink, width, height); err != nil {
+					if err := handleShareDataPDU(conn, share, frames, sink, sessionWidth, sessionHeight); err != nil {
 						return err
 					}
 					continue

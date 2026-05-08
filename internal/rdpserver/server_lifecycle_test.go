@@ -84,3 +84,17 @@ func TestServerCloseWithoutListener(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestChooseSessionDesktopSizePrefersClientCore(t *testing.T) {
+	w, h := chooseSessionDesktopSize(1280, 720, 1920, 1080)
+	if w != 1920 || h != 1080 {
+		t.Fatalf("unexpected chosen desktop size %dx%d", w, h)
+	}
+}
+
+func TestChooseSessionDesktopSizeClampsClientCore(t *testing.T) {
+	w, h := chooseSessionDesktopSize(1280, 720, 16, 20000)
+	if w != 64 || h != 8192 {
+		t.Fatalf("unexpected clamped desktop size %dx%d", w, h)
+	}
+}

@@ -27,7 +27,9 @@ type bitmapRect struct {
 }
 
 type bitmapTileCache struct {
-	hashes map[bitmapTileKey]uint64
+	hashes      map[bitmapTileKey]uint64
+	frameWidth  int
+	frameHeight int
 }
 
 type bitmapTileKey struct {
@@ -53,7 +55,19 @@ func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
 	return buildFrameBitmapUpdatesWithCache(src, nil, false)
 }
 
+func buildFrameBitmapUpdatesForDesktop(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool, width, height int) ([][]byte, bool) {
+	normalized := normalizeFrameForDesktop(src, width, height)
+	return buildFrameBitmapUpdatesWithCache(normalized, cache, dirtyOnly)
+}
+
 func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool) ([][]byte, bool) {
+	if cache != nil {
+		if cache.frameWidth != 0 && (cache.frameWidth != src.Width || cache.frameHeight != src.Height) {
+			clear(cache.hashes)
+		}
+		cache.frameWidth = src.Width
+		cache.frameHeight = src.Height
+	}
 	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
 		return nil, false
 	}
@@ -145,6 +159,59 @@ func minInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func normalizeFrameForDesktop(src frame.Frame, width, height int) frame.Frame {
+	if width <= 0 || height <= 0 || src.Width <= 0 || src.Height <= 0 {
+		return src
+	}
+	if src.Width == width && src.Height == height {
+		return src
+	}
+	if src.Format != frame.PixelFormatRGBA8888 && src.Format != frame.PixelFormatBGRA8888 {
+		return src
+	}
+	scaled, ok := scaleFrameNearest(src, width, height)
+	if !ok {
+		return src
+	}
+	tracef("frame_resize", "source=%dx%d target=%dx%d", src.Width, src.Height, width, height)
+	return scaled
+}
+
+func scaleFrameNearest(src frame.Frame, width, height int) (frame.Frame, bool) {
+	if src.Width <= 0 || src.Height <= 0 || width <= 0 || height <= 0 {
+		return frame.Frame{}, false
+	}
+	stride := src.Stride
+	if stride <= 0 {
+		stride = src.Width * 4
+	}
+	if len(src.Data) < stride*src.Height {
+		return frame.Frame{}, false
+	}
+
+	dstStride := width * 4
+	dst := make([]byte, dstStride*height)
+	for y := 0; y < height; y++ {
+		sy := (y * src.Height) / height
+		srcRow := sy * stride
+		dstRow := y * dstStride
+		for x := 0; x < width; x++ {
+			sx := (x * src.Width) / width
+			si := srcRow + sx*4
+			di := dstRow + x*4
+			copy(dst[di:di+4], src.Data[si:si+4])
+		}
+	}
+	return frame.Frame{
+		Width:     width,
+		Height:    height,
+		Stride:    dstStride,
+		Format:    src.Format,
+		Timestamp: src.Timestamp,
+		Data:      dst,
+	}, true
 }
 
 func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {

@@ -119,13 +119,27 @@ func (s *Server) handleConn(conn net.Conn) {
 		log.Printf("rdp MCS Connect-Initial failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
-	log.Printf("rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d channels=%d", conn.RemoteAddr(), mcsInfo.ApplicationTag, mcsInfo.PayloadLength, mcsInfo.UserDataLength, len(mcsInfo.ClientChannels))
+	sessionWidth, sessionHeight := chooseSessionDesktopSize(s.cfg.Width, s.cfg.Height, mcsInfo.ClientDisplay.DesktopWidth, mcsInfo.ClientDisplay.DesktopHeight)
+	log.Printf(
+		"rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d channels=%d clientDesktop=%dx%d monitorLayout=%t monitorCount=%d sessionDesktop=%dx%d",
+		conn.RemoteAddr(),
+		mcsInfo.ApplicationTag,
+		mcsInfo.PayloadLength,
+		mcsInfo.UserDataLength,
+		len(mcsInfo.ClientChannels),
+		mcsInfo.ClientDisplay.DesktopWidth,
+		mcsInfo.ClientDisplay.DesktopHeight,
+		mcsInfo.ClientDisplay.MonitorLayoutPresent,
+		mcsInfo.ClientDisplay.MonitorCount,
+		sessionWidth,
+		sessionHeight,
+	)
 	if err := writeMCSConnectResponse(conn, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS Connect-Response failed to %s: %v", conn.RemoteAddr(), err)
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, s.cfg.Width, s.cfg.Height, s.cfg.Authenticator, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
@@ -134,6 +148,37 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 // Close stops the listener.
+func chooseSessionDesktopSize(defaultWidth, defaultHeight int, clientWidth, clientHeight uint16) (int, int) {
+	width := defaultWidth
+	height := defaultHeight
+	if clientWidth > 0 {
+		width = clampDesktopDimension(int(clientWidth), width)
+	}
+	if clientHeight > 0 {
+		height = clampDesktopDimension(int(clientHeight), height)
+	}
+	if width <= 0 {
+		width = defaultWidth
+	}
+	if height <= 0 {
+		height = defaultHeight
+	}
+	return width, height
+}
+
+func clampDesktopDimension(value, fallback int) int {
+	if value <= 0 {
+		return fallback
+	}
+	if value < 64 {
+		return 64
+	}
+	if value > 8192 {
+		return 8192
+	}
+	return value
+}
+
 func (s *Server) Close() error {
 	s.mu.Lock()
 	ln := s.ln

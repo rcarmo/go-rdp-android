@@ -35,6 +35,22 @@ func TestReadBERLength(t *testing.T) {
 	}
 }
 
+func TestParseMCSConnectInitialExtractsDisplaySettings(t *testing.T) {
+	core := make([]byte, 8)
+	core[0], core[1], core[2], core[3] = 0x04, 0x00, 0x08, 0x00
+	core[4], core[5] = 0x00, 0x05 // 1280
+	core[6], core[7] = 0xd0, 0x02 // 720
+	userData := appendClientUserDataBlockForTest(nil, gccUserDataCS_CORE, core)
+	mcs := append([]byte{0x7f, 0x65, byte(len(userData))}, userData...)
+	info, err := parseMCSConnectInitial(mcs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.ClientDisplay.CoreDesktopPresent || info.ClientDisplay.DesktopWidth != 1280 || info.ClientDisplay.DesktopHeight != 720 {
+		t.Fatalf("unexpected display settings: %#v", info.ClientDisplay)
+	}
+}
+
 type byteReader struct{ data []byte }
 
 func (r *byteReader) ReadByte() (byte, error) {

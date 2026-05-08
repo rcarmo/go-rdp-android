@@ -18,6 +18,7 @@ type MCSInfo struct {
 	PayloadLength  int
 	UserDataLength int
 	ClientChannels []clientChannel
+	ClientDisplay  clientDisplaySettings
 }
 
 func readMCSConnectInitial(conn net.Conn) (*MCSInfo, error) {
@@ -61,7 +62,13 @@ func parseMCSConnectInitial(data []byte) (*MCSInfo, error) {
 	}
 	payload := make([]byte, r.Len())
 	copy(payload, data[len(data)-r.Len():])
-	return &MCSInfo{ApplicationTag: appTag, PayloadLength: payloadLen, UserDataLength: len(payload), ClientChannels: parseClientChannelsFromConnectInitial(payload)}, nil
+	return &MCSInfo{
+		ApplicationTag: appTag,
+		PayloadLength:  payloadLen,
+		UserDataLength: len(payload),
+		ClientChannels: parseClientChannelsFromConnectInitial(payload),
+		ClientDisplay:  parseClientDisplaySettingsFromConnectInitial(payload),
+	}, nil
 }
 
 func readBERApplicationTag(r *bytes.Reader) (tag int, length int, err error) {

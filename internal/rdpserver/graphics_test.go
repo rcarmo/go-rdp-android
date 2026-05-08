@@ -112,3 +112,45 @@ func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildFrameBitmapUpdatesForDesktopScalesToClientSize(t *testing.T) {
+	src := frame.Frame{
+		Width:  2,
+		Height: 2,
+		Stride: 8,
+		Format: frame.PixelFormatRGBA8888,
+		Data: []byte{
+			0xff, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff,
+			0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		},
+	}
+	updates, ok := buildFrameBitmapUpdatesForDesktop(src, newBitmapTileCache(), false, 1, 1)
+	if !ok || len(updates) != 1 {
+		t.Fatalf("expected single scaled update, got ok=%v len=%d", ok, len(updates))
+	}
+	update := updates[0]
+	if got := uint16(update[12]) | uint16(update[13])<<8; got != 1 {
+		t.Fatalf("rect width=%d, want 1", got)
+	}
+	if got := uint16(update[14]) | uint16(update[15])<<8; got != 1 {
+		t.Fatalf("rect height=%d, want 1", got)
+	}
+	pixel := update[len(update)-4:]
+	if pixel[0] != 0x00 || pixel[1] != 0x00 || pixel[2] != 0xff {
+		t.Fatalf("unexpected scaled top-left pixel (BGR): %x", pixel)
+	}
+}
+
+func TestBuildFrameBitmapUpdatesCacheResetsOnResize(t *testing.T) {
+	cache := newBitmapTileCache()
+	first := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatBGRA8888, Data: make([]byte, 4*4*4)}
+	if updates, ok := buildFrameBitmapUpdatesForDesktop(first, cache, false, 4, 4); !ok || len(updates) == 0 {
+		t.Fatalf("expected initial updates, got ok=%v len=%d", ok, len(updates))
+	}
+	if updates, ok := buildFrameBitmapUpdatesForDesktop(first, cache, true, 4, 4); !ok || len(updates) != 0 {
+		t.Fatalf("expected no dirty updates on unchanged frame, got ok=%v len=%d", ok, len(updates))
+	}
+	if updates, ok := buildFrameBitmapUpdatesForDesktop(first, cache, true, 2, 2); !ok || len(updates) == 0 {
+		t.Fatalf("expected updates after desktop resize/cache reset, got ok=%v len=%d", ok, len(updates))
+	}
+}

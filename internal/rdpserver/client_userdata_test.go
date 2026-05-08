@@ -29,6 +29,34 @@ func TestParseClientChannelsFromConnectInitial(t *testing.T) {
 	}
 }
 
+func TestParseClientDisplaySettingsFromConnectInitial(t *testing.T) {
+	core := make([]byte, 8)
+	binary.LittleEndian.PutUint32(core[0:4], 0x00080004)
+	binary.LittleEndian.PutUint16(core[4:6], 1920)
+	binary.LittleEndian.PutUint16(core[6:8], 1080)
+	monitor := make([]byte, 8)
+	binary.LittleEndian.PutUint32(monitor[0:4], 1)
+	binary.LittleEndian.PutUint32(monitor[4:8], 2)
+
+	data := append([]byte{0xaa, 0xbb}, appendClientUserDataBlockForTest(nil, gccUserDataCS_CORE, core)...)
+	data = append(data, appendClientUserDataBlockForTest(nil, gccUserDataCS_MONITOR, monitor)...)
+
+	settings := parseClientDisplaySettingsFromConnectInitial(data)
+	if !settings.CoreDesktopPresent || settings.DesktopWidth != 1920 || settings.DesktopHeight != 1080 {
+		t.Fatalf("unexpected core display settings: %#v", settings)
+	}
+	if !settings.MonitorLayoutPresent || settings.MonitorCount != 2 {
+		t.Fatalf("unexpected monitor settings: %#v", settings)
+	}
+}
+
+func TestParseClientDisplaySettingsFromConnectInitialMissingBlocks(t *testing.T) {
+	settings := parseClientDisplaySettingsFromConnectInitial([]byte{0x01, 0x02, 0x03})
+	if settings.CoreDesktopPresent || settings.MonitorLayoutPresent || settings.DesktopWidth != 0 || settings.DesktopHeight != 0 || settings.MonitorCount != 0 {
+		t.Fatalf("unexpected settings for missing blocks: %#v", settings)
+	}
+}
+
 func TestServerNetworkDataIncludesStaticChannelIDs(t *testing.T) {
 	data := buildServerUserData(protocolRDP, []clientChannel{{Name: "rdpdr", ID: 1004}, {Name: "cliprdr", ID: 1005}})
 	blocks := parseGCCUserDataBlocksForTest(t, data)
@@ -45,4 +73,12 @@ func TestServerNetworkDataIncludesStaticChannelIDs(t *testing.T) {
 	if got := binary.LittleEndian.Uint16(network[6:8]); got != 1005 {
 		t.Fatalf("second channel id = %d, want 1005", got)
 	}
+}
+
+func appendClientUserDataBlockForTest(dst []byte, blockType uint16, payload []byte) []byte {
+	dst = append(dst, byte(blockType), byte(blockType>>8))
+	blockLen := uint16(len(payload) + 4)
+	dst = append(dst, byte(blockLen), byte(blockLen>>8))
+	dst = append(dst, payload...)
+	return dst
 }

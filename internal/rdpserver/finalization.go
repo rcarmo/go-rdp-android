@@ -59,11 +59,11 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		select {
 		case fr := <-frames.Frames():
 			cache := newBitmapTileCache()
-			if updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, false); ok {
+			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}
-				go streamFrameUpdates(conn, frames, cache)
+				go streamFrameUpdates(conn, frames, cache, width, height)
 				return nil
 			}
 		default:
@@ -72,12 +72,12 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
 }
 
-func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache) {
+func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache, width, height int) {
 	if cache == nil {
 		cache = newBitmapTileCache()
 	}
 	for fr := range frames.Frames() {
-		updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, true)
+		updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, true, width, height)
 		if !ok || len(updates) == 0 {
 			continue
 		}
