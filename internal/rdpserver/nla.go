@@ -161,6 +161,10 @@ func matchClientPubKeyAuth(version int, candidates [][]byte, nonces [][]byte, ac
 			if bytes.Equal(actual, standard) {
 				return credSSPPubKeyBinding{PublicKey: candidate, Nonce: append([]byte(nil), nonce...), Order: credSSPHashNonceThenKey}, true
 			}
+			// Keep a defensive nonce-order fallback for observed interop variance:
+			// some clients hash magic||pubKey||nonce instead of magic||nonce||pubKey.
+			// We intentionally keep this variant until broad Microsoft-client
+			// validation confirms we can prune it safely.
 			if version >= 5 && len(nonce) > 0 {
 				alternate := computeCredSSPPubKeyHash(rdpauth.ClientServerHashMagic, candidate, nonce, credSSPHashKeyThenNonce)
 				if bytes.Equal(actual, alternate) {

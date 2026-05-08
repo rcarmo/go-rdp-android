@@ -48,6 +48,26 @@ func TestParseNegotiationUserData(t *testing.T) {
 	}
 }
 
+func TestSelectNegotiatedProtocol(t *testing.T) {
+	cases := []struct {
+		name      string
+		requested uint32
+		want      uint32
+	}{
+		{name: "rdp-only", requested: protocolRDP, want: protocolRDP},
+		{name: "ssl", requested: protocolSSL, want: protocolSSL},
+		{name: "hybrid", requested: protocolHybrid, want: protocolHybrid},
+		{name: "ssl+hybrid", requested: protocolSSL | protocolHybrid, want: protocolHybrid},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := selectNegotiatedProtocol(tc.requested); got != tc.want {
+				t.Fatalf("selected protocol = 0x%08x, want 0x%08x", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPerformInitialHandshake(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

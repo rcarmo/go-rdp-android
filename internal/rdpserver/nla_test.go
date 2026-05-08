@@ -119,6 +119,46 @@ func TestMatchClientPubKeyAuthServerNonce(t *testing.T) {
 	}
 }
 
+func TestMatchClientPubKeyAuthDefensiveVariants(t *testing.T) {
+	clientNonce := bytes.Repeat([]byte{0x55}, 32)
+	serverNonce := bytes.Repeat([]byte{0x66}, 32)
+	pubKey := []byte("subject-public-key")
+
+	cases := []struct {
+		name    string
+		version int
+		nonce   []byte
+		order   string
+		wantOK  bool
+	}{
+		{name: "standard-client-nonce", version: 6, nonce: clientNonce, order: credSSPHashNonceThenKey, wantOK: true},
+		{name: "standard-server-nonce", version: 6, nonce: serverNonce, order: credSSPHashNonceThenKey, wantOK: true},
+		{name: "alternate-client-nonce", version: 6, nonce: clientNonce, order: credSSPHashKeyThenNonce, wantOK: true},
+		{name: "alternate-server-nonce", version: 6, nonce: serverNonce, order: credSSPHashKeyThenNonce, wantOK: true},
+		{name: "alternate-v4-rejected", version: 4, nonce: clientNonce, order: credSSPHashKeyThenNonce, wantOK: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var actual []byte
+			if tc.order == credSSPHashKeyThenNonce {
+				actual = computeCredSSPPubKeyHash(rdpauth.ClientServerHashMagic, pubKey, tc.nonce, credSSPHashKeyThenNonce)
+			} else {
+				actual = rdpauth.ComputeClientPubKeyAuth(tc.version, pubKey, tc.nonce)
+			}
+			matched, ok := matchClientPubKeyAuth(tc.version, [][]byte{pubKey}, [][]byte{clientNonce, serverNonce}, actual)
+			if ok != tc.wantOK {
+				t.Fatalf("ok=%v want=%v matched=%#v", ok, tc.wantOK, matched)
+			}
+			if !tc.wantOK {
+				return
+			}
+			if !bytes.Equal(matched.PublicKey, pubKey) || !bytes.Equal(matched.Nonce, tc.nonce) || matched.Order != tc.order {
+				t.Fatalf("unexpected match %#v", matched)
+			}
+		})
+	}
+}
+
 func TestCompactPublicKeyCandidates(t *testing.T) {
 	candidates := compactPublicKeyCandidates([][]byte{nil, []byte("a"), []byte("a"), []byte("b")})
 	if len(candidates) != 2 || !bytes.Equal(candidates[0], []byte("a")) || !bytes.Equal(candidates[1], []byte("b")) {

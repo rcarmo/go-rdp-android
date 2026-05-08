@@ -53,13 +53,7 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 	}
 
 	info := parseNegotiationUserData(userData)
-	if info.RequestedProtocols&protocolHybrid != 0 {
-		info.SelectedProtocol = protocolHybrid
-	} else if info.RequestedProtocols&protocolSSL != 0 {
-		info.SelectedProtocol = protocolSSL
-	} else {
-		info.SelectedProtocol = protocolRDP
-	}
+	info.SelectedProtocol = selectNegotiatedProtocol(info.RequestedProtocols)
 
 	if err := writeConnectionConfirm(conn, srcRef, info.SelectedProtocol); err != nil {
 		return nil, nil, fmt.Errorf("write x224 connection confirm: %w", err)
@@ -193,6 +187,16 @@ func parseNegotiationUserData(userData []byte) HandshakeInfo {
 		info.RequestedProtocols = binary.LittleEndian.Uint32(userData[idx+4 : idx+8])
 	}
 	return info
+}
+
+func selectNegotiatedProtocol(requestedProtocols uint32) uint32 {
+	if requestedProtocols&protocolHybrid != 0 {
+		return protocolHybrid
+	}
+	if requestedProtocols&protocolSSL != 0 {
+		return protocolSSL
+	}
+	return protocolRDP
 }
 
 func writeConnectionConfirm(conn net.Conn, dstRef uint16, selectedProtocol uint32) error {
