@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-07
-Current evidence commit: `efce042` (`Fix Android touch callback type and CI pipefail`)
-Latest referenced CI run: `25525635597` (`main` CI, success)
+Last updated: 2026-05-08
+Current evidence commit: `029363c` (`Add safe single-contact fallback for rejected multi-touch dispatch`)
+Latest referenced CI run: `25535605650` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -27,7 +27,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25525635597`:
+Latest checked artifact from CI run `25535605650`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
