@@ -65,6 +65,16 @@ The emulator job:
 
 The same full UX path runs automatically for `*-ux` tags and release tags (`vX.X.X`).
 
+## Nightly/optional FreeRDP soak
+
+A dedicated `FreeRDP soak` workflow now runs nightly (cron) and supports manual `workflow_dispatch` runs. It repeatedly connects `xfreerdp` to the mock server in one selected security mode (`rdp`/`tls`/`nla`), captures per-iteration exit codes and server RSS, and fails when memory growth exceeds a configurable threshold.
+
+Primary outputs:
+
+- `soak-artifacts/soak.csv` (iteration, mode, exit code, RSS KB)
+- `soak-artifacts/summary.md` (min/max/delta RSS and pass/fail)
+- per-iteration `soak-artifacts/attempts/*/xfreerdp.log`
+
 ## Workflow inputs
 
 | Input | Default | Notes |

@@ -1,0 +1,59 @@
+name: FreeRDP soak
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: FreeRDP security mode
+        required: false
+        default: nla
+        type: choice
+        options: [rdp, tls, nla]
+      iterations:
+        description: Number of connection iterations
+        required: false
+        default: '30'
+      duration_sec:
+        description: Seconds to keep each client connected before clean stop
+        required: false
+        default: '8'
+      max_rss_delta_kb:
+        description: Max allowed mock-server RSS growth across run (KB)
+        required: false
+        default: '51200'
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: FreeRDP soak (${{ inputs.mode || 'nla' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+      - name: Install FreeRDP + Xvfb
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y freerdp2-x11 xvfb x11-apps imagemagick || sudo apt-get install -y freerdp3-x11 xvfb x11-apps imagemagick
+      - name: Run soak
+        env:
+          SOAK_MODE: ${{ inputs.mode || 'nla' }}
+          SOAK_ITERATIONS: ${{ inputs.iterations || '30' }}
+          SOAK_DURATION_SEC: ${{ inputs.duration_sec || '8' }}
+          SOAK_MAX_RSS_DELTA_KB: ${{ inputs.max_rss_delta_kb || '51200' }}
+          SOAK_ARTIFACT_DIR: soak-artifacts
+        run: |
+          chmod +x ./scripts/freerdp-soak.sh
+          ./scripts/freerdp-soak.sh
+      - name: Upload soak artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freerdp-soak-artifacts
+          path: soak-artifacts/**
