@@ -78,8 +78,8 @@ jobs:
     name: Go checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
       - name: Go vet
@@ -96,7 +96,7 @@ jobs:
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-rdpei-tests.go test-artifacts/go/rdpei-tests.json test-artifacts/go/rdpei-test-summary.md
           test -s test-artifacts/go/rdpei-test-summary.md
       - name: Upload Go test artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-test-artifacts
           path: test-artifacts/go/**
@@ -139,7 +139,7 @@ jobs:
           grep -q 'NLA/CredSSP authenticated' test-artifacts/auth/mock-server.log
           grep -q 'NLA/CredSSP failed' test-artifacts/auth/mock-server.log
       - name: Upload protocol smoke artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mock-probe-artifacts
           path: |
@@ -151,8 +151,8 @@ jobs:
     needs: release-cleanup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
       - name: Race tests
@@ -165,13 +165,13 @@ jobs:
     needs: release-cleanup
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
       - name: Build debug APK
@@ -191,12 +191,12 @@ jobs:
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk "$APK_PATH" test-artifacts/android/apk-summary.md
           test -s test-artifacts/android/apk-summary.md
       - name: Upload Android build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-build-artifacts
           path: test-artifacts/android/**
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-rdp-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -207,16 +207,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
       - name: Install gomobile
@@ -254,17 +254,17 @@ jobs:
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk "$APK_PATH" test-artifacts/gomobile/go-backed-apk-summary.md
           test -s test-artifacts/gomobile/go-backed-apk-summary.md
       - name: Upload gomobile build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gomobile-build-artifacts
           path: test-artifacts/gomobile/**
       - name: Upload mobile AAR
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-rdp-android-mobile-aar
           path: android/app/libs/mobile.aar
       - name: Upload Go-backed debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -275,8 +275,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
       - name: Install FreeRDP tools
@@ -364,7 +364,7 @@ jobs:
           cat freerdp-artifacts/nla-summary.md
       - name: Upload FreeRDP probe logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: freerdp-compat-probe
           path: freerdp-artifacts/**
@@ -376,16 +376,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
       - name: Enable KVM group permissions
@@ -412,7 +412,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: EMULATOR_GO_BACKED='${{ inputs.emulator_go_backed || ((endsWith(github.ref_name, '-ux') || startsWith(github.ref_name, 'v')) && 'true') || 'false' }}' EMULATOR_CAPTURE='${{ inputs.emulator_capture || ((endsWith(github.ref_name, '-ux') || startsWith(github.ref_name, 'v')) && 'true') || 'false' }}' EMULATOR_CAPTURE_SCALE='${{ inputs.emulator_capture_scale || '2' }}' bash scripts/emulator-smoke.sh
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: ${{ (inputs.emulator_go_backed == 'true' && inputs.emulator_capture == 'true') || endsWith(github.ref_name, '-ux') || startsWith(github.ref_name, 'v') }}
         with:
           node-version: '22'
@@ -432,13 +432,13 @@ jobs:
           cp emulator-artifacts/ux-report/ux-report.pdf "release-files/go-rdp-android-${{ github.ref_name }}-ux-report.pdf"
       - name: Upload release UX report
         if: ${{ startsWith(github.ref_name, 'v') }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-rdp-android-release-ux-report
           path: release-files/*.pdf
       - name: Upload emulator artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-emulator-artifacts
           path: emulator-artifacts/**
@@ -450,24 +450,24 @@ jobs:
     needs: [gomobile, android-emulator]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - name: Download release APK artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: downloaded/go-backed-apk
       - name: Download release UX report artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: go-rdp-android-release-ux-report
           path: downloaded/ux-report
@@ -527,7 +527,7 @@ jobs:
 
           ls -lh release-files
       - name: Upload release files
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: go-rdp-android-release-files
           path: release-files/*
