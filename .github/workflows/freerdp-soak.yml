@@ -23,6 +23,16 @@ on:
         description: Max allowed mock-server RSS growth across run (KB)
         required: false
         default: '51200'
+      iteration_timeout_sec:
+        description: Hard timeout per iteration (sec)
+        required: false
+        default: '45'
+      trace:
+        description: Enable verbose GO_RDP_ANDROID_TRACE in mock server logs
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 permissions:
   contents: read
@@ -50,6 +60,8 @@ jobs:
           SOAK_ITERATIONS: ${{ inputs.iterations || '30' }}
           SOAK_DURATION_SEC: ${{ inputs.duration_sec || '8' }}
           SOAK_MAX_RSS_DELTA_KB: ${{ inputs.max_rss_delta_kb || '51200' }}
+          SOAK_ITERATION_TIMEOUT_SEC: ${{ inputs.iteration_timeout_sec || '45' }}
+          SOAK_TRACE: ${{ inputs.trace == 'true' && '1' || '0' }}
           SOAK_ARTIFACT_DIR: soak-artifacts
         run: |
           chmod +x ./scripts/freerdp-soak.sh

@@ -69,7 +69,7 @@ The same full UX path runs automatically for `*-ux` tags and release tags (`vX.X
 
 ## Nightly/optional FreeRDP soak
 
-A dedicated `FreeRDP soak` workflow now runs nightly (cron) and supports manual `workflow_dispatch` runs. It repeatedly connects `xfreerdp` to the mock server in one selected security mode (`rdp`/`tls`/`nla`), captures per-iteration exit codes and server RSS, and fails when memory growth exceeds a configurable threshold.
+A dedicated `FreeRDP soak` workflow now runs nightly (cron) and supports manual `workflow_dispatch` runs. It repeatedly connects `xfreerdp` to the mock server in one selected security mode (`rdp`/`tls`/`nla`), captures per-iteration exit codes and server RSS, and fails when memory growth exceeds a configurable threshold. Each iteration is now bounded by a hard timeout (`SOAK_ITERATION_TIMEOUT_SEC`, default `45`) and escalates client shutdown (`INT` → `TERM` → `KILL`) to avoid stuck `xfreerdp` attempts stalling the entire soak run.
 
 Primary outputs:
 
