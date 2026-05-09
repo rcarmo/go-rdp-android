@@ -98,7 +98,7 @@ SUMMARY="$ART_DIR/summary.md"
 {
   echo "# FreeRDP soak summary"
   echo
-  echo "- mode: \\`$SOAK_MODE\\`"
+  echo "- mode: $SOAK_MODE"
   echo "- iterations: $SOAK_ITERATIONS"
   echo "- duration per iteration (sec): $SOAK_DURATION_SEC"
   echo "- rss min (KB): $MIN_RSS"
