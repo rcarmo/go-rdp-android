@@ -25,7 +25,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
 | Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. Latest on-demand `workflow_dispatch` evidence (`25517361134`) passed with Go-backed capture + UX report generation. |
 | FreeRDP soak (nightly/dispatch) | Optional | Dedicated `FreeRDP soak` workflow runs repeated security-mode sessions and fails on configurable server RSS growth, producing per-iteration CSV/log artifacts for stability analysis. Iterations now have a hard timeout and escalated shutdown path to prevent stuck-client runs; recent dispatch evidence: `25594388600` (`tls`, success). |
-| Release file checks | Tag-only | `v*` release staging now verifies APK signature report (`jarsigner`), emits CycloneDX Go SBOM, and ships SHA-256 checksums with explicit artifact retention. |
+| Release file checks | Tag-only | `v*` release staging now verifies APK and AAB signature reports (`jarsigner`), emits CycloneDX Go SBOM, and ships SHA-256 checksums with explicit artifact retention. |
 | GitHub Actions JS runtime | Updated | Workflows now opt into Node 24 execution (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`) to preempt Node 20 deprecation cutover risk. |
 
 ## FreeRDP compatibility snapshot

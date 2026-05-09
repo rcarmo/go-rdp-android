@@ -253,6 +253,22 @@ jobs:
           mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk "$APK_PATH" test-artifacts/gomobile/go-backed-apk-summary.md
           test -s test-artifacts/gomobile/go-backed-apk-summary.md
+      - name: Build AAB with Go AAR
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle :app:bundleDebug | tee ../gomobile-android-bundle.log
+      - name: Inspect Go-backed AAB
+        run: |
+          make check-aab-artifact REQUIRE_GO_LIBS=1 | tee test-artifacts/gomobile/go-backed-aab-inspection.log
+          cp gomobile-android-bundle.log test-artifacts/gomobile/
+          AAB_PATH="$(find android/app/build/outputs/bundle -type f -name '*debug*.aab' | sort | head -n1)"
+          test -n "$AAB_PATH"
+          unzip -l "$AAB_PATH" >test-artifacts/gomobile/go-backed-aab-contents.txt
+          jarsigner -verify -certs "$AAB_PATH" >test-artifacts/gomobile/go-backed-aab-signature.txt
+          mkdir -p .gotmp
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go aab "$AAB_PATH" test-artifacts/gomobile/go-backed-aab-summary.md
+          test -s test-artifacts/gomobile/go-backed-aab-summary.md
       - name: Upload gomobile build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -268,6 +284,11 @@ jobs:
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+      - name: Upload Go-backed debug AAB
+        uses: actions/upload-artifact@v7
+        with:
+          name: go-rdp-android-go-backed-debug-aab
+          path: android/app/build/outputs/bundle/debug/*.aab
 
   freerdp-compat:
     name: FreeRDP compatibility probe
@@ -466,6 +487,11 @@ jobs:
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: downloaded/go-backed-apk
+      - name: Download release AAB artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: go-rdp-android-go-backed-debug-aab
+          path: downloaded/go-backed-aab
       - name: Download release UX report artifact
         uses: actions/download-artifact@v8
         with:
@@ -479,10 +505,13 @@ jobs:
           set -euo pipefail
           mkdir -p release-files
           apk=$(find downloaded/go-backed-apk -type f -name '*.apk' | head -1)
+          aab=$(find downloaded/go-backed-aab -type f -name '*.aab' | head -1)
           pdf=$(find downloaded/ux-report -type f -name '*.pdf' | head -1)
           test -s "$apk"
+          test -s "$aab"
           test -s "$pdf"
           cp "$apk" "release-files/go-rdp-android-${TAG}.apk"
+          cp "$aab" "release-files/go-rdp-android-${TAG}.aab"
           cp "$pdf" "release-files/go-rdp-android-${TAG}-ux-report.pdf"
 
           previous=$(git tag --sort=-v:refname 'v[0-9]*' | grep -v "^${TAG}$" | head -1 || true)
@@ -494,8 +523,10 @@ jobs:
             echo "## Release files"
             echo
             echo "- go-rdp-android-${TAG}.apk"
+            echo "- go-rdp-android-${TAG}.aab"
             echo "- go-rdp-android-${TAG}-ux-report.pdf"
             echo "- go-rdp-android-${TAG}-apk-signature.txt"
+            echo "- go-rdp-android-${TAG}-aab-signature.txt"
             echo "- go-rdp-android-${TAG}-sbom-go.cdx.json"
             echo "- go-rdp-android-${TAG}-sha256.txt"
             echo
@@ -512,6 +543,7 @@ jobs:
           } > "release-files/go-rdp-android-${TAG}-release-notes.md"
 
           jarsigner -verify -certs "release-files/go-rdp-android-${TAG}.apk" > "release-files/go-rdp-android-${TAG}-apk-signature.txt"
+          jarsigner -verify -certs "release-files/go-rdp-android-${TAG}.aab" > "release-files/go-rdp-android-${TAG}-aab-signature.txt"
 
           mkdir -p .gotmp
           GOTMPDIR="$PWD/.gotmp" go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
@@ -519,9 +551,11 @@ jobs:
 
           sha256sum \
             "release-files/go-rdp-android-${TAG}.apk" \
+            "release-files/go-rdp-android-${TAG}.aab" \
             "release-files/go-rdp-android-${TAG}-ux-report.pdf" \
             "release-files/go-rdp-android-${TAG}-release-notes.md" \
             "release-files/go-rdp-android-${TAG}-apk-signature.txt" \
+            "release-files/go-rdp-android-${TAG}-aab-signature.txt" \
             "release-files/go-rdp-android-${TAG}-sbom-go.cdx.json" \
             > "release-files/go-rdp-android-${TAG}-sha256.txt"
 

@@ -94,6 +94,23 @@ check-apk-artifact: ## Verify debug APK contents; set REQUIRE_GO_LIBS=1 for Go-b
 	fi
 	rm -rf .gotmp
 
+.PHONY: check-aab-artifact
+check-aab-artifact: ## Verify debug AAB contents; set REQUIRE_GO_LIBS=1 for Go-backed AAB
+	mkdir -p .gotmp
+	@AAB_PATH="$$(find android/app/build/outputs/bundle -type f -name '*debug*.aab' | sort | head -n1)"; \
+	if [ -z "$$AAB_PATH" ]; then \
+		echo "debug AAB not found under android/app/build/outputs/bundle"; \
+		find android/app/build/outputs -maxdepth 8 -type f || true; \
+		exit 1; \
+	fi; \
+	echo "Using AAB: $$AAB_PATH"; \
+	if [ "$(REQUIRE_GO_LIBS)" = "1" ]; then \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go aab "$$AAB_PATH" --require-go-libs; \
+	else \
+		GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-android-artifact.go aab "$$AAB_PATH"; \
+	fi
+	rm -rf .gotmp
+
 .PHONY: android-build
 android-build: ## Build Android debug APK (requires Android SDK + Gradle)
 	cd android && gradle :app:assembleDebug

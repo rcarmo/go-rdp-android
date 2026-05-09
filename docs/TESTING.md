@@ -12,7 +12,7 @@
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
-| gomobile build | Build `mobile.aar`, verify API, build Go-backed APK | `gomobile-build-artifacts` |
+| gomobile build | Build `mobile.aar`, verify API, build Go-backed APK + AAB | `gomobile-build-artifacts` |
 | FreeRDP probe | Blocking real-client compatibility gate; retries and requires bitmap/update streaming | `freerdp-compat-probe` |
 | Emulator capture | Validate app startup, MediaProjection, RDP screenshots | `android-emulator-artifacts` |
 | UX report | Validate Gherkin stories and produce PDF | `ux-report/ux-report.pdf` |
@@ -31,7 +31,7 @@ Default push/PR CI runs without a physical Android device:
 - `gomobile bind` AAR generation.
 - Generated AAR Java API signature verification.
 - Generated AAR native library/content inspection.
-- Go-backed APK build against `mobile.aar` and native library/content inspection.
+- Go-backed APK and AAB builds against `mobile.aar`, with native library/content inspection plus AAB signature report.
 - FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
 The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and stop via a non-timeout client shutdown (`exit_code != 124`) after screenshot capture. The NLA mode uses static credentials (`runner` / `secret`) and exercises CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client. The current human-readable status matrix for these gates lives in [STATUS](STATUS.md) and should be refreshed whenever gate semantics or evidence changes.

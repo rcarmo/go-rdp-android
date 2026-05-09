@@ -13,7 +13,7 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		fatalf("usage: go run ./scripts/check-android-artifact.go <aar|apk> <file> [--require-go-libs]")
+		fatalf("usage: go run ./scripts/check-android-artifact.go <aar|apk|aab> <file> [--require-go-libs]")
 	}
 	kind := os.Args[1]
 	path := os.Args[2]
@@ -46,6 +46,17 @@ func main() {
 				checkELFPageAlignment(entries[name], name)
 			}
 		}
+	case "aab":
+		require(entries, "BundleConfig.pb")
+		require(entries, "base/manifest/AndroidManifest.xml")
+		requireSuffixWithPrefix(entries, "base/dex/", ".dex")
+		if requireGoLibs {
+			for _, abi := range []string{"arm64-v8a", "armeabi-v7a", "x86", "x86_64"} {
+				name := "base/lib/" + abi + "/libgojni.so"
+				require(entries, name)
+				checkELFPageAlignment(entries[name], name)
+			}
+		}
 	default:
 		fatalf("unknown artifact kind %q", kind)
 	}
@@ -65,6 +76,15 @@ func requireSuffix(entries map[string]*zip.File, suffix string) {
 		}
 	}
 	fatalf("missing entry with suffix %s", suffix)
+}
+
+func requireSuffixWithPrefix(entries map[string]*zip.File, prefix, suffix string) {
+	for name := range entries {
+		if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, suffix) {
+			return
+		}
+	}
+	fatalf("missing entry with prefix %s and suffix %s", prefix, suffix)
 }
 
 func checkELFPageAlignment(zf *zip.File, name string) {
