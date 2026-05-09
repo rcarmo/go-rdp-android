@@ -482,6 +482,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - name: Install Android build-tools for signing
+        run: sdkmanager "build-tools;35.0.0"
       - name: Download release APK artifact
         uses: actions/download-artifact@v8
         with:
@@ -501,6 +504,10 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p release-files
@@ -513,6 +520,35 @@ jobs:
           cp "$apk" "release-files/go-rdp-android-${TAG}.apk"
           cp "$aab" "release-files/go-rdp-android-${TAG}.aab"
           cp "$pdf" "release-files/go-rdp-android-${TAG}-ux-report.pdf"
+
+          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ] || [ -z "${RELEASE_KEYSTORE_PASSWORD:-}" ] || [ -z "${RELEASE_KEY_ALIAS:-}" ] || [ -z "${RELEASE_KEY_PASSWORD:-}" ]; then
+            echo "Missing production signing secrets. Configure RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, and RELEASE_KEY_PASSWORD in GitHub Actions secrets." >&2
+            exit 1
+          fi
+
+          keystore="$RUNNER_TEMP/release-keystore.jks"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+
+          build_tools="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)"
+          apksigner_bin="$build_tools/apksigner"
+          test -x "$apksigner_bin"
+
+          "$apksigner_bin" sign \
+            --ks "$keystore" \
+            --ks-key-alias "$RELEASE_KEY_ALIAS" \
+            --ks-pass env:RELEASE_KEYSTORE_PASSWORD \
+            --key-pass env:RELEASE_KEY_PASSWORD \
+            --out "release-files/go-rdp-android-${TAG}.apk.signed" \
+            "release-files/go-rdp-android-${TAG}.apk"
+          mv "release-files/go-rdp-android-${TAG}.apk.signed" "release-files/go-rdp-android-${TAG}.apk"
+
+          jarsigner \
+            -keystore "$keystore" \
+            -storepass "$RELEASE_KEYSTORE_PASSWORD" \
+            -keypass "$RELEASE_KEY_PASSWORD" \
+            "release-files/go-rdp-android-${TAG}.aab" \
+            "$RELEASE_KEY_ALIAS"
 
           previous=$(git tag --sort=-v:refname 'v[0-9]*' | grep -v "^${TAG}$" | head -1 || true)
           {
@@ -542,7 +578,7 @@ jobs:
             echo
           } > "release-files/go-rdp-android-${TAG}-release-notes.md"
 
-          jarsigner -verify -certs "release-files/go-rdp-android-${TAG}.apk" > "release-files/go-rdp-android-${TAG}-apk-signature.txt"
+          "$apksigner_bin" verify --verbose --print-certs "release-files/go-rdp-android-${TAG}.apk" > "release-files/go-rdp-android-${TAG}-apk-signature.txt"
           jarsigner -verify -certs "release-files/go-rdp-android-${TAG}.aab" > "release-files/go-rdp-android-${TAG}-aab-signature.txt"
 
           mkdir -p .gotmp
@@ -559,6 +595,7 @@ jobs:
             "release-files/go-rdp-android-${TAG}-sbom-go.cdx.json" \
             > "release-files/go-rdp-android-${TAG}-sha256.txt"
 
+          rm -f "$keystore"
           ls -lh release-files
       - name: Upload release files
         uses: actions/upload-artifact@v7

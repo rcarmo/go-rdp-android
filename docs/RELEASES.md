@@ -37,12 +37,21 @@ Release tags (`vX.X.X`) produce a consolidated `go-rdp-android-release-files` ar
 - `go-rdp-android-vX.X.X.aab`
 - `go-rdp-android-vX.X.X-ux-report.pdf`
 - `go-rdp-android-vX.X.X-release-notes.md`
-- `go-rdp-android-vX.X.X-apk-signature.txt` (from `jarsigner -verify -certs`)
+- `go-rdp-android-vX.X.X-apk-signature.txt` (from `apksigner verify --print-certs`)
 - `go-rdp-android-vX.X.X-aab-signature.txt` (from `jarsigner -verify -certs`)
 - `go-rdp-android-vX.X.X-sbom-go.cdx.json` (CycloneDX Go module SBOM)
 - `go-rdp-android-vX.X.X-sha256.txt` (checksums for release assets)
 
 Release notes are generated from Git history and list commits since the previous `v*` release tag, with GitHub commit links. For the first release, notes list commits reachable from the release tag.
+
+Release-tag staging requires production signing secrets in GitHub Actions (never in-repo):
+
+- `RELEASE_KEYSTORE_BASE64` (base64-encoded JKS/PKCS12 keystore)
+- `RELEASE_KEYSTORE_PASSWORD`
+- `RELEASE_KEY_ALIAS`
+- `RELEASE_KEY_PASSWORD`
+
+If these are missing, the `release-files` job fails before publishing artifacts.
 
 ## Current identifiers
 
