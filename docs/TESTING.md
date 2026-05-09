@@ -36,6 +36,8 @@ Default push/PR CI runs without a physical Android device:
 
 The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and stop via a non-timeout client shutdown (`exit_code != 124`) after screenshot capture. The NLA mode uses static credentials (`runner` / `secret`) and exercises CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client. The current human-readable status matrix for these gates lives in [STATUS](STATUS.md) and should be refreshed whenever gate semantics or evidence changes.
 
+Workflows now set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to run JavaScript-based actions on Node 24 ahead of GitHub’s Node 20 deprecation timeline.
+
 ## Manual and tag-driven emulator UX testing
 
 Run manually:
