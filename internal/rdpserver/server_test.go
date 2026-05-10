@@ -20,3 +20,9 @@ func TestNewDefaultsAddr(t *testing.T) {
 		t.Fatalf("expected default addr :3390, got %q", s.cfg.Addr)
 	}
 }
+
+func TestNewRejectsInvalidPolicy(t *testing.T) {
+	if _, err := New(Config{Width: 100, Height: 100, Policy: AccessPolicy{AllowedCIDRs: []string{"bad"}}}, nil, nil); err == nil {
+		t.Fatal("expected invalid policy error")
+	}
+}

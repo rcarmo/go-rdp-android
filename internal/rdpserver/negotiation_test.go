@@ -68,6 +68,40 @@ func TestSelectNegotiatedProtocol(t *testing.T) {
 	}
 }
 
+func TestSelectNegotiatedProtocolWithMode(t *testing.T) {
+	cases := []struct {
+		name      string
+		requested uint32
+		mode      SecurityMode
+		want      uint32
+		wantErr   bool
+	}{
+		{name: "rdp-only policy", requested: protocolSSL | protocolHybrid, mode: SecurityModeRDPOnly, want: protocolRDP},
+		{name: "tls-only policy", requested: protocolSSL, mode: SecurityModeTLSOnly, want: protocolSSL},
+		{name: "tls-only with hybrid request", requested: protocolHybrid, mode: SecurityModeTLSOnly, want: protocolSSL},
+		{name: "tls-only rejected when tls absent", requested: protocolRDP, mode: SecurityModeTLSOnly, wantErr: true},
+		{name: "nla-required", requested: protocolSSL | protocolHybrid, mode: SecurityModeNLARequired, want: protocolHybrid},
+		{name: "nla-required rejected", requested: protocolSSL, mode: SecurityModeNLARequired, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := selectNegotiatedProtocolWithMode(tc.requested, tc.mode)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("selected protocol = 0x%08x, want 0x%08x", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPerformInitialHandshake(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

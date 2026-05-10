@@ -33,7 +33,7 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, selectedProtocol uint32, channels []clientChannel) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, selectedProtocol uint32, channels []clientChannel) error {
 	userID := uint16(defaultMCSUserID)
 	dvc := newDRDYNVCManager(channels, sink)
 	sessionWidth := clampDesktopDimension(width, width)
@@ -133,6 +133,9 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					tracef("client_info_parse", "err=%v", err)
 				} else {
 					tracef("client_info", "user=%q domain=%q flags=0x%08x", sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64), clientInfo.Flags)
+					if !policy.userAllowed(clientInfo.UserName) {
+						return fmt.Errorf("auth failed: user %q not allowed by policy", sanitizeForLog(clientInfo.UserName, 64))
+					}
 					if err := authenticateClientInfo(auth, clientInfo); err != nil {
 						return fmt.Errorf("auth failed: %w", err)
 					}

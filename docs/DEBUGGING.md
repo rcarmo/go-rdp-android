@@ -256,6 +256,18 @@ The mock server can require credentials:
 go run ./cmd/mock-server -username user -password pass
 ```
 
+Security/access policy controls are also available on the mock server:
+
+```bash
+go run ./cmd/mock-server \
+  -security-mode tls-only \
+  -allowed-users user,admin \
+  -allowed-cidrs 192.168.1.0/24,127.0.0.0/8 \
+  -username user -password pass
+```
+
+Valid `-security-mode` values are: `negotiate`, `rdp-only`, `tls-only`, `nla-required`.
+
 For TLS Client Info-only experiments, the mock server also accepts a bcrypt hash (avoids storing plaintext in scripts/files):
 
 ```bash

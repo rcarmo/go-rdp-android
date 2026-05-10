@@ -18,6 +18,7 @@ type Config struct {
 	Width         int
 	Height        int
 	Authenticator Authenticator
+	Policy        AccessPolicy
 }
 
 // Server is the native Android RDP server core.
@@ -38,6 +39,11 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 	if cfg.Width <= 0 || cfg.Height <= 0 {
 		return nil, errors.New("width and height must be positive")
 	}
+	policy, err := normalizeAccessPolicy(cfg.Policy)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Policy = policy
 	return &Server{cfg: cfg, frames: frames, input: sink}, nil
 }
 
@@ -98,7 +104,11 @@ func (s *Server) Addr() net.Addr {
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
-	info, secureConn, err := performInitialHandshake(conn)
+	if !s.cfg.Policy.remoteAllowed(conn.RemoteAddr()) {
+		log.Printf("rdp connection denied by CIDR policy from %s", conn.RemoteAddr())
+		return
+	}
+	info, secureConn, err := performInitialHandshakeWithMode(conn, s.cfg.Policy.SecurityMode)
 	if err != nil {
 		log.Printf("rdp initial handshake failed from %s: %v", conn.RemoteAddr(), err)
 		return
@@ -109,6 +119,10 @@ func (s *Server) handleConn(conn net.Conn) {
 		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
 		if err != nil {
 			log.Printf("rdp NLA/CredSSP failed from %s: %v", conn.RemoteAddr(), err)
+			return
+		}
+		if !s.cfg.Policy.userAllowed(clientInfo.UserName) {
+			log.Printf("rdp NLA/CredSSP denied by user policy from %s: user=%q", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64))
 			return
 		}
 		log.Printf("rdp NLA/CredSSP authenticated from %s: user=%q domain=%q", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64))
@@ -139,7 +153,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}

@@ -42,6 +42,10 @@ type HandshakeInfo struct {
 }
 
 func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
+	return performInitialHandshakeWithMode(conn, SecurityModeNegotiate)
+}
+
+func performInitialHandshakeWithMode(conn net.Conn, mode SecurityMode) (*HandshakeInfo, net.Conn, error) {
 	payload, err := readTPKT(conn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read tpkt: %w", err)
@@ -53,7 +57,11 @@ func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
 	}
 
 	info := parseNegotiationUserData(userData)
-	info.SelectedProtocol = selectNegotiatedProtocol(info.RequestedProtocols)
+	selectedProtocol, err := selectNegotiatedProtocolWithMode(info.RequestedProtocols, mode)
+	if err != nil {
+		return nil, nil, err
+	}
+	info.SelectedProtocol = selectedProtocol
 
 	if err := writeConnectionConfirm(conn, srcRef, info.SelectedProtocol); err != nil {
 		return nil, nil, fmt.Errorf("write x224 connection confirm: %w", err)
@@ -190,13 +198,35 @@ func parseNegotiationUserData(userData []byte) HandshakeInfo {
 }
 
 func selectNegotiatedProtocol(requestedProtocols uint32) uint32 {
-	if requestedProtocols&protocolHybrid != 0 {
-		return protocolHybrid
+	selected, _ := selectNegotiatedProtocolWithMode(requestedProtocols, SecurityModeNegotiate)
+	return selected
+}
+
+func selectNegotiatedProtocolWithMode(requestedProtocols uint32, mode SecurityMode) (uint32, error) {
+	switch mode {
+	case "", SecurityModeNegotiate:
+		if requestedProtocols&protocolHybrid != 0 {
+			return protocolHybrid, nil
+		}
+		if requestedProtocols&protocolSSL != 0 {
+			return protocolSSL, nil
+		}
+		return protocolRDP, nil
+	case SecurityModeRDPOnly:
+		return protocolRDP, nil
+	case SecurityModeTLSOnly:
+		if requestedProtocols&protocolSSL == 0 && requestedProtocols&protocolHybrid == 0 {
+			return 0, fmt.Errorf("client does not request TLS protocol")
+		}
+		return protocolSSL, nil
+	case SecurityModeNLARequired:
+		if requestedProtocols&protocolHybrid == 0 {
+			return 0, fmt.Errorf("client does not request NLA/Hybrid protocol")
+		}
+		return protocolHybrid, nil
+	default:
+		return 0, fmt.Errorf("unsupported security mode %q", mode)
 	}
-	if requestedProtocols&protocolSSL != 0 {
-		return protocolSSL
-	}
-	return protocolRDP
 }
 
 func writeConnectionConfirm(conn net.Conn, dstRef uint16, selectedProtocol uint32) error {
