@@ -25,16 +25,20 @@ func main() {
 	securityMode := flag.String("security-mode", string(rdpserver.SecurityModeNegotiate), "security policy mode: negotiate|rdp-only|tls-only|nla-required")
 	allowedUsers := flag.String("allowed-users", "", "optional comma-separated allowed usernames")
 	allowedCIDRs := flag.String("allowed-cidrs", "", "optional comma-separated client CIDR allowlist")
+	tlsCert := flag.String("tls-cert", "", "optional TLS certificate PEM path (persisted/loaded when paired with -tls-key)")
+	tlsKey := flag.String("tls-key", "", "optional TLS private key PEM path (persisted/loaded when paired with -tls-cert)")
+	tlsRotate := flag.Bool("tls-rotate", false, "rotate/regenerate TLS certificate at startup when using -tls-cert/-tls-key")
+	tlsCN := flag.String("tls-cn", "go-rdp-android", "TLS certificate common name when generating a self-signed cert")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs)); err != nil {
+	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string) error {
+func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, tlsSettings rdpserver.TLSSettings) error {
 	var frames frame.Source
 	if testPattern {
 		frames = frame.NewTestPatternSource(width, height, fps)
@@ -63,11 +67,12 @@ func run(ctx context.Context, addr string, width, height int, testPattern bool, 
 			AllowedUsers: allowedUsers,
 			AllowedCIDRs: allowedCIDRs,
 		},
+		TLS: tlsSettings,
 	}, frames, nil)
 	if err != nil {
 		return err
 	}
-	log.Printf("listening on %s (protocol stub, testPattern=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d)", addr, testPattern, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs))
+	log.Printf("listening on %s (protocol stub, testPattern=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d tls_fp=%s)", addr, testPattern, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), srv.TLSFingerprintSHA256())
 	if err := srv.Listen(ctx); err != nil && ctx.Err() == nil {
 		return err
 	}

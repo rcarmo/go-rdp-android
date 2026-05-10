@@ -134,6 +134,16 @@ func (s *Server) Addr() string {
 	return s.server.Addr().String()
 }
 
+// TLSFingerprintSHA256 returns the current TLS certificate fingerprint when running.
+func (s *Server) TLSFingerprintSHA256() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return ""
+	}
+	return s.server.TLSFingerprintSHA256()
+}
+
 // StartServer starts the default singleton server. It mirrors the current Kotlin stub shape.
 func StartServer(port int) error { return defaultServer.Start(port) }
 
@@ -150,6 +160,9 @@ func SetCredentials(username, password string) { defaultServer.SetCredentials(us
 
 // SetInputHandler installs the callback target on the default singleton server.
 func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handler) }
+
+// TLSFingerprintSHA256 returns the default server TLS cert fingerprint when running.
+func TLSFingerprintSHA256() string { return defaultServer.TLSFingerprintSHA256() }
 
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {

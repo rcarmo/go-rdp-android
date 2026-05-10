@@ -69,7 +69,7 @@ func SetInputHandler(handler InputHandler)
 
 Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state.
 
-`SetCredentials` configures the current username/password authenticator for future sessions. The server now has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally.
+`SetCredentials` configures the current username/password authenticator for future sessions. The server has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally. Access policy controls (security mode + allowed users/CIDRs) are normalized at startup and enforced at connection/auth boundaries. TLS settings support persisted self-signed cert/key paths, optional startup rotation, and SHA-256 fingerprint exposure for client trust guidance.
 
 ## RDP server core
 

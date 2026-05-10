@@ -287,6 +287,31 @@ CI includes authentication smoke tests for both paths. Good credentials complete
 
 The server negotiates `PROTOCOL_SSL` for TLS-only clients and `PROTOCOL_HYBRID` for NLA-capable clients. Hybrid sessions run CredSSP/NTLMv2 before MCS Connect, validate TLS public-key binding, decrypt `TSCredentials`, and then apply the same static credential gate.
 
+## TLS certificate persistence/rotation debugging
+
+By default the server uses an in-memory self-signed cert. For persistent certs and explicit rotation in mock-server runs:
+
+```bash
+go run ./cmd/mock-server \
+  -tls-cert /tmp/go-rdp-android/server.crt \
+  -tls-key /tmp/go-rdp-android/server.key \
+  -security-mode tls-only \
+  -username user -password pass
+```
+
+Force rotation at startup:
+
+```bash
+go run ./cmd/mock-server \
+  -tls-cert /tmp/go-rdp-android/server.crt \
+  -tls-key /tmp/go-rdp-android/server.key \
+  -tls-rotate \
+  -security-mode tls-only \
+  -username user -password pass
+```
+
+The server logs the SHA-256 certificate fingerprint (`tls_fp=...`) on handshake; use it as the trust-check value when validating cert changes in client troubleshooting notes.
+
 ## Release debugging
 
 Tag policy is documented in [RELEASES](RELEASES.md).

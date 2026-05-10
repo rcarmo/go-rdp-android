@@ -42,10 +42,14 @@ type HandshakeInfo struct {
 }
 
 func performInitialHandshake(conn net.Conn) (*HandshakeInfo, net.Conn, error) {
-	return performInitialHandshakeWithMode(conn, SecurityModeNegotiate)
+	return performInitialHandshakeWithModeAndTLS(conn, SecurityModeNegotiate, nil)
 }
 
 func performInitialHandshakeWithMode(conn net.Conn, mode SecurityMode) (*HandshakeInfo, net.Conn, error) {
+	return performInitialHandshakeWithModeAndTLS(conn, mode, nil)
+}
+
+func performInitialHandshakeWithModeAndTLS(conn net.Conn, mode SecurityMode, tlsCfg *tls.Config) (*HandshakeInfo, net.Conn, error) {
 	payload, err := readTPKT(conn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read tpkt: %w", err)
@@ -67,9 +71,13 @@ func performInitialHandshakeWithMode(conn net.Conn, mode SecurityMode) (*Handsha
 		return nil, nil, fmt.Errorf("write x224 connection confirm: %w", err)
 	}
 	if info.SelectedProtocol == protocolSSL || info.SelectedProtocol == protocolHybrid {
-		cfg, err := defaultTLSConfig()
-		if err != nil {
-			return nil, nil, fmt.Errorf("tls config: %w", err)
+		cfg := tlsCfg
+		if cfg == nil {
+			var err error
+			cfg, err = defaultTLSConfig()
+			if err != nil {
+				return nil, nil, fmt.Errorf("tls config: %w", err)
+			}
 		}
 		tlsConn := tls.Server(conn, cfg)
 		if err := tlsConn.Handshake(); err != nil {

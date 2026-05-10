@@ -26,3 +26,13 @@ func TestNewRejectsInvalidPolicy(t *testing.T) {
 		t.Fatal("expected invalid policy error")
 	}
 }
+
+func TestNewSetsTLSFingerprint(t *testing.T) {
+	s, err := New(Config{Width: 100, Height: 100}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.TLSFingerprintSHA256() == "" {
+		t.Fatal("expected TLS fingerprint")
+	}
+}

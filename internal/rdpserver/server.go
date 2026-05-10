@@ -3,6 +3,7 @@ package rdpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"log"
 	"net"
@@ -19,6 +20,7 @@ type Config struct {
 	Height        int
 	Authenticator Authenticator
 	Policy        AccessPolicy
+	TLS           TLSSettings
 }
 
 // Server is the native Android RDP server core.
@@ -26,6 +28,9 @@ type Server struct {
 	cfg    Config
 	frames frame.Source
 	input  input.Sink
+
+	tlsConfig      *tls.Config
+	tlsFingerprint string
 
 	mu sync.Mutex
 	ln net.Listener
@@ -44,7 +49,11 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 		return nil, err
 	}
 	cfg.Policy = policy
-	return &Server{cfg: cfg, frames: frames, input: sink}, nil
+	tlsConfig, fingerprint, err := resolveTLSConfig(cfg.TLS)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint}, nil
 }
 
 // Listen starts accepting TCP connections.
@@ -102,19 +111,22 @@ func (s *Server) Addr() net.Addr {
 	return s.ln.Addr()
 }
 
+// TLSFingerprintSHA256 returns the current server-certificate fingerprint.
+func (s *Server) TLSFingerprintSHA256() string { return s.tlsFingerprint }
+
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 	if !s.cfg.Policy.remoteAllowed(conn.RemoteAddr()) {
 		log.Printf("rdp connection denied by CIDR policy from %s", conn.RemoteAddr())
 		return
 	}
-	info, secureConn, err := performInitialHandshakeWithMode(conn, s.cfg.Policy.SecurityMode)
+	info, secureConn, err := performInitialHandshakeWithModeAndTLS(conn, s.cfg.Policy.SecurityMode, s.tlsConfig)
 	if err != nil {
 		log.Printf("rdp initial handshake failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
 	conn = secureConn
-	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, sanitizeForLog(info.Cookie, 80))
+	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q tls_fp=%s", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, sanitizeForLog(info.Cookie, 80), s.tlsFingerprint)
 	if info.SelectedProtocol == protocolHybrid {
 		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
 		if err != nil {
