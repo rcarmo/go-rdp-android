@@ -27,7 +27,7 @@ func (a StaticCredentials) Authenticate(_ context.Context, info ClientInfo) erro
 	}
 	if subtle.ConstantTimeCompare([]byte(info.UserName), []byte(a.Username)) != 1 ||
 		subtle.ConstantTimeCompare([]byte(info.Password), []byte(a.Password)) != 1 {
-		return fmt.Errorf("invalid credentials for user %q", info.UserName)
+		return fmt.Errorf("invalid credentials for user %q", sanitizeForLog(info.UserName, 64))
 	}
 	return nil
 }

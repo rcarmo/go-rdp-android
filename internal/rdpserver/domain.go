@@ -132,7 +132,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					}
 					tracef("client_info_parse", "err=%v", err)
 				} else {
-					tracef("client_info", "user=%q domain=%q flags=0x%08x", clientInfo.UserName, clientInfo.Domain, clientInfo.Flags)
+					tracef("client_info", "user=%q domain=%q flags=0x%08x", sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64), clientInfo.Flags)
 					if err := authenticateClientInfo(auth, clientInfo); err != nil {
 						return fmt.Errorf("auth failed: %w", err)
 					}

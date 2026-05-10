@@ -104,14 +104,14 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	conn = secureConn
-	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, info.Cookie)
+	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, sanitizeForLog(info.Cookie, 80))
 	if info.SelectedProtocol == protocolHybrid {
 		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
 		if err != nil {
 			log.Printf("rdp NLA/CredSSP failed from %s: %v", conn.RemoteAddr(), err)
 			return
 		}
-		log.Printf("rdp NLA/CredSSP authenticated from %s: user=%q domain=%q", conn.RemoteAddr(), clientInfo.UserName, clientInfo.Domain)
+		log.Printf("rdp NLA/CredSSP authenticated from %s: user=%q domain=%q", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64))
 	}
 
 	mcsInfo, err := readMCSConnectInitial(conn)
