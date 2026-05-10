@@ -56,9 +56,9 @@ gh workflow run CI \
 The emulator job:
 
 1. Builds the Go-backed APK if requested or required by tag policy.
-2. Installs and launches the app.
+2. Installs and launches the app (passing explicit test credentials via intent extras).
 3. Requests and accepts MediaProjection permission.
-4. Starts the Go RDP server inside the app.
+4. Starts the Go RDP server inside the app (startup is now blocked unless credentials are configured).
 5. Enables the app AccessibilityService in the emulator so RDP input callbacks can execute Home, pointer, and RDPEI touch gestures.
 6. Forwards runner TCP/3390 to emulator TCP/3390.
 7. Captures a home RDP screenshot.

@@ -21,6 +21,10 @@ object NativeRdpBridge : RdpInputCallbacks {
         Log.i(TAG, "inputCoordinateScale=$inputCoordinateScale")
     }
 
+    fun setCredentials(username: String, password: String) {
+        backend.setCredentials(username, password)
+    }
+
     fun startServer(port: Int, hasProjection: Boolean) {
         backend.setInputCallbacks(this)
         backend.startServer(port)

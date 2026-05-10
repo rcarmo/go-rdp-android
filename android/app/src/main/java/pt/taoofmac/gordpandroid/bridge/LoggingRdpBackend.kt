@@ -16,6 +16,10 @@ class LoggingRdpBackend : RdpBackend {
         this.callbacks = callbacks
     }
 
+    override fun setCredentials(username: String, password: String) {
+        Log.i(TAG, "setCredentials(user=${username.ifEmpty { "<empty>" }}, passSet=${password.isNotEmpty()}) [$name]")
+    }
+
     override fun startServer(port: Int) {
         if (running.compareAndSet(false, true)) {
             frameCount.set(0)

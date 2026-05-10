@@ -33,6 +33,11 @@ class GomobileRdpBackend : RdpBackend {
             .onFailure { Log.w(TAG, "setInputHandler failed", it) }
     }
 
+    override fun setCredentials(username: String, password: String) {
+        val method = findMethod(mobileClass ?: return, "setCredentials", 2) ?: return
+        invoke(method, username, password)
+    }
+
     override fun startServer(port: Int) {
         val method = findMethod(mobileClass ?: return, "startServer", 1) ?: return
         invoke(method, port)

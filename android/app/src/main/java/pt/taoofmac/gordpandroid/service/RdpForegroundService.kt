@@ -34,9 +34,17 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
         val hasProjection = data != null && resultCode != 0
         val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
+        val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
+        val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
+        if (username.isEmpty() || password.isEmpty()) {
+            Log.w(TAG, "Refusing to start RDP server without configured credentials")
+            stopSelfResult(startId)
+            return START_NOT_STICKY
+        }
         if (hasProjection) {
             startForeground(1, notification())
         }
+        NativeRdpBridge.setCredentials(username, password)
         NativeRdpBridge.setInputCoordinateScale(captureScale)
         NativeRdpBridge.startServer(3390, hasProjection)
 
@@ -140,6 +148,8 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_TEST_PATTERN = "test_pattern"
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
+        const val EXTRA_USERNAME = "rdp_username"
+        const val EXTRA_PASSWORD = "rdp_password"
         private const val CHANNEL_ID = "rdp-server"
         private const val TAG = "GoRdpAndroidService"
     }

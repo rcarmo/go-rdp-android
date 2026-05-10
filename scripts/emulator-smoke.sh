@@ -8,6 +8,8 @@ ACTIVITY="$PACKAGE/.MainActivity"
 GO_BACKED="${EMULATOR_GO_BACKED:-false}"
 CAPTURE="${EMULATOR_CAPTURE:-false}"
 CAPTURE_SCALE="${EMULATOR_CAPTURE_SCALE:-1}"
+RDP_USERNAME="${EMULATOR_RDP_USERNAME:-runner}"
+RDP_PASSWORD="${EMULATOR_RDP_PASSWORD:-secret}"
 case "$CAPTURE_SCALE" in
   1|2|3|4) ;;
   *) CAPTURE_SCALE=1 ;;
@@ -25,7 +27,7 @@ adb shell settings put secure accessibility_enabled 1 >/dev/null 2>&1 || true
 } | tee emulator-artifacts/accessibility-setup.txt
 
 if [ "$CAPTURE" = "true" ]; then
-  adb shell am start -W -n "$ACTIVITY" --ez start_capture true --ei capture_scale "$CAPTURE_SCALE" | tee emulator-artifacts/activity-start.txt
+  adb shell am start -W -n "$ACTIVITY" --ez start_capture true --ei capture_scale "$CAPTURE_SCALE" --es rdp_username "$RDP_USERNAME" --es rdp_password "$RDP_PASSWORD" | tee emulator-artifacts/activity-start.txt
   for _ in $(seq 1 45); do
     adb shell dumpsys window > emulator-artifacts/window-consent-wait.txt || true
     if grep -q 'mCurrentFocus.*MediaProjectionPermissionActivity' emulator-artifacts/window-consent-wait.txt; then
@@ -64,7 +66,7 @@ if [ "$CAPTURE" = "true" ]; then
     sleep 1
   done
 else
-  adb shell am start -W -n "$ACTIVITY" --ez start_test_pattern true | tee emulator-artifacts/activity-start.txt
+  adb shell am start -W -n "$ACTIVITY" --ez start_test_pattern true --es rdp_username "$RDP_USERNAME" --es rdp_password "$RDP_PASSWORD" | tee emulator-artifacts/activity-start.txt
   sleep 8
   width=320
   height=240
@@ -110,6 +112,8 @@ capture_rdp_scene() {
   adb exec-out screencap -p > "emulator-artifacts/android-${name}.png" || true
   go run ./cmd/probe \
     -addr 127.0.0.1:3390 \
+    -username "$RDP_USERNAME" \
+    -password "$RDP_PASSWORD" \
     -updates "$updates" \
     -screenshot-width "$width" \
     -screenshot-height "$height" \
@@ -189,6 +193,8 @@ EOF
 JSON
     go run ./cmd/probe \
       -addr 127.0.0.1:3390 \
+      -username "$RDP_USERNAME" \
+      -password "$RDP_PASSWORD" \
       -screenshot-width "$width" \
       -screenshot-height "$height" \
       -warmup-updates "$updates" \
