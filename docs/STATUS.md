@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-08
-Current evidence commit: `9ebd606` (`Sanitize bounded auth-related log fields`)
-Latest referenced CI run: `25632954407` (`main` CI, success)
+Current evidence commit: `cd98245` (`Encrypt stored Android RDP credentials with Keystore`)
+Latest referenced CI run: `25633460920` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25632954407`:
+Latest checked artifact from CI run `25633460920`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
