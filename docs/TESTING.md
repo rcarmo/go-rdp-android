@@ -9,6 +9,7 @@
 | Go unit tests | Parser, graphics, input, bridge, lifecycle coverage, including slow-path/Fast-Path input sink equivalence | `go test ./...` |
 | RDPEI/drdynvc summary | Machine-readable evidence for RDPEI parser, DVC routing, synthetic touch sequence, and touch lifecycle metadata | `test-artifacts/go/rdpei-tests.json`, `test-artifacts/go/rdpei-test-summary.md` |
 | Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
+| gosec scan | Static security scan with triaged overflow-noise exclusion (`G115`) | `test-artifacts/go/gosec-report.json`, `test-artifacts/go/gosec-summary.md` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
@@ -24,6 +25,7 @@ Default push/PR CI runs without a physical Android device:
 - Go vet/build/test with coverage threshold.
 - RDPEI/`drdynvc` test JSON plus Markdown summary covering parser, synthetic channel sequence, and touch lifecycle metadata.
 - Go race tests and short parser fuzz smoke.
+- gosec static security scan (currently excluding `G115` cast-noise with findings triaged and documented).
 - Mock server + probe TCP smoke test.
 - TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection.
 - Protocol packet trace artifact from the probe, including client/server hex dumps and logs.

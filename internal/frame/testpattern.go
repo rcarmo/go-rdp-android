@@ -25,6 +25,7 @@ func NewTestPatternSource(width, height, fps int) *TestPatternSource {
 	if fps <= 0 {
 		fps = 5
 	}
+	// #nosec G118 -- cancel is retained on TestPatternSource and invoked in Close().
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &TestPatternSource{ctx: ctx, cancel: cancel, frames: make(chan Frame, 2)}
 	go s.run(width, height, fps)
@@ -72,9 +73,9 @@ func buildPatternFrame(width, height, frameNo int, ts time.Time) Frame {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			i := y*stride + x*4
-			data[i+0] = byte((x + frameNo*7) % 256)       // R
-			data[i+1] = byte((y + frameNo*5) % 256)       // G
-			data[i+2] = byte((x + y + frameNo*3) % 256)   // B
+			data[i+0] = byte((x + frameNo*7) % 256)     // R
+			data[i+1] = byte((y + frameNo*5) % 256)     // G
+			data[i+2] = byte((x + y + frameNo*3) % 256) // B
 			data[i+3] = 0xff
 		}
 	}

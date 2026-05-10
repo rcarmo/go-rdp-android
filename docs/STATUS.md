@@ -13,6 +13,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | Go unit tests | Passing | `go test ./...` in CI and locally. |
 | Go vet | Passing | `go vet ./...` in CI and locally. |
 | Go race/fuzz smoke | Passing in CI | Race suite plus short parser fuzz smoke. |
+| gosec static scan | Passing in CI | `gosec` JSON + markdown summary emitted in Go artifacts; current scan excludes `G115` cast-noise and is clean for remaining rules. |
 | Android debug APK | Passing in CI | Gradle debug build plus APK inspection artifact. |
 | gomobile AAR/API | Passing in CI | `mobile.aar` build plus `scripts/check-aar-api.go`; includes touch callbacks (`TouchFrameStart`, `TouchContact`, `TouchFrameEnd`). |
 | Go-backed APK | Passing in CI | Go-backed debug APK build and native-library inspection. |

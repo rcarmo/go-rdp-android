@@ -132,7 +132,7 @@ func main() {
 	flag.Parse()
 	dumpPackets.Store(*dump)
 	if *traceDir != "" {
-		if err := os.MkdirAll(*traceDir, 0o755); err != nil {
+		if err := os.MkdirAll(*traceDir, 0o750); err != nil {
 			log.Fatal(err)
 		}
 		traceOut.Store(*traceDir)
@@ -159,6 +159,7 @@ func main() {
 	fmt.Printf("X.224 confirm: %x\n", resp)
 	selectedProtocol := parseSelectedProtocol(resp)
 	if selectedProtocol == 0x00000001 || selectedProtocol == 0x00000002 {
+		// #nosec G402 -- probe interoperability intentionally accepts ephemeral self-signed test certs.
 		tlsConn := tls.Client(conn, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
 		if err := tlsConn.Handshake(); err != nil {
 			log.Fatal(err)
@@ -338,7 +339,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := os.WriteFile(*summaryPath, append(data, '\n'), 0o644); err != nil {
+		if err := os.WriteFile(*summaryPath, append(data, '\n'), 0o600); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -363,6 +364,7 @@ func scenePlanRequiresRDPEI(path string) (bool, error) {
 	if path == "" {
 		return false, nil
 	}
+	// #nosec G304 -- scene plan path is an explicit local CLI argument.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return false, err
@@ -382,6 +384,7 @@ func scenePlanRequiresRDPEI(path string) (bool, error) {
 }
 
 func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGBA, idleTimeoutMs, defaultMaxUpdates int, rdpeiChannelID uint32) error {
+	// #nosec G304 -- scene plan path is an explicit local CLI argument.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -390,7 +393,7 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 	if err := json.Unmarshal(data, &scenes); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(artifactDir, 0o755); err != nil {
+	if err := os.MkdirAll(artifactDir, 0o750); err != nil {
 		return err
 	}
 	for _, scene := range scenes {
@@ -399,6 +402,7 @@ func runScenePlan(conn net.Conn, path, artifactDir string, screenshot *image.RGB
 		}
 		var cmd *exec.Cmd
 		if scene.Command != "" {
+			// #nosec G204 -- scene command execution is opt-in test automation from local trusted plan files.
 			cmd = exec.Command("sh", "-c", scene.Command)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -776,7 +780,7 @@ func tracePacket(direction string, payload []byte) {
 		return
 	}
 	name := filepath.Join(dir, fmt.Sprintf("%03d-%s.hex", nextTraceID(), direction))
-	_ = os.WriteFile(name, []byte(hex.Dump(payload)), 0o644)
+	_ = os.WriteFile(name, []byte(hex.Dump(payload)), 0o600)
 }
 
 var traceCounter uint64
@@ -1011,9 +1015,10 @@ func mbps(bytes int64, durationMs int64) float64 {
 }
 
 func writePNG(path string, img image.Image) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil && filepath.Dir(path) != "." {
 		return err
 	}
+	// #nosec G304 -- screenshot output path is an explicit local CLI argument.
 	f, err := os.Create(path)
 	if err != nil {
 		return err

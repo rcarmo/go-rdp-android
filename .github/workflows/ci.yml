@@ -95,6 +95,13 @@ jobs:
           GOTMPDIR="$PWD/.gotmp" go test -json ./internal/input ./internal/rdpserver > test-artifacts/go/rdpei-tests.json
           GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-rdpei-tests.go test-artifacts/go/rdpei-tests.json test-artifacts/go/rdpei-test-summary.md
           test -s test-artifacts/go/rdpei-test-summary.md
+      - name: gosec security scan
+        run: |
+          mkdir -p test-artifacts/go .gotmp
+          GOTMPDIR="$PWD/.gotmp" go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
+          "$(go env GOPATH)/bin/gosec" -exclude=G115 -fmt json -out test-artifacts/go/gosec-report.json ./...
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-gosec.go test-artifacts/go/gosec-report.json test-artifacts/go/gosec-summary.md
+          test -s test-artifacts/go/gosec-summary.md
       - name: Upload Go test artifacts
         uses: actions/upload-artifact@v7
         with:
