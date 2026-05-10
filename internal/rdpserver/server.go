@@ -5,9 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 	"github.com/rcarmo/go-rdp-android/internal/input"
@@ -31,6 +33,7 @@ type Server struct {
 
 	tlsConfig      *tls.Config
 	tlsFingerprint string
+	authLimiter    *authBackoffLimiter
 
 	mu sync.Mutex
 	ln net.Listener
@@ -53,7 +56,7 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint}, nil
+	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy)}, nil
 }
 
 // Listen starts accepting TCP connections.
@@ -128,13 +131,24 @@ func (s *Server) handleConn(conn net.Conn) {
 	conn = secureConn
 	log.Printf("rdp initial handshake from %s: requested=0x%08x selected=0x%08x cookie=%q tls_fp=%s", conn.RemoteAddr(), info.RequestedProtocols, info.SelectedProtocol, sanitizeForLog(info.Cookie, 80), s.tlsFingerprint)
 	if info.SelectedProtocol == protocolHybrid {
-		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
-		if err != nil {
-			log.Printf("rdp NLA/CredSSP failed from %s: %v", conn.RemoteAddr(), err)
+		remote := remoteHost(conn.RemoteAddr())
+		if wait := s.authLimiter.lockoutRemaining(remote, ""); wait > 0 {
+			log.Printf("rdp NLA/CredSSP locked out from %s: retry in %s", conn.RemoteAddr(), wait.Round(time.Second))
 			return
 		}
-		if !s.cfg.Policy.userAllowed(clientInfo.UserName) {
-			log.Printf("rdp NLA/CredSSP denied by user policy from %s: user=%q", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64))
+		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
+		if err != nil {
+			wait := s.authLimiter.recordFailure(remote, "")
+			if wait > 0 {
+				log.Printf("rdp NLA/CredSSP failed from %s: %v (retry in %s)", conn.RemoteAddr(), err, wait.Round(time.Second))
+			} else {
+				log.Printf("rdp NLA/CredSSP failed from %s: %v", conn.RemoteAddr(), err)
+			}
+			return
+		}
+		s.authLimiter.recordSuccess(remote, "")
+		if err := s.checkAndRecordAuthPolicy(remote, clientInfo.UserName, s.cfg.Policy.userAllowed(clientInfo.UserName)); err != nil {
+			log.Printf("rdp NLA/CredSSP denied from %s: user=%q err=%v", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64), err)
 			return
 		}
 		log.Printf("rdp NLA/CredSSP authenticated from %s: user=%q domain=%q", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64))
@@ -165,12 +179,24 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
 	log.Printf("rdp MCS domain sequence finished for %s", conn.RemoteAddr())
 	// The next phase is Security Exchange / Client Info handling.
+}
+
+func (s *Server) checkAndRecordAuthPolicy(remote, username string, userAllowed bool) error {
+	if wait := s.authLimiter.lockoutRemaining(remote, username); wait > 0 {
+		return fmt.Errorf("auth temporarily locked, retry in %s", wait.Round(time.Second))
+	}
+	if !userAllowed {
+		s.authLimiter.recordFailure(remote, username)
+		return fmt.Errorf("user not allowed by policy")
+	}
+	s.authLimiter.recordSuccess(remote, username)
+	return nil
 }
 
 // Close stops the listener.

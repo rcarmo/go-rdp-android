@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 // SecurityMode controls which RDP security protocols the server accepts.
@@ -22,6 +23,10 @@ type AccessPolicy struct {
 	AllowedUsers []string
 	AllowedCIDRs []string
 
+	FailedAuthLimit      int
+	FailedAuthBackoff    time.Duration
+	FailedAuthBackoffMax time.Duration
+
 	allowedUsers map[string]struct{}
 	allowedCIDRs []*net.IPNet
 }
@@ -34,6 +39,26 @@ func normalizeAccessPolicy(policy AccessPolicy) (AccessPolicy, error) {
 	case SecurityModeNegotiate, SecurityModeRDPOnly, SecurityModeTLSOnly, SecurityModeNLARequired:
 	default:
 		return policy, fmt.Errorf("unsupported security mode %q", policy.SecurityMode)
+	}
+	if policy.FailedAuthLimit < 0 {
+		return policy, fmt.Errorf("failed auth limit must be >= 0")
+	}
+	if policy.FailedAuthBackoff < 0 {
+		return policy, fmt.Errorf("failed auth backoff must be >= 0")
+	}
+	if policy.FailedAuthBackoffMax < 0 {
+		return policy, fmt.Errorf("failed auth backoff max must be >= 0")
+	}
+	if policy.FailedAuthLimit > 0 {
+		if policy.FailedAuthBackoff == 0 {
+			policy.FailedAuthBackoff = 2 * time.Second
+		}
+		if policy.FailedAuthBackoffMax == 0 {
+			policy.FailedAuthBackoffMax = time.Minute
+		}
+		if policy.FailedAuthBackoffMax < policy.FailedAuthBackoff {
+			policy.FailedAuthBackoffMax = policy.FailedAuthBackoff
+		}
 	}
 	if len(policy.AllowedUsers) > 0 {
 		policy.allowedUsers = make(map[string]struct{}, len(policy.AllowedUsers))

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 	"github.com/rcarmo/go-rdp-android/internal/rdpserver"
@@ -25,6 +26,9 @@ func main() {
 	securityMode := flag.String("security-mode", string(rdpserver.SecurityModeNegotiate), "security policy mode: negotiate|rdp-only|tls-only|nla-required")
 	allowedUsers := flag.String("allowed-users", "", "optional comma-separated allowed usernames")
 	allowedCIDRs := flag.String("allowed-cidrs", "", "optional comma-separated client CIDR allowlist")
+	failedAuthLimit := flag.Int("failed-auth-limit", 0, "failed auth attempts before lockout (0 disables lockout/backoff)")
+	failedAuthBackoff := flag.Duration("failed-auth-backoff", 2*time.Second, "initial lockout/backoff duration once failed-auth-limit is hit")
+	failedAuthBackoffMax := flag.Duration("failed-auth-backoff-max", time.Minute, "maximum lockout/backoff duration")
 	tlsCert := flag.String("tls-cert", "", "optional TLS certificate PEM path (persisted/loaded when paired with -tls-key)")
 	tlsKey := flag.String("tls-key", "", "optional TLS private key PEM path (persisted/loaded when paired with -tls-cert)")
 	tlsRotate := flag.Bool("tls-rotate", false, "rotate/regenerate TLS certificate at startup when using -tls-cert/-tls-key")
@@ -33,12 +37,12 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
+	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), *failedAuthLimit, *failedAuthBackoff, *failedAuthBackoffMax, rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, tlsSettings rdpserver.TLSSettings) error {
+func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, failedAuthLimit int, failedAuthBackoff, failedAuthBackoffMax time.Duration, tlsSettings rdpserver.TLSSettings) error {
 	var frames frame.Source
 	if testPattern {
 		frames = frame.NewTestPatternSource(width, height, fps)
@@ -63,16 +67,19 @@ func run(ctx context.Context, addr string, width, height int, testPattern bool, 
 		Height:        height,
 		Authenticator: auth,
 		Policy: rdpserver.AccessPolicy{
-			SecurityMode: rdpserver.SecurityMode(securityMode),
-			AllowedUsers: allowedUsers,
-			AllowedCIDRs: allowedCIDRs,
+			SecurityMode:         rdpserver.SecurityMode(securityMode),
+			AllowedUsers:         allowedUsers,
+			AllowedCIDRs:         allowedCIDRs,
+			FailedAuthLimit:      failedAuthLimit,
+			FailedAuthBackoff:    failedAuthBackoff,
+			FailedAuthBackoffMax: failedAuthBackoffMax,
 		},
 		TLS: tlsSettings,
 	}, frames, nil)
 	if err != nil {
 		return err
 	}
-	log.Printf("listening on %s (protocol stub, testPattern=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d tls_fp=%s)", addr, testPattern, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), srv.TLSFingerprintSHA256())
+	log.Printf("listening on %s (protocol stub, testPattern=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d failed_auth_limit=%d tls_fp=%s)", addr, testPattern, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), failedAuthLimit, srv.TLSFingerprintSHA256())
 	if err := srv.Listen(ctx); err != nil && ctx.Err() == nil {
 		return err
 	}

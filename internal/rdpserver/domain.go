@@ -33,11 +33,12 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, selectedProtocol uint32, channels []clientChannel) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, limiter *authBackoffLimiter, selectedProtocol uint32, channels []clientChannel) error {
 	userID := uint16(defaultMCSUserID)
 	dvc := newDRDYNVCManager(channels, sink)
 	sessionWidth := clampDesktopDimension(width, width)
 	sessionHeight := clampDesktopDimension(height, height)
+	remote := remoteHost(conn.RemoteAddr())
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
 		pdu, err := readMCSDomainPDUOrFastPath(conn, sink)
@@ -133,12 +134,21 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					tracef("client_info_parse", "err=%v", err)
 				} else {
 					tracef("client_info", "user=%q domain=%q flags=0x%08x", sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64), clientInfo.Flags)
+					if wait := limiter.lockoutRemaining(remote, clientInfo.UserName); wait > 0 {
+						return fmt.Errorf("auth failed: temporarily locked, retry in %s", wait.Round(time.Second))
+					}
 					if !policy.userAllowed(clientInfo.UserName) {
+						limiter.recordFailure(remote, clientInfo.UserName)
 						return fmt.Errorf("auth failed: user %q not allowed by policy", sanitizeForLog(clientInfo.UserName, 64))
 					}
 					if err := authenticateClientInfo(auth, clientInfo); err != nil {
+						wait := limiter.recordFailure(remote, clientInfo.UserName)
+						if wait > 0 {
+							return fmt.Errorf("auth failed: %w (retry in %s)", err, wait.Round(time.Second))
+						}
 						return fmt.Errorf("auth failed: %w", err)
 					}
+					limiter.recordSuccess(remote, clientInfo.UserName)
 				}
 				if selectedProtocol == protocolRDP || selectedProtocol == protocolSSL || selectedProtocol == protocolHybrid {
 					if err := writeLicenseValidClient(conn); err != nil {

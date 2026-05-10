@@ -268,6 +268,18 @@ go run ./cmd/mock-server \
 
 Valid `-security-mode` values are: `negotiate`, `rdp-only`, `tls-only`, `nla-required`.
 
+Failed-auth lockout/backoff can be enabled for brute-force resilience:
+
+```bash
+go run ./cmd/mock-server \
+  -username user -password pass \
+  -failed-auth-limit 3 \
+  -failed-auth-backoff 2s \
+  -failed-auth-backoff-max 1m
+```
+
+When enabled, failed auth attempts are exponentially backed off per remote/user identity (with host-level fallback for early CredSSP failures), and logs include retry hints.
+
 For TLS Client Info-only experiments, the mock server also accepts a bcrypt hash (avoids storing plaintext in scripts/files):
 
 ```bash
