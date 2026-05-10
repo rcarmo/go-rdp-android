@@ -57,7 +57,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - No physical Android device validation yet.
 - Microsoft Remote Desktop compatibility is not yet validated.
 - FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
-- Security defaults are not production-safe yet: threat model documentation remains pending.
+- Security defaults are not production-safe yet: threat model is documented in `docs/THREAT_MODEL.md`, but Android UI controls for security mode/allowlists/backoff/fingerprint display are still pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending.
 
@@ -68,6 +68,7 @@ Update this page together with the relevant feature docs when changing behavior:
 - `README.md` for user-facing feature status and CI quick reference.
 - `docs/ARCHITECTURE.md` for design or data-flow changes.
 - `docs/SPEC.md` for feasibility/protocol scope changes.
+- `docs/THREAT_MODEL.md` for LAN exposure, Android permission, auth, storage, or security-default changes.
 - `docs/TESTING.md` for CI gates, artifacts, or validation commands.
 - `docs/PERFORMANCE.md` for capture/graphics metrics or performance decisions.
 - `docs/MILESTONES.md` and `/workspace/workitems/` for roadmap state.

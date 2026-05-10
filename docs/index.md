@@ -7,6 +7,7 @@ Start here when working on `go-rdp-android`.
 - [SPEC](SPEC.md) — native Android RDP server feasibility, design constraints, and protocol reuse notes.
 - [ARCHITECTURE](ARCHITECTURE.md) — current Android/Kotlin, gomobile, Go RDP server, capture, graphics, input, CI, and release architecture.
 - [ANDROID](ANDROID.md) — Android app/gomobile bridge notes.
+- [THREAT_MODEL](THREAT_MODEL.md) — LAN exposure, Android permissions, Accessibility, MediaProjection, auth, and storage risk model.
 - [MILESTONES](MILESTONES.md) — staged implementation plan.
 
 ## Validation and operations
