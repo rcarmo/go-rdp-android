@@ -3,6 +3,7 @@ package io.carmo.go.rdp.android.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.Handler
@@ -29,6 +30,12 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            Log.i(TAG, "Stop requested from foreground notification")
+            stopSelfResult(startId)
+            return START_NOT_STICKY
+        }
+
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
@@ -41,9 +48,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
-        if (hasProjection) {
-            startForeground(1, notification())
-        }
+        startForeground(NOTIFICATION_ID, notification(hasProjection, testPattern))
         NativeRdpBridge.setCredentials(username, password)
         NativeRdpBridge.setInputCoordinateScale(captureScale)
         NativeRdpBridge.startServer(3390, hasProjection)
@@ -82,7 +87,8 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     }
 
     override fun onStopped() {
-        Log.i("GoRdpAndroid", "MediaProjection stopped")
+        Log.i(TAG, "MediaProjection stopped")
+        stopSelf()
     }
 
     private fun currentDisplayMetrics(): DisplayMetrics {
@@ -137,11 +143,27 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun notification(): Notification = Notification.Builder(this, CHANNEL_ID)
-        .setContentTitle("go-rdp-android")
-        .setContentText("RDP server prototype is running")
-        .setSmallIcon(android.R.drawable.presence_online)
-        .build()
+    private fun notification(hasProjection: Boolean, testPattern: Boolean): Notification {
+        val mode = when {
+            hasProjection -> "screen capture"
+            testPattern -> "test pattern"
+            else -> "no frame source"
+        }
+        val stopIntent = Intent(this, RdpForegroundService::class.java).apply { action = ACTION_STOP }
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            0,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return Notification.Builder(this, CHANNEL_ID)
+            .setContentTitle("go-rdp-android")
+            .setContentText("RDP server running: $mode")
+            .setSmallIcon(android.R.drawable.presence_online)
+            .setOngoing(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
+            .build()
+    }
 
     companion object {
         const val EXTRA_RESULT_CODE = "result_code"
@@ -150,7 +172,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
         const val EXTRA_USERNAME = "rdp_username"
         const val EXTRA_PASSWORD = "rdp_password"
+        const val ACTION_STOP = "io.carmo.go.rdp.android.service.STOP"
         private const val CHANNEL_ID = "rdp-server"
+        private const val NOTIFICATION_ID = 1
         private const val TAG = "GoRdpAndroidService"
     }
 }

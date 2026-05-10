@@ -73,7 +73,7 @@ Tasks:
 
 - TLS and pairing/password auth ✅ (static credential scaffold)
 - Hybrid/NLA CredSSP auth ✅ (experimental)
-- foreground notification controls
+- foreground notification controls ✅ (foreground start for all server modes plus notification/UI Stop action)
 - reconnect handling
 - settings UI
 - optional live CI smoke tests with emulator

@@ -88,7 +88,11 @@ class MainActivity : Activity() {
         }
         val stop = Button(this).apply {
             text = "Stop RDP Service"
-            setOnClickListener { stopService(Intent(this@MainActivity, RdpForegroundService::class.java)) }
+            setOnClickListener {
+                startService(Intent(this@MainActivity, RdpForegroundService::class.java).apply {
+                    action = RdpForegroundService.ACTION_STOP
+                })
+            }
         }
 
         setContentView(LinearLayout(this).apply {
@@ -159,7 +163,7 @@ class MainActivity : Activity() {
             putExtra(RdpForegroundService.EXTRA_USERNAME, creds.username)
             putExtra(RdpForegroundService.EXTRA_PASSWORD, creds.password)
         }
-        startService(intent)
+        startForegroundService(intent)
     }
 
     private fun requestScreenCapture(scale: Int, username: String, password: String) {
