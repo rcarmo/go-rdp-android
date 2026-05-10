@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-08
-Current evidence commit: `4fe5453` (`Stabilize fuzz smoke timeout budget in CI`)
-Latest referenced CI run: `25635959960` (`main` CI, success)
+Last updated: 2026-05-10
+Current evidence commit: `7ac82c2` (`Add TLS cert persistence, rotation, and fingerprint support`)
+Latest referenced CI run: `25636760058` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25635959960`:
+Latest checked artifact from CI run `25636760058`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
