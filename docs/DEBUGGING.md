@@ -256,6 +256,14 @@ The mock server can require credentials:
 go run ./cmd/mock-server -username user -password pass
 ```
 
+For TLS Client Info-only experiments, the mock server also accepts a bcrypt hash (avoids storing plaintext in scripts/files):
+
+```bash
+go run ./cmd/mock-server -username user -password-hash '$2a$10$...'
+```
+
+(`-password-hash` is not valid for NLA/CredSSP flows, which still require plaintext-equivalent input for NTLM verification.)
+
 Probe credentials can be sent through the TLS-only Client Info path or through NLA:
 
 ```bash

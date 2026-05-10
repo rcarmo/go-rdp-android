@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
@@ -18,25 +19,35 @@ func main() {
 	testPattern := flag.Bool("test-pattern", false, "feed animated synthetic frames")
 	fps := flag.Int("fps", 5, "test pattern frame rate")
 	username := flag.String("username", "", "required username for Client Info authentication")
-	password := flag.String("password", "", "required password for Client Info authentication")
+	password := flag.String("password", "", "required plaintext password for Client Info/NLA authentication")
+	passwordHash := flag.String("password-hash", "", "bcrypt password hash for Client Info authentication (TLS-only; NLA still needs plaintext password)")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password); err != nil {
+	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password string) error {
+func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash string) error {
 	var frames frame.Source
 	if testPattern {
 		frames = frame.NewTestPatternSource(width, height, fps)
 		defer frames.Close()
 	}
 	var auth rdpserver.Authenticator
+	if password != "" && passwordHash != "" {
+		return fmt.Errorf("use either -password or -password-hash, not both")
+	}
 	if username != "" || password != "" {
 		auth = rdpserver.StaticCredentials{Username: username, Password: password}
+	}
+	if passwordHash != "" {
+		if username == "" {
+			return fmt.Errorf("-username is required when using -password-hash")
+		}
+		auth = rdpserver.HashedCredentials{Username: username, PasswordHash: passwordHash}
 	}
 	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: width, Height: height, Authenticator: auth}, frames, nil)
 	if err != nil {

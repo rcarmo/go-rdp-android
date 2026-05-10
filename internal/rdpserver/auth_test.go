@@ -59,3 +59,36 @@ func TestStaticCredentials(t *testing.T) {
 		t.Fatal("expected invalid credentials")
 	}
 }
+
+func TestHashedCredentials(t *testing.T) {
+	hash, err := HashPassword("secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := HashedCredentials{Username: "rui", PasswordHash: hash}
+	if err := authenticateClientInfo(auth, ClientInfo{UserName: "rui", Password: "secret"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := authenticateClientInfo(auth, ClientInfo{UserName: "rui", Password: "wrong"}); err == nil {
+		t.Fatal("expected invalid credentials")
+	}
+	if err := authenticateClientInfo(auth, ClientInfo{UserName: "other", Password: "secret"}); err == nil {
+		t.Fatal("expected invalid credentials for username mismatch")
+	}
+}
+
+func TestVerifyPasswordHash(t *testing.T) {
+	hash, err := HashPassword("secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !VerifyPasswordHash(hash, "secret") {
+		t.Fatal("expected hash match")
+	}
+	if VerifyPasswordHash(hash, "wrong") {
+		t.Fatal("unexpected hash match")
+	}
+	if VerifyPasswordHash("", "secret") {
+		t.Fatal("empty hash should fail")
+	}
+}

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf16"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Authenticator validates parsed RDP Client Info credentials.
@@ -30,6 +32,47 @@ func (a StaticCredentials) Authenticate(_ context.Context, info ClientInfo) erro
 		return fmt.Errorf("invalid credentials for user %q", sanitizeForLog(info.UserName, 64))
 	}
 	return nil
+}
+
+// HashedCredentials validates username/password against a bcrypt hash.
+//
+// This is suitable for TLS-only Client Info auth flows where the server does
+// not require access to the raw configured password. Hybrid/NLA currently
+// requires StaticCredentials because NTLMv2 verification needs the clear-text
+// password-equivalent input.
+type HashedCredentials struct {
+	Username     string
+	PasswordHash string
+}
+
+// Authenticate validates username/password using constant-time username compare
+// and bcrypt password-hash verification.
+func (a HashedCredentials) Authenticate(_ context.Context, info ClientInfo) error {
+	if a.Username == "" && a.PasswordHash == "" {
+		return nil
+	}
+	if subtle.ConstantTimeCompare([]byte(info.UserName), []byte(a.Username)) != 1 ||
+		!VerifyPasswordHash(a.PasswordHash, info.Password) {
+		return fmt.Errorf("invalid credentials for user %q", sanitizeForLog(info.UserName, 64))
+	}
+	return nil
+}
+
+// HashPassword returns a bcrypt hash string for the provided password.
+func HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+// VerifyPasswordHash checks whether a password matches a bcrypt hash string.
+func VerifyPasswordHash(hash, password string) bool {
+	if hash == "" {
+		return false
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
 // ClientInfo captures fields from the RDP Client Info PDU.
