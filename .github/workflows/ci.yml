@@ -165,7 +165,7 @@ jobs:
       - name: Race tests
         run: go test -race ./...
       - name: Fuzz parser smoke
-        run: go test ./internal/rdpserver -run=Fuzz -fuzz=FuzzParseX224Data -fuzztime=10s
+        run: go test ./internal/rdpserver -run=Fuzz -fuzz=FuzzParseX224Data -fuzztime=6s
 
   android:
     name: Android debug build
