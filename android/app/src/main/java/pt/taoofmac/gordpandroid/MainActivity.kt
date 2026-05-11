@@ -198,7 +198,7 @@ class MainActivity : Activity() {
 
     private fun requestScreenCapture(scale: Int, username: String, password: String) {
         pendingCaptureScale = scale.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
-        settingsStore.save(settingsStore.load().copy(captureScale = pendingCaptureScale, lastMode = RdpServerMode.SCREEN_CAPTURE))
+        settingsStore.saveCaptureScale(pendingCaptureScale)
         pendingUsername = username
         pendingPassword = password
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -208,16 +208,26 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Android framework; adequate for scaffold")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == projectionRequestCode && resultCode == RESULT_OK && data != null) {
+        if (requestCode != projectionRequestCode) return
+        val username = pendingUsername
+        val password = pendingPassword
+        pendingUsername = ""
+        pendingPassword = ""
+        if (resultCode == RESULT_OK && data != null) {
+            settingsStore.save(settingsStore.load().copy(captureScale = pendingCaptureScale, lastMode = RdpServerMode.SCREEN_CAPTURE))
             val intent = Intent(this, RdpForegroundService::class.java).apply {
                 putExtra(RdpForegroundService.EXTRA_RESULT_CODE, resultCode)
                 putExtra(RdpForegroundService.EXTRA_RESULT_DATA, data)
                 putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, pendingCaptureScale)
-                putExtra(RdpForegroundService.EXTRA_USERNAME, pendingUsername)
-                putExtra(RdpForegroundService.EXTRA_PASSWORD, pendingPassword)
+                putExtra(RdpForegroundService.EXTRA_USERNAME, username)
+                putExtra(RdpForegroundService.EXTRA_PASSWORD, password)
             }
             startForegroundService(intent)
             status.postDelayed({ updateStatus() }, 250)
+        } else {
+            settingsStore.saveLastMode(RdpServerMode.NONE)
+            Toast.makeText(this, "Screen capture permission was not granted", Toast.LENGTH_SHORT).show()
+            updateStatus()
         }
     }
 
