@@ -22,6 +22,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     private var testPatternThread: HandlerThread? = null
     private var testPatternHandler: Handler? = null
     private var testPatternFrame = 0
+    private val lifecycleLock = Any()
     private lateinit var settingsStore: RdpSettingsStore
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -36,7 +37,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             Log.i(TAG, "Stop requested from foreground notification")
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            synchronized(lifecycleLock) {
+                settingsStore.saveLastMode(RdpServerMode.NONE)
+                captureManager?.stop()
+                stopTestPattern()
+                NativeRdpBridge.stopServer()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            }
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
@@ -59,48 +66,50 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             return START_NOT_STICKY
         }
         startForeground(NOTIFICATION_ID, notification(mode))
-        settingsStore.save(savedSettings.copy(
-            captureScale = captureScale,
-            lastMode = when {
-                hasProjection -> RdpServerMode.SCREEN_CAPTURE
-                testPattern -> RdpServerMode.TEST_PATTERN
-                else -> RdpServerMode.NONE
-            },
-        ))
-        NativeRdpBridge.setCredentials(username, password)
-        NativeRdpBridge.setInputCoordinateScale(captureScale)
-        NativeRdpBridge.startServer(3390, mode)
+        synchronized(lifecycleLock) {
+            captureManager?.stop()
+            stopTestPattern()
+            NativeRdpBridge.stopServer()
+            settingsStore.save(savedSettings.copy(
+                captureScale = captureScale,
+                lastMode = when {
+                    hasProjection -> RdpServerMode.SCREEN_CAPTURE
+                    testPattern -> RdpServerMode.TEST_PATTERN
+                    else -> RdpServerMode.NONE
+                },
+            ))
+            NativeRdpBridge.setCredentials(username, password)
+            NativeRdpBridge.setInputCoordinateScale(captureScale)
+            NativeRdpBridge.startServer(3390, mode)
 
-        when {
-            hasProjection && data != null -> {
-                stopTestPattern()
-                captureManager?.stop()
-                val metrics = currentDisplayMetrics()
-                val captureWidth = (metrics.widthPixels / captureScale).coerceAtLeast(1)
-                val captureHeight = (metrics.heightPixels / captureScale).coerceAtLeast(1)
-                val captureDensity = (metrics.densityDpi / captureScale).coerceAtLeast(1)
-                Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity")
-                captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
-            }
-            testPattern -> {
-                captureManager?.stop()
-                Log.i(TAG, "Starting test-pattern frame source")
-                startTestPattern()
-            }
-            else -> {
-                captureManager?.stop()
-                stopTestPattern()
-                Log.i(TAG, "RDP server started without projection or test pattern")
+            when {
+                hasProjection && data != null -> {
+                    val metrics = currentDisplayMetrics()
+                    val captureWidth = (metrics.widthPixels / captureScale).coerceAtLeast(1)
+                    val captureHeight = (metrics.heightPixels / captureScale).coerceAtLeast(1)
+                    val captureDensity = (metrics.densityDpi / captureScale).coerceAtLeast(1)
+                    Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity")
+                    captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
+                }
+                testPattern -> {
+                    Log.i(TAG, "Starting test-pattern frame source")
+                    startTestPattern()
+                }
+                else -> {
+                    Log.i(TAG, "RDP server started without projection or test pattern")
+                }
             }
         }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
-        captureManager?.stop()
-        captureManager = null
-        stopTestPattern()
-        NativeRdpBridge.stopServer()
+        synchronized(lifecycleLock) {
+            captureManager?.stop()
+            captureManager = null
+            stopTestPattern()
+            NativeRdpBridge.stopServer()
+        }
         super.onDestroy()
     }
 
