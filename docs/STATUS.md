@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-11
-Current evidence commit: `48f2d49` (`Expose Accessibility input status in Android health`)
-Latest referenced CI run: `25697220332` (`main` CI, success)
+Current evidence commit: `f823148` (`Expose auth presence in Android health`)
+Latest referenced CI run: `25700691963` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25697220332`:
+Latest checked artifact from CI run `25700691963`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
