@@ -44,6 +44,7 @@ Responsibilities:
 
 - Ask the user for MediaProjection permission.
 - Start/stop the foreground service for real capture or test-pattern sessions, including notification/UI stop actions and non-sticky restart behavior.
+- Persist and restore non-secret server settings (capture scale and last selected mode) separately from encrypted credentials; process-death recovery still requires an explicit user restart.
 - Create a downscaled or full-size virtual display.
 - Copy throttled `RGBA_8888` frames from `ImageReader` into the Go bridge.
 - Prefer a gomobile backend when `mobile.aar` is bundled.

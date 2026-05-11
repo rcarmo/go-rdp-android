@@ -16,6 +16,8 @@ import io.carmo.go.rdp.android.auth.RdpCredentialStore
 import io.carmo.go.rdp.android.auth.RdpCredentials
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.service.RdpForegroundService
+import io.carmo.go.rdp.android.settings.RdpServerMode
+import io.carmo.go.rdp.android.settings.RdpSettingsStore
 
 class MainActivity : Activity() {
     private val projectionRequestCode = 1001
@@ -24,18 +26,24 @@ class MainActivity : Activity() {
     private var pendingPassword: String = ""
 
     private lateinit var credentialStore: RdpCredentialStore
+    private lateinit var settingsStore: RdpSettingsStore
     private lateinit var status: TextView
     private lateinit var usernameInput: EditText
     private lateinit var passwordInput: EditText
+    private lateinit var captureScaleInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         credentialStore = RdpCredentialStore(this)
+        settingsStore = RdpSettingsStore(this)
+        val savedSettings = settingsStore.load()
 
         val autoStartTestPattern = intent?.getBooleanExtra(EXTRA_START_TEST_PATTERN, false) == true
         val autoStartCapture = intent?.getBooleanExtra(EXTRA_START_CAPTURE, false) == true
-        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
+        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, savedSettings.captureScale)
+            ?.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
+            ?: savedSettings.captureScale
 
         val intentUsername = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val intentPassword = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
@@ -60,6 +68,11 @@ class MainActivity : Activity() {
             setText(initialPassword)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
+        captureScaleInput = EditText(this).apply {
+            hint = "Capture scale (1-4)"
+            setText(captureScale.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
 
         val saveCredentials = Button(this).apply {
             text = "Save Credentials"
@@ -77,7 +90,7 @@ class MainActivity : Activity() {
             text = "Grant Screen Capture"
             setOnClickListener {
                 val creds = resolveCredentialsOrWarn() ?: return@setOnClickListener
-                requestScreenCapture(1, creds.username, creds.password)
+                requestScreenCapture(resolveCaptureScale(), creds.username, creds.password)
             }
         }
         val testPattern = Button(this).apply {
@@ -103,6 +116,7 @@ class MainActivity : Activity() {
             addView(status)
             addView(usernameInput)
             addView(passwordInput)
+            addView(captureScaleInput)
             addView(saveCredentials)
             addView(accessibility)
             addView(capture)
@@ -133,7 +147,8 @@ class MainActivity : Activity() {
         status.text = if (creds == null) {
             "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\n\nHealth: $health"
         } else {
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            val settings = settingsStore.load()
+            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
     }
 
@@ -147,6 +162,7 @@ class MainActivity : Activity() {
             return false
         }
         credentialStore.save(username, password)
+        settingsStore.saveCaptureScale(resolveCaptureScale())
         if (showToast) {
             Toast.makeText(this, "Credentials saved", Toast.LENGTH_SHORT).show()
         }
@@ -168,8 +184,11 @@ class MainActivity : Activity() {
     }
 
     private fun startTestPatternService(creds: RdpCredentials) {
+        val captureScale = resolveCaptureScale()
+        settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.TEST_PATTERN))
         val intent = Intent(this, RdpForegroundService::class.java).apply {
             putExtra(RdpForegroundService.EXTRA_TEST_PATTERN, true)
+            putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
             putExtra(RdpForegroundService.EXTRA_USERNAME, creds.username)
             putExtra(RdpForegroundService.EXTRA_PASSWORD, creds.password)
         }
@@ -178,7 +197,8 @@ class MainActivity : Activity() {
     }
 
     private fun requestScreenCapture(scale: Int, username: String, password: String) {
-        pendingCaptureScale = scale.coerceIn(1, 4)
+        pendingCaptureScale = scale.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
+        settingsStore.save(settingsStore.load().copy(captureScale = pendingCaptureScale, lastMode = RdpServerMode.SCREEN_CAPTURE))
         pendingUsername = username
         pendingPassword = password
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -199,6 +219,12 @@ class MainActivity : Activity() {
             startForegroundService(intent)
             status.postDelayed({ updateStatus() }, 250)
         }
+    }
+
+    private fun resolveCaptureScale(): Int {
+        return captureScaleInput.text?.toString()?.toIntOrNull()
+            ?.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
+            ?: settingsStore.load().captureScale
     }
 
     companion object {

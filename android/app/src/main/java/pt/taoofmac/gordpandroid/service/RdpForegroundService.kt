@@ -14,18 +14,22 @@ import android.util.Log
 import android.view.WindowManager
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.capture.ScreenCaptureManager
+import io.carmo.go.rdp.android.settings.RdpServerMode
+import io.carmo.go.rdp.android.settings.RdpSettingsStore
 
 class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     private var captureManager: ScreenCaptureManager? = null
     private var testPatternThread: HandlerThread? = null
     private var testPatternHandler: Handler? = null
     private var testPatternFrame = 0
+    private lateinit var settingsStore: RdpSettingsStore
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
+        settingsStore = RdpSettingsStore(this)
         captureManager = ScreenCaptureManager(this, this)
     }
 
@@ -41,7 +45,10 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
         val hasProjection = data != null && resultCode != 0
-        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
+        val savedSettings = settingsStore.load()
+        val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, savedSettings.captureScale)
+            ?.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
+            ?: savedSettings.captureScale
         val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
         val mode = serviceMode(hasProjection, testPattern)
@@ -52,6 +59,14 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             return START_NOT_STICKY
         }
         startForeground(NOTIFICATION_ID, notification(mode))
+        settingsStore.save(savedSettings.copy(
+            captureScale = captureScale,
+            lastMode = when {
+                hasProjection -> RdpServerMode.SCREEN_CAPTURE
+                testPattern -> RdpServerMode.TEST_PATTERN
+                else -> RdpServerMode.NONE
+            },
+        ))
         NativeRdpBridge.setCredentials(username, password)
         NativeRdpBridge.setInputCoordinateScale(captureScale)
         NativeRdpBridge.startServer(3390, mode)
