@@ -111,12 +111,12 @@ Current mitigations:
 
 - Capture depends on Android `MediaProjection` consent and a foreground service.
 - CI validates service startup, capture test-pattern mode, and emulator capture flows.
-- Capture code has frame queue/drop behavior, projection-revocation shutdown, foreground notification stop action, and compact UI health state.
+- Capture code has frame queue/drop behavior, serialized mode switching, projection-revocation shutdown, foreground notification stop action, permission-denial cleanup, non-sticky restart behavior, non-secret settings persistence, and compact UI health state.
 
 Required before public production use:
 
 - Stronger permission/onboarding copy explaining exactly what is captured.
-- Fuller UI health state for projection active/revoked/error and connected-client count.
+- Fuller UI health state for projection active/revoked/error beyond current mode/input/client-count indicators.
 - Recovery flow when projection is revoked beyond stopping the service and requiring explicit restart.
 - Screen-off/lock/Doze behavior validation on physical devices.
 

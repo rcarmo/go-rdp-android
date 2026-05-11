@@ -26,7 +26,8 @@ Android app
   │   ├── MediaProjection permission + foreground service
   │   ├── VirtualDisplay / ImageReader or Surface capture
   │   ├── AccessibilityService for input injection
-  │   └── Android lifecycle / permissions / notifications
+  │   ├── Android lifecycle / permissions / notifications
+  │   └── non-secret settings + encrypted credential storage
   │
   ├── Go RDP server core
   │   ├── TCP listener, e.g. 3389 or configurable high port
