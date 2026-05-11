@@ -31,13 +31,13 @@ object NativeRdpBridge : RdpInputCallbacks {
         backend.setCredentials(username, password)
     }
 
-    fun startServer(port: Int, hasProjection: Boolean) {
+    fun startServer(port: Int, mode: String) {
         backend.setInputCallbacks(this)
         backend.startServer(port)
         frameCount.set(0)
         running.set(true)
-        lastMode = if (hasProjection) "screen capture" else "test pattern / no projection"
-        Log.i(TAG, "startServer(port=$port, hasProjection=$hasProjection, backend=${backend.name})")
+        lastMode = mode
+        Log.i(TAG, "startServer(port=$port, mode=$mode, backend=${backend.name})")
     }
 
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {

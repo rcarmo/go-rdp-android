@@ -44,18 +44,17 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, 1)?.coerceIn(1, 4) ?: 1
         val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
+        val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
-            if (hasProjection || testPattern) {
-                startForeground(NOTIFICATION_ID, notification("missing credentials"))
-            }
+            startForeground(NOTIFICATION_ID, notification("missing credentials"))
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
-        startForeground(NOTIFICATION_ID, notification(serviceMode(hasProjection, testPattern)))
+        startForeground(NOTIFICATION_ID, notification(mode))
         NativeRdpBridge.setCredentials(username, password)
         NativeRdpBridge.setInputCoordinateScale(captureScale)
-        NativeRdpBridge.startServer(3390, hasProjection)
+        NativeRdpBridge.startServer(3390, mode)
 
         when {
             hasProjection && data != null -> {
