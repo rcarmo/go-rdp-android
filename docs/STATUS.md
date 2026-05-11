@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-11
-Current evidence commit: `8d597b7` (`Update status date for Android health rollout`)
-Latest referenced CI run: `25652937599` (`main` CI, success)
+Current evidence commit: `8856c23` (`Refresh documentation for Android RDP readiness`)
+Latest referenced CI run: `25653292766` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25652937599`:
+Latest checked artifact from CI run `25653292766`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
