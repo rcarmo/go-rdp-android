@@ -101,6 +101,8 @@ class RdpAccessibilityService : AccessibilityService() {
             val descriptor: GestureDescription.StrokeDescription,
         )
 
+        fun isConnected(): Boolean = activeService?.get() != null
+
         fun handlePointerMove(x: Int, y: Int): Boolean {
             Log.d(TAG, "pointerMove($x,$y)")
             if (activeService?.get() == null) return false

@@ -94,7 +94,8 @@ object NativeRdpBridge : RdpInputCallbacks {
     fun healthStatus(): String {
         val address = backend.listenAddress().ifEmpty { "n/a" }
         val fingerprint = backend.tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
-        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
+        val input = if (RdpAccessibilityService.isConnected()) "enabled" else "disabled"
+        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, input=$input, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
     }
 
     private const val TAG = "GoRdpAndroid"
