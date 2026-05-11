@@ -1,6 +1,6 @@
 # Project status
 
-Last updated: 2026-05-10
+Last updated: 2026-05-11
 Current evidence commit: `ff28278` (`Expose compact Android RDP health state`)
 Latest referenced CI run: `25652442950` (`main` CI, success)
 
