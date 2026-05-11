@@ -14,10 +14,12 @@ import (
 
 var required = map[string]map[string]string{
 	"mobile/Mobile.class": {
-		"startServer":     "(J)V",
-		"stopServer":      "()V",
-		"submitFrame":     "(JJJJ[B)V",
-		"setInputHandler": "(Lmobile/InputHandler;)V",
+		"addr":                 "()Ljava/lang/String;",
+		"startServer":          "(J)V",
+		"stopServer":           "()V",
+		"submitFrame":          "(JJJJ[B)V",
+		"setInputHandler":      "(Lmobile/InputHandler;)V",
+		"tlsFingerprintSHA256": "()Ljava/lang/String;",
 	},
 	"mobile/InputHandler.class": {
 		"pointerMove":   "(JJ)V",
@@ -28,11 +30,12 @@ var required = map[string]map[string]string{
 		"touchContact":  "(JJJJ)V",
 	},
 	"mobile/Server.class": {
-		"start":           "(J)V",
-		"stop":            "()V",
-		"submitFrame":     "(JJJJ[B)V",
-		"setInputHandler": "(Lmobile/InputHandler;)V",
-		"addr":            "()Ljava/lang/String;",
+		"addr":                 "()Ljava/lang/String;",
+		"start":                "(J)V",
+		"stop":                 "()V",
+		"submitFrame":          "(JJJJ[B)V",
+		"setInputHandler":      "(Lmobile/InputHandler;)V",
+		"tlsFingerprintSHA256": "()Ljava/lang/String;",
 	},
 	"mobile/FrameQueue.class": {
 		"close": "()V",

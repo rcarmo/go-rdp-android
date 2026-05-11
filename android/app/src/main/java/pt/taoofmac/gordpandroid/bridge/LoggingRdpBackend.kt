@@ -10,6 +10,7 @@ class LoggingRdpBackend : RdpBackend {
 
     private val running = AtomicBoolean(false)
     private val frameCount = AtomicLong(0)
+    private var port: Int = 0
     private var callbacks: RdpInputCallbacks? = null
 
     override fun setInputCallbacks(callbacks: RdpInputCallbacks) {
@@ -22,6 +23,7 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun startServer(port: Int) {
         if (running.compareAndSet(false, true)) {
+            this.port = port
             frameCount.set(0)
             Log.i(TAG, "startServer(port=$port) [$name]")
         } else {
@@ -41,7 +43,12 @@ class LoggingRdpBackend : RdpBackend {
         if (running.compareAndSet(true, false)) {
             Log.i(TAG, "stopServer(frames=${frameCount.get()}) [$name]")
         }
+        port = 0
     }
+
+    override fun listenAddress(): String = if (running.get() && port > 0) ":$port" else ""
+
+    override fun tlsFingerprintSha256(): String = ""
 
     companion object {
         private const val TAG = "GoRdpAndroid"

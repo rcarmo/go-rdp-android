@@ -53,6 +53,17 @@ class GomobileRdpBackend : RdpBackend {
         invoke(method)
     }
 
+    override fun listenAddress(): String = callString("addr")
+
+    override fun tlsFingerprintSha256(): String = callString("tlsFingerprintSHA256")
+
+    private fun callString(methodName: String): String {
+        val method = findMethod(mobileClass ?: return "", methodName, 0) ?: return ""
+        return runCatching { method.invoke(null) as? String ?: "" }
+            .onFailure { Log.w(TAG, "$methodName failed", it) }
+            .getOrDefault("")
+    }
+
     private fun invoke(method: Method, vararg args: Any) {
         val coerced = method.parameterTypes.mapIndexed { index, type -> coerce(args[index], type) }.toTypedArray()
         runCatching { method.invoke(null, *coerced) }

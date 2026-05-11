@@ -20,4 +20,6 @@ interface RdpBackend {
     fun startServer(port: Int)
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray)
     fun stopServer()
+    fun listenAddress(): String
+    fun tlsFingerprintSha256(): String
 }

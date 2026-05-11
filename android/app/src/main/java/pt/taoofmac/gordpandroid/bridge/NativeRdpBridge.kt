@@ -91,7 +91,11 @@ object NativeRdpBridge : RdpInputCallbacks {
         Log.i(TAG, "stopServer(backend=${backend.name})")
     }
 
-    fun healthStatus(): String = "backend=${backend.name}, running=${running.get()}, mode=$lastMode, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
+    fun healthStatus(): String {
+        val address = backend.listenAddress().ifEmpty { "n/a" }
+        val fingerprint = backend.tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
+        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, addr=$address, tls=$fingerprint, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
+    }
 
     private const val TAG = "GoRdpAndroid"
 }

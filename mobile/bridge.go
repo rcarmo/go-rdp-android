@@ -164,6 +164,9 @@ func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handl
 // TLSFingerprintSHA256 returns the default server TLS cert fingerprint when running.
 func TLSFingerprintSHA256() string { return defaultServer.TLSFingerprintSHA256() }
 
+// Addr returns the default singleton server listen address when running.
+func Addr() string { return defaultServer.Addr() }
+
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {
 	mu     sync.Mutex
