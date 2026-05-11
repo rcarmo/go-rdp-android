@@ -154,8 +154,10 @@ class MainActivity : Activity() {
     }
 
     private fun resolveCredentialsOrWarn(): RdpCredentials? {
-        if (saveCredentialsFromInputs(showToast = false)) {
-            return credentialStore.load()
+        val username = usernameInput.text?.toString()?.trim().orEmpty()
+        val password = passwordInput.text?.toString().orEmpty()
+        if (username.isNotEmpty() && password.isNotEmpty()) {
+            return RdpCredentials(username, password)
         }
         val creds = credentialStore.load()
         if (creds != null) {

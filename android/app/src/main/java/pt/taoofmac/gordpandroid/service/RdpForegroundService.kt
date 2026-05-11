@@ -32,6 +32,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             Log.i(TAG, "Stop requested from foreground notification")
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
@@ -45,10 +46,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
+            if (hasProjection || testPattern) {
+                startForeground(NOTIFICATION_ID, notification("missing credentials"))
+            }
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
-        startForeground(NOTIFICATION_ID, notification(hasProjection, testPattern))
+        startForeground(NOTIFICATION_ID, notification(serviceMode(hasProjection, testPattern)))
         NativeRdpBridge.setCredentials(username, password)
         NativeRdpBridge.setInputCoordinateScale(captureScale)
         NativeRdpBridge.startServer(3390, hasProjection)
@@ -56,6 +60,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         when {
             hasProjection && data != null -> {
                 stopTestPattern()
+                captureManager?.stop()
                 val metrics = currentDisplayMetrics()
                 val captureWidth = (metrics.widthPixels / captureScale).coerceAtLeast(1)
                 val captureHeight = (metrics.heightPixels / captureScale).coerceAtLeast(1)
@@ -64,10 +69,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                 captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
             }
             testPattern -> {
+                captureManager?.stop()
                 Log.i(TAG, "Starting test-pattern frame source")
                 startTestPattern()
             }
             else -> {
+                captureManager?.stop()
+                stopTestPattern()
                 Log.i(TAG, "RDP server started without projection or test pattern")
             }
         }
@@ -143,12 +151,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun notification(hasProjection: Boolean, testPattern: Boolean): Notification {
-        val mode = when {
-            hasProjection -> "screen capture"
-            testPattern -> "test pattern"
-            else -> "no frame source"
-        }
+    private fun serviceMode(hasProjection: Boolean, testPattern: Boolean): String = when {
+        hasProjection -> "screen capture"
+        testPattern -> "test pattern"
+        else -> "no frame source"
+    }
+
+    private fun notification(mode: String): Notification {
         val stopIntent = Intent(this, RdpForegroundService::class.java).apply { action = ACTION_STOP }
         val stopPendingIntent = PendingIntent.getService(
             this,

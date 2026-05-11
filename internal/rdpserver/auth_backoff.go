@@ -66,18 +66,19 @@ func (l *authBackoffLimiter) recordFailure(remote, username string) time.Duratio
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	now := l.now()
 	key := l.identity(remote, username)
 	state := l.byIdentity[key]
 	state.failures++
 	if state.failures >= l.limit {
 		step := state.failures - l.limit
-		state.lockedUntil = l.now().Add(clampBackoff(l.base, l.max, step))
+		state.lockedUntil = now.Add(clampBackoff(l.base, l.max, step))
 	}
 	l.byIdentity[key] = state
 	if state.lockedUntil.IsZero() {
 		return 0
 	}
-	return state.lockedUntil.Sub(l.now())
+	return state.lockedUntil.Sub(now)
 }
 
 func (l *authBackoffLimiter) recordSuccess(remote, username string) {

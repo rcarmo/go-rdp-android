@@ -155,7 +155,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 						return err
 					}
 				}
-				if err := writeDemandActive(conn, width, height); err != nil {
+				if err := writeDemandActive(conn, sessionWidth, sessionHeight); err != nil {
 					return err
 				}
 			}
