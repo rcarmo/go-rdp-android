@@ -1,13 +1,13 @@
 # Milestones
 
-## M0 — Scaffold (current)
+## M0 — Scaffold
 
 - Project layout
 - Go RDP server skeleton
 - Android Kotlin shell
 - MediaProjection/ImageReader capture scaffold ✅
-- AccessibilityService scaffold
-- GitHub Actions for Go and Android builds
+- AccessibilityService scaffold ✅
+- GitHub Actions for Go and Android builds ✅
 
 ## M1 — Desktop RDP protocol mock
 
@@ -35,28 +35,28 @@ Tasks:
 - animated test-pattern frame source ✅
 - continuous frame streaming loop ✅ (frame.Source-backed)
 - slow-path keyboard/mouse input decoding ✅
-- basic capability exchange
-- one-session state machine
+- basic capability exchange ✅
+- one-session state machine ✅
 
 ## M2 — Android frame bridge
 
 Goal: get actual Android frames across the Kotlin→Go seam.
 
 Tasks:
-- generate gomobile AAR
-- replace `NativeRdpBridge` stub
-- move ImageReader buffers into Go frame source
-- add frame throttling/downscaling
+- generate gomobile AAR ✅
+- route `NativeRdpBridge` to gomobile with logging fallback ✅
+- move ImageReader buffers into Go frame source ✅
+- add frame throttling/downscaling ✅
 
 ## M3 — Bitmap updates
 
 Goal: send visible Android frames to an RDP client.
 
 Tasks:
-- raw bitmap update sender
-- dirty region detection
+- raw bitmap update sender ✅
+- dirty tile suppression ✅
 - optional RLE encoding
-- fixed resolution first
+- negotiated/session desktop sizing ✅
 
 ## M4 — Input
 
@@ -65,15 +65,15 @@ Goal: translate RDP input into Android interactions.
 Tasks:
 - decode pointer/keyboard input ✅ (slow-path and Fast-Path)
 - Kotlin input callback surface ✅
-- Accessibility gesture injection
-- true RDP touch support via RDPEI/dynamic virtual channels (`drdynvc`)
+- Accessibility gesture injection ✅/partial (taps/drags/RDPEI strokes; keyboard/text and failure callbacks pending)
+- true RDP touch support via RDPEI/dynamic virtual channels (`drdynvc`) ✅/partial (protocol/sink/Android bridge done; broad real-device validation pending)
 - text/clipboard handling plan
 
 ## M5 — Usability/security
 
-- TLS and pairing/password auth ✅ (static credential scaffold)
-- Hybrid/NLA CredSSP auth ✅ (experimental)
+- TLS and pairing/password auth ✅ (static credentials, bcrypt TLS Client Info, cert persistence/rotation/fingerprint)
+- Hybrid/NLA CredSSP auth ✅ (experimental, FreeRDP-gated)
 - foreground notification controls ✅ (foreground start for all server modes, notification/UI Stop action, projection-revocation shutdown, non-sticky restart policy)
 - reconnect handling
-- settings UI
-- optional live CI smoke tests with emulator
+- settings UI ✅/partial (credentials, start/stop, compact health; security controls pending)
+- optional live CI smoke tests with emulator ✅

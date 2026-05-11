@@ -1,6 +1,6 @@
 # Threat model
 
-Last updated: 2026-05-10
+Last updated: 2026-05-11
 
 This document captures the current production-readiness threat model for `go-rdp-android`, a native Android RDP server that exposes the device screen and Android input surfaces to LAN RDP clients.
 
@@ -111,13 +111,13 @@ Current mitigations:
 
 - Capture depends on Android `MediaProjection` consent and a foreground service.
 - CI validates service startup, capture test-pattern mode, and emulator capture flows.
-- Capture code has frame queue/drop behavior and explicit cleanup paths under development.
+- Capture code has frame queue/drop behavior, projection-revocation shutdown, foreground notification stop action, and compact UI health state.
 
 Required before public production use:
 
 - Stronger permission/onboarding copy explaining exactly what is captured.
-- UI health state for projection active/revoked/error.
-- Recovery flow when projection is revoked.
+- Fuller UI health state for projection active/revoked/error and connected-client count.
+- Recovery flow when projection is revoked beyond stopping the service and requiring explicit restart.
 - Screen-off/lock/Doze behavior validation on physical devices.
 
 ### Accessibility input injection

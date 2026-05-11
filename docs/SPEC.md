@@ -45,7 +45,7 @@ Android app
 | Area | Reuse potential | Notes |
 |---|---:|---|
 | `internal/protocol/tpkt` | High | Framing is symmetric enough to reuse for server. |
-| `internal/protocol/x224` | High | Connection confirm/server-side path needs adding. |
+| `internal/protocol/x224` | High | Connection confirm/server-side behavior is implemented locally; upstream extraction remains useful. |
 | `internal/protocol/mcs` | Medium/High | Many structures are reusable; server state machine must be implemented. |
 | `internal/protocol/gcc` | Medium/High | Useful for conference/create response pieces. |
 | `internal/protocol/pdu` | High | Capability sets, input events, data PDUs are very useful. |
@@ -107,10 +107,11 @@ Deliberately skip initially:
 
 ### Phase 2: Security and compatibility
 
-- Add TLS with app-generated cert or user-supplied cert. ✅ (generated self-signed cert scaffold)
-- Add password/pairing token auth. ✅ (static credential gate)
-- Investigate minimal CredSSP/NLA server support if Microsoft clients require it. ✅ (experimental Hybrid/NLA CredSSP path)
-- Add display resize/reconnect semantics.
+- Add TLS with app-generated cert or user-supplied cert. ✅ (generated/persisted self-signed certs, optional rotation, fingerprint exposure)
+- Add password/pairing token auth. ✅ (static credential gate plus TLS Client Info bcrypt support)
+- Investigate minimal CredSSP/NLA server support if Microsoft clients require it. ✅ (experimental Hybrid/NLA CredSSP path passing current FreeRDP CI)
+- Add policy controls and brute-force resistance. ✅ (security mode, allowed users/CIDRs, failed-auth backoff/lockout)
+- Add display resize/reconnect semantics. ✅/partial (client desktop sizing and Confirm Active bitmap dimensions are honored; reconnect handling still pending)
 
 ### Phase 3: Performance
 
@@ -159,7 +160,7 @@ Recommendation: start with Option A.
 
 ## Input pipeline
 
-Classic RDP keyboard and pointer events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures. True touch input is different: modern RDP clients can send touch contact frames using MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so it needs channel negotiation and a contact lifecycle decoder. `internal/rdpserver/rdpei.go` contains the initial MS-RDPEI parser scaffold for server-ready/client-ready metadata, touch frames, touch contacts, optional geometry/orientation/pressure fields, malformed-PDU handling, and bounded PDU/frame/contact counts. `internal/rdpserver/drdynvc.go` now detects the static `drdynvc` channel, parses capability/create/data PDUs, accepts `Microsoft::Windows::RDS::Input`, sends RDPEI `SC_READY`, routes RDPEI payloads into the parser, bounds static/DVC/RDPEI payload and fragment sizes, limits pending fragments, expires abandoned fragment buffers, requires capability negotiation before create/data/close, rejects duplicate creates, rejects unsupported/second RDPEI channels, rejects data for unopened channels, clears state on close, supports close/reopen, and handles variable-length channel ID encodings. Parsed contacts, including optional RDPEI rectangle/orientation/pressure metadata, are normalized by `input.TouchLifecycleCoalescer` and exposed through a separate `input.TouchSink` / gomobile `TouchContact` callback. Android Accessibility now builds a bounded single-contact stroke path from down/update/up contacts; richer coordinated multi-touch gesture dispatch remains pending.
+Classic RDP keyboard and pointer events from the client can be decoded using existing `go-rdp` PDU/FastPath input structures. True touch input is different: modern RDP clients can send touch contact frames using MS-RDPEI over the dynamic virtual channel stack (`drdynvc`), so it needs channel negotiation and a contact lifecycle decoder. `internal/rdpserver/rdpei.go` contains the MS-RDPEI parser for server-ready/client-ready metadata, touch frames, touch contacts, optional geometry/orientation/pressure fields, malformed-PDU handling, and bounded PDU/frame/contact counts. `internal/rdpserver/drdynvc.go` now detects the static `drdynvc` channel, parses capability/create/data PDUs, accepts `Microsoft::Windows::RDS::Input`, sends RDPEI `SC_READY`, routes RDPEI payloads into the parser, bounds static/DVC/RDPEI payload and fragment sizes, limits pending fragments, expires abandoned fragment buffers, requires capability negotiation before create/data/close, rejects duplicate creates, rejects unsupported/second RDPEI channels, rejects data for unopened channels, clears state on close, supports close/reopen, and handles variable-length channel ID encodings. Parsed contacts, including optional RDPEI rectangle/orientation/pressure metadata, are normalized by `input.TouchLifecycleCoalescer` and exposed through a separate `input.TouchSink` / gomobile `TouchContact` callback. Android Accessibility now builds bounded stroke paths from down/update/up contacts, chains active contacts with `continueStroke(...)`, groups coordinated frame updates where Android permits multi-stroke dispatch, and safely degrades to single-contact dispatch when needed; real-device multi-touch validation remains pending.
 
 Map them to Android:
 
@@ -241,12 +242,10 @@ Recommendation: `gomobile bind` first.
 4. Android background/foreground service restrictions.
 5. RDP server-side handshake complexity, since `go-rdp` is client-first.
 
-## Recommended immediate next steps
+## Recommended next steps
 
-1. Extract a reusable RDP protocol subset from `go-rdp` into server-friendly packages.
-2. Build a desktop mock RDP server first that serves a generated framebuffer.
-3. Validate Microsoft Remote Desktop can connect to the mock.
-4. Only then add Android MediaProjection frame source.
-5. Then add Accessibility input sink.
-
-This reduces risk: RDP server protocol compatibility can be debugged on desktop before fighting Android permissions and lifecycle.
+1. Validate at least one Microsoft Remote Desktop client with NLA to active streaming.
+2. Validate MediaProjection, Accessibility gestures, service lifecycle, screen off/on, and multi-touch behavior on a physical Android device.
+3. Surface security mode, allowlists, failed-auth backoff, TLS fingerprint, and rotation controls in Android UI.
+4. Upstream reusable CredSSP, `drdynvc`, RDPEI, and protocol primitives into `rcarmo/go-rdp` once the app-side behavior is stable.
+5. Continue graphics production work: benchmark raw bitmap transport, add dirty-region propagation from Android capture, then investigate RLE/RDPGFX/H.264 paths.

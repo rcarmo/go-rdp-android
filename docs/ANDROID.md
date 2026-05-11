@@ -1,17 +1,17 @@
 # Android App Notes
 
-The Android app is currently a Kotlin shell around a future Go binding.
+The Android app is a Kotlin shell around a gomobile-backed Go RDP server core, with a logging backend fallback that keeps UI/package work buildable when `mobile.aar` is absent.
 
 ## Current app responsibilities
 
 - request MediaProjection permission
 - start a foreground service
 - expose an AccessibilityService declaration
-- provide a temporary `NativeRdpBridge` stub
+- bridge frames/input/health through `NativeRdpBridge`
 
-## Planned bridge
+## gomobile bridge
 
-The stub in `NativeRdpBridge.kt` should be replaced by a gomobile-generated AAR exposing the Go server core.
+`NativeRdpBridge.kt` routes to a gomobile-generated AAR exposing the Go server core when available, with a logging fallback for non-Go-backed builds.
 
 The Android shell now prefers a gomobile-generated Go backend when `android/app/libs/mobile.aar` is present. If the AAR is absent, it falls back to a logging backend so CI and UI work can continue.
 
@@ -36,9 +36,10 @@ func SetCredentials(username, password string)
 func StartServer(port int) error
 func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error
 func StopServer() error
+func TLSFingerprintSHA256() string
 ```
 
-It also exposes `type Server` and a bounded `FrameQueue` for tests/non-singleton usage. The Kotlin stub should be replaced with calls into the gomobile-generated AAR that maps to those functions. Captured Android `RGBA_8888` buffers are copied into a bounded Go queue and consumed as `frame.Source` by the RDP server.
+It also exposes `type Server` and a bounded `FrameQueue` for tests/non-singleton usage. Captured Android `RGBA_8888` buffers are copied into a bounded Go queue and consumed as `frame.Source` by the RDP server.
 
 Decoded RDP input is surfaced through a gomobile-friendly callback interface:
 
@@ -46,9 +47,12 @@ Decoded RDP input is surfaced through a gomobile-friendly callback interface:
 type InputHandler interface {
     PointerMove(x int, y int)
     PointerButton(x int, y int, buttons int, down bool)
+    PointerWheel(x int, y int, delta int, horizontal bool)
     Key(scancode int, down bool)
     Unicode(codepoint int)
+    TouchFrameStart(contactCount int)
     TouchContact(contactID int, x int, y int, flags int)
+    TouchFrameEnd()
 }
 
 func SetInputHandler(handler InputHandler)

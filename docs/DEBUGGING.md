@@ -62,7 +62,7 @@ Common protocol failure points:
 
 ## FreeRDP compatibility debugging
 
-The `FreeRDP compatibility probe` job is a blocking CI gate for both `/sec:rdp` and `/sec:tls`. It launches the mock server under Xvfb, retries up to three FreeRDP attempts for each mode, and requires at least one attempt per mode to reach active bitmap/update streaming. It captures:
+The `FreeRDP compatibility probe` job is a blocking CI gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. It launches the mock server under Xvfb, retries up to three FreeRDP attempts for each mode, and requires at least one attempt per mode to reach active bitmap/update streaming. It captures:
 
 - top-level best-attempt `xfreerdp.log`
 - top-level best-attempt `mock-server.log`

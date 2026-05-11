@@ -12,8 +12,8 @@ The current implementation is a CI-first prototype: it can build a Go-backed APK
 
 Implemented or validated today:
 
-- Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent flow, and AccessibilityService declaration.
-- Go RDP server core with TPKT, X.224, MCS, GCC server core/security/network data, TLS-only Client Info authentication, Hybrid/NLA CredSSP/NTLMv2 authentication via `rcarmo/go-rdp`, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path input decoding.
+- Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent flow, foreground notification/UI stop actions, non-sticky service restart policy, compact UI health state, and AccessibilityService declaration.
+- Go RDP server core with TPKT, X.224, MCS, GCC server core/security/network data, TLS-only Client Info authentication, Hybrid/NLA CredSSP/NTLMv2 authentication via `rcarmo/go-rdp`, TLS certificate persistence/rotation/fingerprint support, access-policy controls, failed-auth backoff/lockout, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path/Fast-Path input decoding.
 - `gomobile bind` integration via `mobile.aar`, with Kotlin reflection backend and logging fallback when the AAR is absent.
 - Android `MediaProjection` capture pipeline using `VirtualDisplay` + `ImageReader` RGBA frames.
 - Synthetic test-pattern frame source for emulator/CI validation without capture permission.
@@ -21,15 +21,16 @@ Implemented or validated today:
 - Dirty-tile suppression for post-initial streamed frames.
 - Adaptive capture pacing/backpressure telemetry in the Android capture loop.
 - Optional MediaProjection downscale mode (`capture_scale` / `emulator_capture_scale`).
-- Keyboard, mouse, and touch input validation in CI using scripted emulator input.
+- Keyboard, mouse, pointer, wheel decode/degrade, and RDPEI touch validation in CI using scripted emulator input and synthetic dynamic-channel touch packets.
 - Gherkin-style UX stories under `features/ux/` and a Playwright-based PDF report generator.
 - GitHub Actions coverage for Go tests, race tests, fuzz smoke, classic and NLA authentication smokes, Android APK builds, gomobile AAR/API checks, FreeRDP compatibility probes, emulator capture tests, and UX PDF artifacts.
-- Tag-driven CI/CD policy for build, UX, and release tag classes.
+- Tag-driven CI/CD policy for build, UX, and release tag classes, including signed APK/AAB staging, SBOM, checksum, and release-note artifacts for `v*` tags.
+- Security documentation in `docs/THREAT_MODEL.md` covering LAN exposure, Android permission boundaries, Accessibility/MediaProjection risk, RDP auth, local storage, and current mitigations.
 
 Partially implemented / experimental:
 
 - Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp`, `/sec:tls`, and `/sec:nla` to reach active state, receive bitmap updates, handle Fast-Path input, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
-- Accessibility input injection. RDP input is decoded and reaches Kotlin callback landing points; richer gesture/key/text injection still needs device-oriented hardening.
+- Accessibility input injection. Pointer taps/drags and frame-aware RDPEI touch contacts now reach bounded Accessibility gesture paths with continuation/multi-stroke fallback; richer keyboard/text, secondary-button behavior, gesture failure handling, and physical-device validation still need hardening.
 - Performance. Slow-path 24-bit bitmap transport works and is measured; compressed bitmap/RDPGFX/H.264 work is still pending.
 
 ## Package and version
@@ -64,6 +65,7 @@ docs/                            Architecture, testing, performance and release 
 - [Android integration](docs/ANDROID.md)
 - [Testing and CI](docs/TESTING.md)
 - [Debugging](docs/DEBUGGING.md)
+- [Threat model](docs/THREAT_MODEL.md)
 - [Performance](docs/PERFORMANCE.md)
 - [Release/tag policy](docs/RELEASES.md)
 - [Specification and feasibility notes](docs/SPEC.md)
@@ -172,9 +174,9 @@ Tag behavior:
    - Investigate H.264/AVC with Android hardware encoding.
 
 4. **Security and release readiness**
-   - Harden the current TLS-only Client Info and Hybrid/NLA CredSSP authentication paths.
-   - Add user-facing certificate and pairing/credential management.
-   - Add signed release APK workflow.
+   - Surface security mode, CIDR/user allowlists, failed-auth backoff, and TLS fingerprint/rotation controls in Android UI.
+   - Continue hardening TLS Client Info and Hybrid/NLA CredSSP authentication paths against real clients.
+   - Validate signed release APK/AAB staging with production secrets.
    - Validate version/tag consistency for `vX.X.X` releases.
 
 5. **Physical-device validation**
@@ -184,7 +186,7 @@ Tag behavior:
 
 - The app is not production-ready and should not be exposed to untrusted networks.
 - The RDP server profile is intentionally minimal and not yet compatible with every client.
-- Hybrid/NLA CredSSP exists as an experimental path, but real Microsoft/FreeRDP client compatibility is still not guaranteed.
-- Audio, clipboard, drive redirection, and multi-monitor are out of scope for the current prototype. Dynamic virtual channels remain out of scope except for the planned RDPEI touch-input subset.
+- Hybrid/NLA CredSSP passes current FreeRDP CI gates, but Microsoft Remote Desktop compatibility is still not guaranteed.
+- Audio, clipboard, drive redirection, and full multi-monitor semantics are out of scope for the current prototype. Dynamic virtual channels are implemented only for the bounded `drdynvc`/RDPEI touch-input subset.
 - MediaProjection cannot capture protected content.
 - Accessibility input injection is more restricted than shell/ADB input injection.

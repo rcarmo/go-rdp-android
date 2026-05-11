@@ -22,9 +22,9 @@ RDP client/probe input
   → NativeRdpBridge callbacks
   → RdpAccessibilityService landing points
 
-Future true RDP touch input
+True RDP touch input
   → RDPEI over dynamic virtual channel (drdynvc)
-  → touch-contact decoder
+  → touch-contact lifecycle decoder
   → Android Accessibility gesture strokes
 ```
 
@@ -43,7 +43,7 @@ Important files:
 Responsibilities:
 
 - Ask the user for MediaProjection permission.
-- Start/stop the foreground service for real capture.
+- Start/stop the foreground service for real capture or test-pattern sessions, including notification/UI stop actions and non-sticky restart behavior.
 - Create a downscaled or full-size virtual display.
 - Copy throttled `RGBA_8888` frames from `ImageReader` into the Go bridge.
 - Prefer a gomobile backend when `mobile.aar` is bundled.
@@ -65,6 +65,7 @@ func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error
 func StopServer() error
 func SetCredentials(username, password string)
 func SetInputHandler(handler InputHandler)
+func TLSFingerprintSHA256() string
 ```
 
 Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state.
@@ -102,7 +103,7 @@ TCP
 → slow-path and Fast-Path input decoding
 ```
 
-Planned protocol path for true touch input:
+Current protocol path for true touch input:
 
 ```text
 Client static channel request for drdynvc
