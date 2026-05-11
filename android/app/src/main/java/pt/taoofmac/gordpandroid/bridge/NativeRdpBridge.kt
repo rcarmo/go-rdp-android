@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicLong
 object NativeRdpBridge : RdpInputCallbacks {
     private val frameCount = AtomicLong(0)
     private val running = AtomicBoolean(false)
+    private val credentialsConfigured = AtomicBoolean(false)
     @Volatile private var lastMode: String = "stopped"
     private val inputCoordinateScale = AtomicInteger(1)
     private val backend: RdpBackend by lazy {
@@ -28,6 +29,7 @@ object NativeRdpBridge : RdpInputCallbacks {
     }
 
     fun setCredentials(username: String, password: String) {
+        credentialsConfigured.set(username.isNotBlank() && password.isNotEmpty())
         backend.setCredentials(username, password)
     }
 
@@ -95,7 +97,8 @@ object NativeRdpBridge : RdpInputCallbacks {
         val address = backend.listenAddress().ifEmpty { "n/a" }
         val fingerprint = backend.tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
         val input = if (RdpAccessibilityService.isConnected()) "enabled" else "disabled"
-        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, input=$input, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
+        val auth = if (credentialsConfigured.get()) "credentials" else "missing"
+        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, auth=$auth, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, input=$input, frames=${frameCount.get()}, inputScale=${inputCoordinateScale.get()}"
     }
 
     private const val TAG = "GoRdpAndroid"
