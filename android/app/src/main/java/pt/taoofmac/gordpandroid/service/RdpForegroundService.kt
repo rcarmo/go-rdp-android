@@ -71,7 +71,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                 Log.i(TAG, "RDP server started without projection or test pattern")
             }
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
