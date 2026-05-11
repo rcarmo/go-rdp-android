@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.widget.Toast
 import io.carmo.go.rdp.android.auth.RdpCredentialStore
 import io.carmo.go.rdp.android.auth.RdpCredentials
+import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.service.RdpForegroundService
 
 class MainActivity : Activity() {
@@ -92,6 +93,7 @@ class MainActivity : Activity() {
                 startService(Intent(this@MainActivity, RdpForegroundService::class.java).apply {
                     action = RdpForegroundService.ACTION_STOP
                 })
+                status.postDelayed({ updateStatus() }, 250)
             }
         }
 
@@ -120,12 +122,18 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        updateStatus()
+    }
+
     private fun updateStatus() {
         val creds = credentialStore.load()
+        val health = NativeRdpBridge.healthStatus()
         status.text = if (creds == null) {
-            "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured."
+            "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\n\nHealth: $health"
         } else {
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service"
+            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
     }
 
@@ -164,6 +172,7 @@ class MainActivity : Activity() {
             putExtra(RdpForegroundService.EXTRA_PASSWORD, creds.password)
         }
         startForegroundService(intent)
+        status.postDelayed({ updateStatus() }, 250)
     }
 
     private fun requestScreenCapture(scale: Int, username: String, password: String) {
@@ -186,6 +195,7 @@ class MainActivity : Activity() {
                 putExtra(RdpForegroundService.EXTRA_PASSWORD, pendingPassword)
             }
             startForegroundService(intent)
+            status.postDelayed({ updateStatus() }, 250)
         }
     }
 

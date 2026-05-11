@@ -9,7 +9,9 @@ import io.carmo.go.rdp.android.input.RdpAccessibilityService
  * logging implementation so the app remains buildable in CI before the AAR is generated.
  */
 object NativeRdpBridge : RdpInputCallbacks {
-    private var frameCount: Long = 0
+    @Volatile private var frameCount: Long = 0
+    @Volatile private var running: Boolean = false
+    @Volatile private var lastMode: String = "stopped"
     private var inputCoordinateScale: Int = 1
     private val backend: RdpBackend by lazy {
         val go = GomobileRdpBackend()
@@ -28,6 +30,9 @@ object NativeRdpBridge : RdpInputCallbacks {
     fun startServer(port: Int, hasProjection: Boolean) {
         backend.setInputCallbacks(this)
         backend.startServer(port)
+        frameCount = 0
+        running = true
+        lastMode = if (hasProjection) "screen capture" else "test pattern / no projection"
         Log.i(TAG, "startServer(port=$port, hasProjection=$hasProjection, backend=${backend.name})")
     }
 
@@ -73,8 +78,12 @@ object NativeRdpBridge : RdpInputCallbacks {
 
     fun stopServer() {
         backend.stopServer()
+        running = false
+        lastMode = "stopped"
         Log.i(TAG, "stopServer(backend=${backend.name})")
     }
+
+    fun healthStatus(): String = "backend=${backend.name}, running=$running, mode=$lastMode, frames=$frameCount, inputScale=$inputCoordinateScale"
 
     private const val TAG = "GoRdpAndroid"
 }
