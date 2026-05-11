@@ -57,11 +57,20 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun tlsFingerprintSha256(): String = callString("tlsFingerprintSHA256")
 
+    override fun activeConnections(): Long = callLong("activeConnections")
+
     private fun callString(methodName: String): String {
         val method = findMethod(mobileClass ?: return "", methodName, 0) ?: return ""
         return runCatching { method.invoke(null) as? String ?: "" }
             .onFailure { Log.w(TAG, "$methodName failed", it) }
             .getOrDefault("")
+    }
+
+    private fun callLong(methodName: String): Long {
+        val method = findMethod(mobileClass ?: return 0, methodName, 0) ?: return 0
+        return runCatching { (method.invoke(null) as? Number)?.toLong() ?: 0 }
+            .onFailure { Log.w(TAG, "$methodName failed", it) }
+            .getOrDefault(0)
     }
 
     private fun invoke(method: Method, vararg args: Any) {

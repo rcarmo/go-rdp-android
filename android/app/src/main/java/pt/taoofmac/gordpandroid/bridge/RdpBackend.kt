@@ -22,4 +22,5 @@ interface RdpBackend {
     fun stopServer()
     fun listenAddress(): String
     fun tlsFingerprintSha256(): String
+    fun activeConnections(): Long
 }

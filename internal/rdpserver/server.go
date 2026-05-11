@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -34,6 +35,7 @@ type Server struct {
 	tlsConfig      *tls.Config
 	tlsFingerprint string
 	authLimiter    *authBackoffLimiter
+	activeConns    atomic.Int64
 
 	mu sync.Mutex
 	ln net.Listener
@@ -117,7 +119,12 @@ func (s *Server) Addr() net.Addr {
 // TLSFingerprintSHA256 returns the current server-certificate fingerprint.
 func (s *Server) TLSFingerprintSHA256() string { return s.tlsFingerprint }
 
+// ActiveConnections returns the number of currently accepted TCP sessions.
+func (s *Server) ActiveConnections() int64 { return s.activeConns.Load() }
+
 func (s *Server) handleConn(conn net.Conn) {
+	s.activeConns.Add(1)
+	defer s.activeConns.Add(-1)
 	defer conn.Close()
 	if !s.cfg.Policy.remoteAllowed(conn.RemoteAddr()) {
 		log.Printf("rdp connection denied by CIDR policy from %s", conn.RemoteAddr())

@@ -50,6 +50,8 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun tlsFingerprintSha256(): String = ""
 
+    override fun activeConnections(): Long = 0
+
     companion object {
         private const val TAG = "GoRdpAndroid"
     }

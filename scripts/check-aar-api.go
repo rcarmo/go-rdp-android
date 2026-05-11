@@ -14,6 +14,7 @@ import (
 
 var required = map[string]map[string]string{
 	"mobile/Mobile.class": {
+		"activeConnections":    "()J",
 		"addr":                 "()Ljava/lang/String;",
 		"startServer":          "(J)V",
 		"stopServer":           "()V",
@@ -30,6 +31,7 @@ var required = map[string]map[string]string{
 		"touchContact":  "(JJJJ)V",
 	},
 	"mobile/Server.class": {
+		"activeConnections":    "()J",
 		"addr":                 "()Ljava/lang/String;",
 		"start":                "(J)V",
 		"stop":                 "()V",

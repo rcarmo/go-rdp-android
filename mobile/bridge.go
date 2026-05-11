@@ -144,6 +144,16 @@ func (s *Server) TLSFingerprintSHA256() string {
 	return s.server.TLSFingerprintSHA256()
 }
 
+// ActiveConnections returns the number of active accepted TCP sessions.
+func (s *Server) ActiveConnections() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.ActiveConnections()
+}
+
 // StartServer starts the default singleton server. It mirrors the current Kotlin stub shape.
 func StartServer(port int) error { return defaultServer.Start(port) }
 
@@ -166,6 +176,9 @@ func TLSFingerprintSHA256() string { return defaultServer.TLSFingerprintSHA256()
 
 // Addr returns the default singleton server listen address when running.
 func Addr() string { return defaultServer.Addr() }
+
+// ActiveConnections returns the active connection count for the default server.
+func ActiveConnections() int64 { return defaultServer.ActiveConnections() }
 
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {

@@ -25,8 +25,17 @@ func TestServerListenAddrAndClose(t *testing.T) {
 	if srv.Addr() == nil {
 		t.Fatal("server did not expose listener address")
 	}
-	if _, err := net.DialTimeout("tcp", srv.Addr().String(), time.Second); err != nil {
+	conn, err := net.DialTimeout("tcp", srv.Addr().String(), time.Second)
+	if err != nil {
 		t.Fatal(err)
+	}
+	defer conn.Close()
+	deadline = time.Now().Add(time.Second)
+	for srv.ActiveConnections() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := srv.ActiveConnections(); got != 1 {
+		t.Fatalf("expected one active connection, got %d", got)
 	}
 	if err := srv.Close(); err != nil {
 		t.Fatal(err)
