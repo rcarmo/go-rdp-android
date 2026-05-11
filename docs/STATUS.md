@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-11
-Current evidence commit: `361522e` (`Persist Android server settings safely`)
-Latest referenced CI run: `25702314569` (`main` CI, success)
+Current evidence commit: `44fe664` (`Handle screen capture permission denial safely`)
+Latest referenced CI run: `25702950776` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25702314569`:
+Latest checked artifact from CI run `25702950776`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
