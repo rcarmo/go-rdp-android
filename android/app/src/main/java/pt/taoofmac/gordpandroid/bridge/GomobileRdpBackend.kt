@@ -17,16 +17,18 @@ class GomobileRdpBackend : RdpBackend {
         val method = findMethod(cls, "setInputHandler", 1) ?: return
         val proxy = Proxy.newProxyInstance(iface.classLoader, arrayOf(iface)) { _, invoked, args ->
             val values = args.orEmpty()
-            when (invoked.name.lowercase()) {
-                "pointermove" -> callbacks.onPointerMove(values.intAt(0), values.intAt(1))
-                "pointerbutton" -> callbacks.onPointerButton(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
-                "pointerwheel" -> callbacks.onPointerWheel(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
-                "key" -> callbacks.onKey(values.intAt(0), values.boolAt(1))
-                "unicode" -> callbacks.onUnicode(values.intAt(0))
-                "touchframestart" -> callbacks.onTouchFrameStart(values.intAt(0))
-                "touchcontact" -> callbacks.onTouchContact(values.intAt(0), values.intAt(1), values.intAt(2), values.intAt(3))
-                "touchframeend" -> callbacks.onTouchFrameEnd()
-            }
+            runCatching {
+                when (invoked.name.lowercase()) {
+                    "pointermove" -> callbacks.onPointerMove(values.intAt(0), values.intAt(1))
+                    "pointerbutton" -> callbacks.onPointerButton(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
+                    "pointerwheel" -> callbacks.onPointerWheel(values.intAt(0), values.intAt(1), values.intAt(2), values.boolAt(3))
+                    "key" -> callbacks.onKey(values.intAt(0), values.boolAt(1))
+                    "unicode" -> callbacks.onUnicode(values.intAt(0))
+                    "touchframestart" -> callbacks.onTouchFrameStart(values.intAt(0))
+                    "touchcontact" -> callbacks.onTouchContact(values.intAt(0), values.intAt(1), values.intAt(2), values.intAt(3))
+                    "touchframeend" -> callbacks.onTouchFrameEnd()
+                }
+            }.onFailure { Log.w(TAG, "input callback ${invoked.name} failed", it) }
             null
         }
         runCatching { method.invoke(null, proxy) }

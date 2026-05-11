@@ -34,11 +34,11 @@ object NativeRdpBridge : RdpInputCallbacks {
     }
 
     fun startServer(port: Int, mode: String) {
-        backend.setInputCallbacks(this)
-        backend.startServer(port)
         frameCount.set(0)
         running.set(true)
         lastMode = mode
+        backend.setInputCallbacks(this)
+        backend.startServer(port)
         Log.i(TAG, "startServer(port=$port, mode=$mode, backend=${backend.name})")
     }
 
@@ -90,6 +90,7 @@ object NativeRdpBridge : RdpInputCallbacks {
         backend.stopServer()
         running.set(false)
         lastMode = "stopped"
+        frameCount.set(0)
         Log.i(TAG, "stopServer(backend=${backend.name})")
     }
 
