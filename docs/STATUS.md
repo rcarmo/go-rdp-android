@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-12
-Current evidence commit: `39f5b13` (`Assert DVC fragment counter in integration test`)
-Latest referenced CI run: `25754145899` (`main` CI, success after rerunning a FreeRDP job timeout`)
+Current evidence commit: `fe64e95` (`Add markdown summaries for probe artifacts`)
+Latest referenced CI run: `25758811978` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25754145899`:
+Latest checked artifact from CI run `25758811978`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
