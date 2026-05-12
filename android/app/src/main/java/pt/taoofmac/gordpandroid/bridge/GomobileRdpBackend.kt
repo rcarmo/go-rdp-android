@@ -61,6 +61,12 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun activeConnections(): Long = callLong("activeConnections")
 
+    override fun submittedFrames(): Long = callLong("submittedFrames")
+
+    override fun droppedFrames(): Long = callLong("droppedFrames")
+
+    override fun queuedFrames(): Long = callLong("queuedFrames")
+
     private fun callString(methodName: String): String {
         val method = findMethod(mobileClass ?: return "", methodName, 0) ?: return ""
         return runCatching { method.invoke(null) as? String ?: "" }

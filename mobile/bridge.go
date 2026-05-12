@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -154,6 +155,15 @@ func (s *Server) ActiveConnections() int64 {
 	return s.server.ActiveConnections()
 }
 
+// SubmittedFrames returns the number of frames accepted by the bounded queue.
+func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
+
+// DroppedFrames returns the number of queued frames dropped in favor of newer frames.
+func (s *Server) DroppedFrames() int64 { return s.frames.Dropped() }
+
+// QueuedFrames returns the current bounded queue depth.
+func (s *Server) QueuedFrames() int64 { return s.frames.Depth() }
+
 // StartServer starts the default singleton server. It mirrors the current Kotlin stub shape.
 func StartServer(port int) error { return defaultServer.Start(port) }
 
@@ -180,11 +190,22 @@ func Addr() string { return defaultServer.Addr() }
 // ActiveConnections returns the active connection count for the default server.
 func ActiveConnections() int64 { return defaultServer.ActiveConnections() }
 
+// SubmittedFrames returns the number of frames accepted by the default server queue.
+func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }
+
+// DroppedFrames returns the number of queued frames dropped by the default server queue.
+func DroppedFrames() int64 { return defaultServer.DroppedFrames() }
+
+// QueuedFrames returns the current default server queue depth.
+func QueuedFrames() int64 { return defaultServer.QueuedFrames() }
+
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {
-	mu     sync.Mutex
-	frames chan frame.Frame
-	closed bool
+	mu        sync.Mutex
+	frames    chan frame.Frame
+	closed    bool
+	submitted atomic.Int64
+	dropped   atomic.Int64
 }
 
 // NewFrameQueue creates a bounded frame queue. Capacity values below one are rounded up.
@@ -208,12 +229,14 @@ func (q *FrameQueue) Submit(f frame.Frame) error {
 	if q.closed {
 		return errors.New("frame queue is closed")
 	}
+	q.submitted.Add(1)
 	select {
 	case q.frames <- f:
 		return nil
 	default:
 		select {
 		case <-q.frames:
+			q.dropped.Add(1)
 		default:
 		}
 		q.frames <- f
@@ -223,6 +246,15 @@ func (q *FrameQueue) Submit(f frame.Frame) error {
 
 // Frames returns the receive side consumed by the RDP server.
 func (q *FrameQueue) Frames() <-chan frame.Frame { return q.frames }
+
+// Submitted returns the number of successfully accepted Submit calls.
+func (q *FrameQueue) Submitted() int64 { return q.submitted.Load() }
+
+// Dropped returns the number of queued frames discarded to make room for newer frames.
+func (q *FrameQueue) Dropped() int64 { return q.dropped.Load() }
+
+// Depth returns the current number of queued frames.
+func (q *FrameQueue) Depth() int64 { return int64(len(q.frames)) }
 
 // Close closes the queue.
 func (q *FrameQueue) Close() error {

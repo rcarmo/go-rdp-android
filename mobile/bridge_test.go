@@ -16,6 +16,9 @@ func TestFrameQueueDropsOldest(t *testing.T) {
 	if err := q.Submit(frame.Frame{Width: 1, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: []byte{5, 6, 7, 8}}); err != nil {
 		t.Fatal(err)
 	}
+	if q.Submitted() != 2 || q.Dropped() != 1 || q.Depth() != 1 {
+		t.Fatalf("unexpected queue stats submitted=%d dropped=%d depth=%d", q.Submitted(), q.Dropped(), q.Depth())
+	}
 	select {
 	case got := <-q.Frames():
 		if got.Data[0] != 5 {
@@ -180,6 +183,9 @@ func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	}
 	if err := srv.SubmitFrame(1, 1, 4, 4, []byte{1, 2, 3, 4}); err != nil {
 		t.Fatal(err)
+	}
+	if srv.SubmittedFrames() != 1 || srv.DroppedFrames() != 0 || srv.QueuedFrames() != 1 {
+		t.Fatalf("unexpected server frame stats submitted=%d dropped=%d queued=%d", srv.SubmittedFrames(), srv.DroppedFrames(), srv.QueuedFrames())
 	}
 	if err := srv.SubmitFrame(1, 1, 2, 2, []byte{1, 2}); err == nil {
 		t.Fatal("expected unsupported pixel stride")

@@ -52,6 +52,12 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun activeConnections(): Long = 0
 
+    override fun submittedFrames(): Long = frameCount.get()
+
+    override fun droppedFrames(): Long = 0
+
+    override fun queuedFrames(): Long = 0
+
     companion object {
         private const val TAG = "GoRdpAndroid"
     }

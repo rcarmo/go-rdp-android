@@ -15,6 +15,9 @@ import (
 var required = map[string]map[string]string{
 	"mobile/Mobile.class": {
 		"activeConnections":    "()J",
+		"droppedFrames":        "()J",
+		"queuedFrames":         "()J",
+		"submittedFrames":      "()J",
 		"addr":                 "()Ljava/lang/String;",
 		"startServer":          "(J)V",
 		"stopServer":           "()V",
@@ -32,6 +35,9 @@ var required = map[string]map[string]string{
 	},
 	"mobile/Server.class": {
 		"activeConnections":    "()J",
+		"droppedFrames":        "()J",
+		"queuedFrames":         "()J",
+		"submittedFrames":      "()J",
 		"addr":                 "()Ljava/lang/String;",
 		"start":                "(J)V",
 		"stop":                 "()V",
@@ -40,7 +46,10 @@ var required = map[string]map[string]string{
 		"tlsFingerprintSHA256": "()Ljava/lang/String;",
 	},
 	"mobile/FrameQueue.class": {
-		"close": "()V",
+		"close":     "()V",
+		"depth":     "()J",
+		"dropped":   "()J",
+		"submitted": "()J",
 	},
 }
 
