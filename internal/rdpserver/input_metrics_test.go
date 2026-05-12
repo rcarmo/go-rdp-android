@@ -25,6 +25,21 @@ func (s *metricsRecordingSink) TouchFrame(contacts []input.TouchContact) error {
 	return nil
 }
 
+func TestCountingInputSinkAllowsNilSink(t *testing.T) {
+	var events atomic.Int64
+	var contacts atomic.Int64
+	sink := &countingInputSink{inputEvents: &events, rdpeiContacts: &contacts}
+	if err := sink.PointerMove(1, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := sink.TouchFrame([]input.TouchContact{{ID: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if events.Load() != 2 || contacts.Load() != 1 {
+		t.Fatalf("unexpected nil-sink metrics events=%d contacts=%d", events.Load(), contacts.Load())
+	}
+}
+
 func TestCountingInputSink(t *testing.T) {
 	var events atomic.Int64
 	var contacts atomic.Int64
