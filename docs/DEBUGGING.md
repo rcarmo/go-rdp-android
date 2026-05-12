@@ -38,6 +38,8 @@ make run-mock-pattern
 make probe
 ```
 
+For the structured server trace phase taxonomy and diagnostic bundle sources, see [TRACE_PHASES](TRACE_PHASES.md).
+
 For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The probe emits client/server hex dumps and a JSON summary. Useful files:
 
 - `probe.log`

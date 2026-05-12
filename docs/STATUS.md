@@ -68,6 +68,7 @@ Update this page together with the relevant feature docs when changing behavior:
 - `README.md` for user-facing feature status and CI quick reference.
 - `docs/ARCHITECTURE.md` for design or data-flow changes.
 - `docs/SPEC.md` for feasibility/protocol scope changes.
+- `docs/TRACE_PHASES.md` for server/Android trace phase and diagnostic-bundle changes.
 - `docs/THREAT_MODEL.md` for LAN exposure, Android permission, auth, storage, or security-default changes.
 - `docs/TESTING.md` for CI gates, artifacts, or validation commands.
 - `docs/PERFORMANCE.md` for capture/graphics metrics or performance decisions.
