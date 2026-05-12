@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-12
-Current evidence commit: `22ed2a5` (`Allow input metrics without Android sink`)
-Latest referenced CI run: `25747132076` (`main` CI, success)
+Current evidence commit: `a4b61a7` (`Tighten server failure counter coverage`)
+Latest referenced CI run: `25748109798` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25747132076`:
+Latest checked artifact from CI run `25748109798`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
