@@ -228,6 +228,16 @@ func (s *Server) BitmapBytes() int64 {
 	return s.server.BitmapBytes()
 }
 
+// DVCFragments returns the dynamic virtual channel fragment PDU count for the running server.
+func (s *Server) DVCFragments() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.DVCFragments()
+}
+
 // SubmittedFrames returns the number of frames accepted by the bounded queue.
 func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
 
@@ -283,6 +293,9 @@ func FramesSent() int64 { return defaultServer.FramesSent() }
 
 // BitmapBytes returns the bitmap update payload bytes sent by the default server.
 func BitmapBytes() int64 { return defaultServer.BitmapBytes() }
+
+// DVCFragments returns the dynamic virtual channel fragment PDU count for the default server.
+func DVCFragments() int64 { return defaultServer.DVCFragments() }
 
 // SubmittedFrames returns the number of frames accepted by the default server queue.
 func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }

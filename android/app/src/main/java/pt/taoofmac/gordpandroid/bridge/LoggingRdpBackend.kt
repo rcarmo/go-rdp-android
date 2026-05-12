@@ -66,6 +66,8 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun bitmapBytes(): Long = 0
 
+    override fun dvcFragments(): Long = 0
+
     override fun submittedFrames(): Long = frameCount.get()
 
     override fun droppedFrames(): Long = 0

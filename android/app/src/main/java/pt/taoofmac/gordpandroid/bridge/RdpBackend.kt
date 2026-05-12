@@ -30,6 +30,7 @@ interface RdpBackend {
     fun rdpeiContacts(): Long
     fun framesSent(): Long
     fun bitmapBytes(): Long
+    fun dvcFragments(): Long
     fun submittedFrames(): Long
     fun droppedFrames(): Long
     fun queuedFrames(): Long

@@ -46,6 +46,7 @@ type drdynvcManager struct {
 	fragments             map[uint32]*drdynvcFragment
 	touchLifecycle        *input.TouchLifecycleCoalescer
 	sink                  input.Sink
+	metrics              serverMetrics
 }
 
 type drdynvcFragment struct {
@@ -75,8 +76,8 @@ type drdynvcHeader struct {
 	Cmd    uint8
 }
 
-func newDRDYNVCManager(channels []clientChannel, sink input.Sink) *drdynvcManager {
-	m := &drdynvcManager{channels: make(map[uint32]string), fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink}
+func newDRDYNVCManager(channels []clientChannel, sink input.Sink, metrics serverMetrics) *drdynvcManager {
+	m := &drdynvcManager{channels: make(map[uint32]string), fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink, metrics: metrics}
 	for _, ch := range channels {
 		if strings.EqualFold(ch.Name, drdynvcStaticChannelName) {
 			m.staticChannelID = ch.ID
@@ -149,7 +150,7 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {
 			return err
 		}
-		tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
+			tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
 		return m.handleDynamicDataFirst(pdu.ChannelID, pdu.Length, pdu.Data)
 	case drdynvcCmdClose:
 		if err := m.requireCaps(pdu.Header.Cmd); err != nil {
@@ -201,6 +202,7 @@ func (m *drdynvcManager) handleDynamicDataFirst(channelID, expected uint32, data
 	if _, exists := m.fragments[channelID]; !exists && len(m.fragments) >= drdynvcMaxFragments {
 		return fmt.Errorf("drdynvc pending fragments %d exceeds maximum %d", len(m.fragments)+1, drdynvcMaxFragments)
 	}
+	m.metrics.recordDVCFragment()
 	m.fragments[channelID] = &drdynvcFragment{expected: expected, data: append([]byte(nil), data...), updatedAt: time.Now()}
 	return nil
 }
@@ -211,6 +213,7 @@ func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error 
 		return fmt.Errorf("drdynvc data length %d exceeds maximum %d", len(data), drdynvcMaxFragmentSize)
 	}
 	if frag := m.fragments[channelID]; frag != nil {
+		m.metrics.recordDVCFragment()
 		if len(frag.data)+len(data) > drdynvcMaxFragmentSize {
 			delete(m.fragments, channelID)
 			return fmt.Errorf("drdynvc fragment length %d exceeds maximum %d", len(frag.data)+len(data), drdynvcMaxFragmentSize)

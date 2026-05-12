@@ -78,7 +78,7 @@ func TestRegressionCredSSPServerNonceFixture(t *testing.T) {
 
 func TestRegressionDRDYNVCFragmentationFixture(t *testing.T) {
 	sink := &recordingTouchSink{}
-	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink)
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink, serverMetrics{})
 	markDRDYNVCCapsForTest(m)
 	markRDPEIChannelForTest(m, 9)
 

@@ -35,7 +35,7 @@ type domainPDU struct {
 
 func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, limiter *authBackoffLimiter, selectedProtocol uint32, channels []clientChannel, metrics serverMetrics) error {
 	userID := uint16(defaultMCSUserID)
-	dvc := newDRDYNVCManager(channels, sink)
+	dvc := newDRDYNVCManager(channels, sink, metrics)
 	sessionWidth := clampDesktopDimension(width, width)
 	sessionHeight := clampDesktopDimension(height, height)
 	remote := remoteHost(conn.RemoteAddr())

@@ -3,8 +3,15 @@ package rdpserver
 import "sync/atomic"
 
 type serverMetrics struct {
-	framesSent  *atomic.Int64
-	bitmapBytes *atomic.Int64
+	framesSent   *atomic.Int64
+	bitmapBytes  *atomic.Int64
+	dvcFragments *atomic.Int64
+}
+
+func (m serverMetrics) recordDVCFragment() {
+	if m.dvcFragments != nil {
+		m.dvcFragments.Add(1)
+	}
 }
 
 func (m serverMetrics) recordBitmapFrame(updates [][]byte) {

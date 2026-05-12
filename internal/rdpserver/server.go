@@ -44,6 +44,7 @@ type Server struct {
 	rdpeiContacts     atomic.Int64
 	framesSent        atomic.Int64
 	bitmapBytes       atomic.Int64
+	dvcFragments      atomic.Int64
 
 	mu sync.Mutex
 	ln net.Listener
@@ -151,6 +152,9 @@ func (s *Server) FramesSent() int64 { return s.framesSent.Load() }
 // BitmapBytes returns the total number of bitmap update payload bytes sent to clients.
 func (s *Server) BitmapBytes() int64 { return s.bitmapBytes.Load() }
 
+// DVCFragments returns the total number of dynamic virtual channel fragment PDUs observed.
+func (s *Server) DVCFragments() int64 { return s.dvcFragments.Load() }
+
 func (s *Server) handleConn(conn net.Conn) {
 	s.activeConns.Add(1)
 	s.acceptedConns.Add(1)
@@ -224,7 +228,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, dvcFragments: &s.dvcFragments}
 	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if strings.Contains(err.Error(), "auth failed") {
 			s.authFailures.Add(1)
