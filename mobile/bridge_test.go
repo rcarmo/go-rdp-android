@@ -29,10 +29,16 @@ func TestFrameQueueDropsOldest(t *testing.T) {
 	}
 }
 
-func TestFrameQueueValidationAndClose(t *testing.T) {
+func TestFrameQueueValidationDrainAndClose(t *testing.T) {
 	q := NewFrameQueue(0)
 	if err := q.Submit(frame.Frame{}); err == nil {
 		t.Fatal("expected invalid frame error")
+	}
+	if err := q.Submit(frame.Frame{Width: 1, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3, 4}}); err != nil {
+		t.Fatal(err)
+	}
+	if drained := q.Drain(); drained != 1 || q.Depth() != 0 {
+		t.Fatalf("unexpected drain result drained=%d depth=%d", drained, q.Depth())
 	}
 	if err := q.Close(); err != nil {
 		t.Fatal(err)
@@ -192,6 +198,9 @@ func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	}
 	if err := srv.Stop(); err != nil {
 		t.Fatal(err)
+	}
+	if srv.QueuedFrames() != 0 {
+		t.Fatalf("expected queued frames to be drained on stop, got %d", srv.QueuedFrames())
 	}
 	if srv.Addr() != "" {
 		t.Fatal("expected empty address after stop")

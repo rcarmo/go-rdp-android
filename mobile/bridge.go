@@ -52,6 +52,7 @@ func (s *Server) Start(port int) error {
 	if s.username != "" || s.password != "" {
 		auth = rdpserver.StaticCredentials{Username: s.username, Password: s.password}
 	}
+	s.frames.Drain()
 	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: 1280, Height: 720, Authenticator: auth}, s.frames, s.input)
 	if err != nil {
 		return err
@@ -87,12 +88,14 @@ func (s *Server) Stop() error {
 	}
 	select {
 	case err := <-done:
+		s.frames.Drain()
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
 	case <-time.After(2 * time.Second):
 		// Android lifecycle shutdown must not hang the UI/service teardown path.
 		// The listener has been canceled/closed above; let the goroutine drain asynchronously.
+		s.frames.Drain()
 	}
 	return nil
 }
@@ -255,6 +258,19 @@ func (q *FrameQueue) Dropped() int64 { return q.dropped.Load() }
 
 // Depth returns the current number of queued frames.
 func (q *FrameQueue) Depth() int64 { return int64(len(q.frames)) }
+
+// Drain discards queued frames without closing the queue, allowing reuse across Android service restarts.
+func (q *FrameQueue) Drain() int64 {
+	var drained int64
+	for {
+		select {
+		case <-q.frames:
+			drained++
+		default:
+			return drained
+		}
+	}
+}
 
 // Close closes the queue.
 func (q *FrameQueue) Close() error {
