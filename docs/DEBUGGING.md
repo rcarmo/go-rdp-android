@@ -236,6 +236,19 @@ If capture is too slow or memory-heavy:
 - Inspect `captureStats` for high submit times.
 - Inspect per-scene tile counts for dirty-tile suppression effectiveness.
 
+## Android service/network debugging
+
+When the foreground service is running, its notification includes the current local IPv4 address list. Network changes also log lines similar to:
+
+```text
+Network available: ... local=192.168.1.23
+Network lost: ... local=no IPv4 address
+```
+
+Use those lines to troubleshoot Wi-Fi reconnects, IP changes, hotspot mode, and VPN routing. The server still binds all interfaces; the notification/log refresh is diagnostic and does not silently restart the listener.
+
+If the service is started without credentials, it logs a refusal, removes the temporary foreground notification, and stops without opening a listener.
+
 ## Authentication debugging
 
 The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:

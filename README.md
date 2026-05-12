@@ -12,7 +12,7 @@ The current implementation is a CI-first prototype: it can build a Go-backed APK
 
 Implemented or validated today:
 
-- Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent/denial flow, serialized foreground-service mode switching, notification/UI stop actions, non-sticky service restart policy, non-secret settings persistence, compact UI health state, and AccessibilityService declaration.
+- Native Android Kotlin shell with `MainActivity`, `RdpForegroundService`, MediaProjection consent/denial flow, serialized foreground-service mode switching, notification/UI stop actions, credential-refusal cleanup, network-address notification refresh, non-sticky service restart policy, non-secret settings persistence, compact UI health state, and AccessibilityService declaration.
 - Go RDP server core with TPKT, X.224, MCS, GCC server core/security/network data, TLS-only Client Info authentication, Hybrid/NLA CredSSP/NTLMv2 authentication via `rcarmo/go-rdp`, TLS certificate persistence/rotation/fingerprint support, access-policy controls, failed-auth backoff/lockout, Demand Active/Confirm Active finalization, FontMap, slow-path bitmap updates, and slow-path/Fast-Path input decoding.
 - `gomobile bind` integration via `mobile.aar`, with Kotlin reflection backend and logging fallback when the AAR is absent.
 - Android `MediaProjection` capture pipeline using `VirtualDisplay` + `ImageReader` RGBA frames.
