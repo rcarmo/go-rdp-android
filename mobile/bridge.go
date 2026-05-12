@@ -188,6 +188,26 @@ func (s *Server) AuthFailures() int64 {
 	return s.server.AuthFailures()
 }
 
+// InputEvents returns the total number of decoded input callbacks for the running server.
+func (s *Server) InputEvents() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.InputEvents()
+}
+
+// RDPEIContacts returns the total number of decoded RDPEI touch contacts for the running server.
+func (s *Server) RDPEIContacts() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RDPEIContacts()
+}
+
 // SubmittedFrames returns the number of frames accepted by the bounded queue.
 func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
 
@@ -231,6 +251,12 @@ func HandshakeFailures() int64 { return defaultServer.HandshakeFailures() }
 
 // AuthFailures returns the auth failure count for the default server.
 func AuthFailures() int64 { return defaultServer.AuthFailures() }
+
+// InputEvents returns the input event count for the default server.
+func InputEvents() int64 { return defaultServer.InputEvents() }
+
+// RDPEIContacts returns the RDPEI contact count for the default server.
+func RDPEIContacts() int64 { return defaultServer.RDPEIContacts() }
 
 // SubmittedFrames returns the number of frames accepted by the default server queue.
 func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }

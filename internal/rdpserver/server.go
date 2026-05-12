@@ -39,6 +39,8 @@ type Server struct {
 	acceptedConns     atomic.Int64
 	handshakeFailures atomic.Int64
 	authFailures      atomic.Int64
+	inputEvents       atomic.Int64
+	rdpeiContacts     atomic.Int64
 
 	mu sync.Mutex
 	ln net.Listener
@@ -134,6 +136,12 @@ func (s *Server) HandshakeFailures() int64 { return s.handshakeFailures.Load() }
 // AuthFailures returns the total number of authentication or auth-policy failures.
 func (s *Server) AuthFailures() int64 { return s.authFailures.Load() }
 
+// InputEvents returns the total number of decoded input callbacks sent to the sink.
+func (s *Server) InputEvents() int64 { return s.inputEvents.Load() }
+
+// RDPEIContacts returns the total number of decoded RDPEI touch contacts sent to the sink.
+func (s *Server) RDPEIContacts() int64 { return s.rdpeiContacts.Load() }
+
 func (s *Server) handleConn(conn net.Conn) {
 	s.activeConns.Add(1)
 	s.acceptedConns.Add(1)
@@ -204,7 +212,8 @@ func (s *Server) handleConn(conn net.Conn) {
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
-	if err := handleMCSDomainSequence(conn, s.frames, s.input, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
+	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}

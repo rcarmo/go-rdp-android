@@ -26,6 +26,8 @@ interface RdpBackend {
     fun acceptedConnections(): Long
     fun handshakeFailures(): Long
     fun authFailures(): Long
+    fun inputEvents(): Long
+    fun rdpeiContacts(): Long
     fun submittedFrames(): Long
     fun droppedFrames(): Long
     fun queuedFrames(): Long

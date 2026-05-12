@@ -58,6 +58,10 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun authFailures(): Long = 0
 
+    override fun inputEvents(): Long = 0
+
+    override fun rdpeiContacts(): Long = 0
+
     override fun submittedFrames(): Long = frameCount.get()
 
     override fun droppedFrames(): Long = 0
