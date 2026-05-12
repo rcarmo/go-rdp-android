@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-12
-Current evidence commit: `67aa7bd` (`Capture mock probe RDP screenshot artifact`)
-Latest referenced CI run: `25759704185` (`main` CI, success)
+Current evidence commit: `29bdd24` (`Harden input metric wrapper counters`)
+Latest referenced CI run: `25760585518` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25759704185`:
+Latest checked artifact from CI run `25760585518`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 | RDP negotiation | Prototype-compatible | X.224, TLS, Hybrid/NLA, MCS, GCC response, licensing, activation, bitmap streaming. Connect-Initial now parses client core desktop + monitor-layout metadata, Confirm Active parsing summarizes bitmap/input/order/virtual-channel/large-pointer capabilities (including desktop-resize flag), and session desktop sizing is propagated into bitmap encoding scale. |
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Defensive CredSSP pubKeyAuth nonce/order binding variants are intentionally retained for interoperability, with explicit comments and table-driven coverage. Android app flow now requires explicit credential setup before service start and persists configured credentials encrypted-at-rest (Android Keystore-backed AES/GCM) for subsequent starts; log user/domain fields are now bounded/sanitized. Server-side bcrypt hashed credential verification is available for TLS Client Info flows, while current NLA path still requires plaintext-equivalent credential input. Server policy controls now support security-mode selection (`negotiate`/`rdp-only`/`tls-only`/`nla-required`) plus allowed-users/CIDR allowlists, TLS cert persistence/rotation with handshake fingerprint logging for trust guidance, and optional failed-auth lockout/backoff policy controls. |
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
-| Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; Android coalesces primary pointer down/move/up into bounded Accessibility strokes; wheel events are decoded/bridged/logged with safe Android degradation; keyboard/text, secondary-button behavior, and physical-device validation remain pending. |
+| Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; input/RDPEI metric wrappers now tolerate nil sinks and nil counters for safer test/prototype reuse; Android coalesces primary pointer down/move/up into bounded Accessibility strokes; wheel events are decoded/bridged/logged with safe Android degradation; keyboard/text, secondary-button behavior, and physical-device validation remain pending. |
 | True RDP touch | Frame-aware bridge with continuation scaffolding | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; gomobile now forwards touch frame boundaries and Android consumes per-frame contact batches, building bounded `GestureDescription` strokes with `continueStroke(...)` chaining for active contacts and grouped frame dispatch for coordinated contacts, with single-contact fallback when multi-stroke dispatch is rejected. Real-client/physical-device multi-touch evidence is still pending. |
 | Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Long-running server starts now always run as a foreground service with a notification Stop action, explicit UI stop routing, serialized mode switching, projection-revocation cleanup (last mode reset + notification removal), missing-credential notification cleanup, non-sticky restart policy, network-change logging/notification refresh, and permission-denial recovery that leaves the server stopped without storing a failed capture mode/scale. Non-secret server settings (capture scale and last successful/explicit mode) are persisted separately from encrypted credentials and restored across Activity/process recreation; service restarts remain explicit. The UI shows compact backend/running/mode/auth/listen-address/TLS-fingerprint/client-count/accepted/auth-failure/handshake-failure/input-enabled/input-event/RDPEI-contact/DVC-fragment/submitted-frame/sent-frame/bitmap-byte/queue/drop/input-scale health state; native mobile restarts drain stale queued frames before/after server lifecycle transitions and guides the user when the AccessibilityService is disabled. Physical-device validation pending. |
 
