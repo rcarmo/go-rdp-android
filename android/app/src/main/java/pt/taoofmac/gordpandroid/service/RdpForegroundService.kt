@@ -119,6 +119,10 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
 
     override fun onStopped() {
         Log.i(TAG, "MediaProjection stopped")
+        synchronized(lifecycleLock) {
+            settingsStore.saveLastMode(RdpServerMode.NONE)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        }
         stopSelf()
     }
 
