@@ -196,6 +196,38 @@ func TestMobileServerCredentials(t *testing.T) {
 	}
 }
 
+func TestMobileServerStartReportsListenError(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	port := listener.Addr().(*net.TCPAddr).Port
+	srv := NewServer()
+	if err := srv.Start(port); err == nil {
+		t.Fatal("expected listen error for occupied port")
+	}
+	if srv.Addr() != "" {
+		t.Fatalf("expected no address after failed start, got %q", srv.Addr())
+	}
+	if err := srv.SubmitFrame(1, 1, 4, 4, []byte{1, 2, 3, 4}); err != nil {
+		t.Fatal(err)
+	}
+	if srv.QueuedFrames() != 1 {
+		t.Fatalf("expected queue to remain reusable after failed start, got depth %d", srv.QueuedFrames())
+	}
+}
+
+func TestMobileServerRejectsInvalidPort(t *testing.T) {
+	srv := NewServer()
+	if err := srv.Start(-1); err == nil {
+		t.Fatal("expected invalid low port error")
+	}
+	if err := srv.Start(65536); err == nil {
+		t.Fatal("expected invalid high port error")
+	}
+}
+
 func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	srv := NewServer()
 	if err := srv.Start(0); err != nil {

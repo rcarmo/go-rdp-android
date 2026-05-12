@@ -64,7 +64,30 @@ func (s *Server) Start(port int) error {
 	done := make(chan error, 1)
 	s.done = done
 	go func() { done <- srv.Listen(ctx) }()
-	return nil
+	readyDeadline := time.NewTimer(500 * time.Millisecond)
+	defer readyDeadline.Stop()
+	for {
+		if srv.Addr() != nil {
+			return nil
+		}
+		select {
+		case err := <-done:
+			cancel()
+			s.ctx = nil
+			s.cancel = nil
+			s.done = nil
+			s.server = nil
+			s.frames.Drain()
+			return err
+		case <-readyDeadline.C:
+			// Listener startup normally publishes Addr immediately after net.Listen.
+			// If scheduling is unusually slow, keep the asynchronous startup behavior
+			// rather than blocking Android service startup indefinitely.
+			return nil
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
 }
 
 // Stop terminates the server and releases queued frames.
