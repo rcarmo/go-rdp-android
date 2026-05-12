@@ -76,6 +76,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
             activeMode = "stopped"
             startForeground(NOTIFICATION_ID, notification("missing credentials"))
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
