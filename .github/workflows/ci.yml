@@ -118,6 +118,7 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/mock-probe/mock-server.log' EXIT
           sleep 2
           go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace -summary test-artifacts/mock-probe/probe-summary.json >test-artifacts/mock-probe/probe.log 2>&1
+          go run ./scripts/summarize-probe.go test-artifacts/mock-probe/probe-summary.json test-artifacts/mock-probe/probe-summary.md
           find test-artifacts/mock-probe/protocol-trace -type f | sort >test-artifacts/mock-probe/protocol-trace/index.txt
       - name: Authentication smoke test
         run: |
@@ -129,7 +130,9 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/auth/mock-server.log' EXIT
           sleep 2
           GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password secret -summary test-artifacts/auth/probe-good-summary.json >test-artifacts/auth/probe-good.log 2>&1
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-probe.go test-artifacts/auth/probe-good-summary.json test-artifacts/auth/probe-good-summary.md
           GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -nla -username rui -password secret -summary test-artifacts/auth/probe-nla-good-summary.json >test-artifacts/auth/probe-nla-good.log 2>&1
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-probe.go test-artifacts/auth/probe-nla-good-summary.json test-artifacts/auth/probe-nla-good-summary.md
           set +e
           GOTMPDIR="$PWD/.gotmp" go run ./cmd/probe -addr 127.0.0.1:3398 -username rui -password wrong -summary test-artifacts/auth/probe-bad-summary.json >test-artifacts/auth/probe-bad.log 2>&1
           bad_status=$?

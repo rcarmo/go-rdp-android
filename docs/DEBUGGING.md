@@ -44,6 +44,7 @@ For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The pro
 
 - `probe.log`
 - `probe-summary.json`
+- `probe-summary.md`
 - `protocol-trace/index.txt`
 - `mock-server.log`
 
