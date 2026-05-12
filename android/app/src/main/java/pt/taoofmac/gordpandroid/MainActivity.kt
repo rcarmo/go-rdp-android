@@ -1,11 +1,13 @@
 package io.carmo.go.rdp.android
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
+import android.text.TextUtils
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
@@ -15,6 +17,7 @@ import android.widget.Toast
 import io.carmo.go.rdp.android.auth.RdpCredentialStore
 import io.carmo.go.rdp.android.auth.RdpCredentials
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
+import io.carmo.go.rdp.android.input.RdpAccessibilityService
 import io.carmo.go.rdp.android.service.RdpForegroundService
 import io.carmo.go.rdp.android.settings.RdpServerMode
 import io.carmo.go.rdp.android.settings.RdpSettingsStore
@@ -144,12 +147,24 @@ class MainActivity : Activity() {
     private fun updateStatus() {
         val creds = credentialStore.load()
         val health = NativeRdpBridge.healthStatus()
+        val accessibilityState = if (isRdpAccessibilityEnabled()) "enabled" else "disabled — open Accessibility Settings and enable go-rdp-android"
         status.text = if (creds == null) {
-            "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\n\nHealth: $health"
+            "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\nAccessibility: $accessibilityState\n\nHealth: $health"
         } else {
             val settings = settingsStore.load()
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
+    }
+
+    private fun isRdpAccessibilityEnabled(): Boolean {
+        val expected = ComponentName(this, RdpAccessibilityService::class.java).flattenToString()
+        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabledServices)
+        for (service in splitter) {
+            if (service.equals(expected, ignoreCase = true)) return true
+        }
+        return false
     }
 
     private fun saveCredentialsFromInputs(showToast: Boolean): Boolean {
