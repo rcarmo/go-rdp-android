@@ -11,7 +11,7 @@
 | Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
 | gosec scan | Static security scan with triaged overflow-noise exclusion (`G115`) | `test-artifacts/go/gosec-report.json`, `test-artifacts/go/gosec-summary.md` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
-| Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth; emits JSON and Markdown probe summaries plus logs/traces | `mock-probe-artifacts` |
+| Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth; emits JSON/Markdown probe summaries, logs/traces, and an RDP screenshot | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
 | gomobile build | Build `mobile.aar`, verify API, build Go-backed APK + AAB | `gomobile-build-artifacts` |
 | FreeRDP probe | Blocking real-client compatibility gate; retries and requires bitmap/update streaming | `freerdp-compat-probe` |
@@ -28,7 +28,7 @@ Default push/PR CI runs without a physical Android device:
 - gosec static security scan (currently excluding `G115` cast-noise with findings triaged and documented).
 - Mock server + probe TCP smoke test.
 - TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection.
-- Protocol packet trace artifact from the probe, including client/server hex dumps, logs, and JSON/Markdown probe summaries.
+- Protocol packet trace artifact from the probe, including client/server hex dumps, logs, JSON/Markdown probe summaries, and an RDP screenshot from bitmap updates.
 - Normal Android debug APK build and APK structure inspection.
 - `gomobile bind` AAR generation.
 - Generated AAR Java API signature verification.

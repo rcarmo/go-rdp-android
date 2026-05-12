@@ -117,7 +117,7 @@ jobs:
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true; cat test-artifacts/mock-probe/mock-server.log' EXIT
           sleep 2
-          go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace -summary test-artifacts/mock-probe/probe-summary.json >test-artifacts/mock-probe/probe.log 2>&1
+          go run ./cmd/probe -trace-dir test-artifacts/mock-probe/protocol-trace -summary test-artifacts/mock-probe/probe-summary.json -screenshot test-artifacts/mock-probe/rdp-screenshot.png >test-artifacts/mock-probe/probe.log 2>&1
           go run ./scripts/summarize-probe.go test-artifacts/mock-probe/probe-summary.json test-artifacts/mock-probe/probe-summary.md
           find test-artifacts/mock-probe/protocol-trace -type f | sort >test-artifacts/mock-probe/protocol-trace/index.txt
       - name: Authentication smoke test

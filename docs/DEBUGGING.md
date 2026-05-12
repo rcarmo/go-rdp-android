@@ -40,11 +40,12 @@ make probe
 
 For the structured server trace phase taxonomy and diagnostic bundle sources, see [TRACE_PHASES](TRACE_PHASES.md).
 
-For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The probe emits client/server hex dumps and a JSON summary. Useful files:
+For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The probe emits client/server hex dumps, JSON/Markdown summaries, and an RDP screenshot from bitmap updates. Useful files:
 
 - `probe.log`
 - `probe-summary.json`
 - `probe-summary.md`
+- `rdp-screenshot.png`
 - `protocol-trace/index.txt`
 - `mock-server.log`
 
