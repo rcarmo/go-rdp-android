@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-12
-Current evidence commit: `b5d574e` (`Expose frame queue drop metrics`)
-Latest referenced CI run: `25717179670` (`main` CI, success)
+Current evidence commit: `3472c13` (`Drain mobile frame queue during server restarts`)
+Latest referenced CI run: `25717828800` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25717179670`:
+Latest checked artifact from CI run `25717828800`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
