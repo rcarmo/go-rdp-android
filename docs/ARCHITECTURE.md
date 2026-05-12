@@ -69,9 +69,15 @@ func SetInputHandler(handler InputHandler)
 func Addr() string
 func TLSFingerprintSHA256() string
 func ActiveConnections() int64
+func AcceptedConnections() int64
+func AuthFailures() int64
+func HandshakeFailures() int64
+func SubmittedFrames() int64
+func QueuedFrames() int64
+func DroppedFrames() int64
 ```
 
-Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state. The bridge also exposes lightweight runtime health values (`Addr`, `TLSFingerprintSHA256`, `ActiveConnections`) that the Android UI combines with local mode/auth/input/frame state.
+Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding, and exposes submitted/queued/dropped counters for health reporting. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state. The bridge also exposes lightweight runtime health values (`Addr`, `TLSFingerprintSHA256`, active/accepted connection counts, and auth/handshake failure counts) that the Android UI combines with local mode/auth/input/frame state.
 
 `SetCredentials` configures the current username/password authenticator for future sessions. The server has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally. Access policy controls (security mode + allowed users/CIDRs) are normalized at startup and enforced at connection/auth boundaries, including optional failed-auth lockout/backoff controls. TLS settings support persisted self-signed cert/key paths, optional startup rotation, and SHA-256 fingerprint exposure for client trust guidance.
 
