@@ -62,7 +62,7 @@ class ScreenCaptureManager(
         lastStatsLogMs = SystemClock.elapsedRealtime()
 
         val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        projection = manager.getMediaProjection(resultCode, data).also { mp ->
+        val mediaProjection = manager.getMediaProjection(resultCode, data).also { mp ->
             mp.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     if (!stopping) {
@@ -72,23 +72,27 @@ class ScreenCaptureManager(
                 }
             }, null)
         }
+        projection = mediaProjection
 
-        thread = HandlerThread("rdp-capture").also { it.start() }
-        handler = Handler(thread!!.looper)
+        val captureThread = HandlerThread("rdp-capture").also { it.start() }
+        val captureHandler = Handler(captureThread.looper)
+        thread = captureThread
+        handler = captureHandler
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2).also { reader ->
-            reader.setOnImageAvailableListener({ onImageAvailable(it) }, handler)
+        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2).also { imageReader ->
+            imageReader.setOnImageAvailableListener({ onImageAvailable(it) }, captureHandler)
         }
+        imageReader = reader
 
-        virtualDisplay = projection!!.createVirtualDisplay(
+        virtualDisplay = mediaProjection.createVirtualDisplay(
             "go-rdp-android",
             width,
             height,
             densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader!!.surface,
+            reader.surface,
             null,
-            handler,
+            captureHandler,
         )
         Log.i(TAG, "Screen capture started ${width}x$height density=$densityDpi maxFps=$maxFps targetIntervalMs=$targetFrameIntervalMs")
     }
