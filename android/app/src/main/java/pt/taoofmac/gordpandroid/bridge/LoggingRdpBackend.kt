@@ -62,6 +62,10 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun rdpeiContacts(): Long = 0
 
+    override fun framesSent(): Long = 0
+
+    override fun bitmapBytes(): Long = 0
+
     override fun submittedFrames(): Long = frameCount.get()
 
     override fun droppedFrames(): Long = 0

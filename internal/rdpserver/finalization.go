@@ -23,7 +23,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int, metrics serverMetrics) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -47,14 +47,14 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
 			return err
 		}
-		return writeInitialBitmapUpdate(conn, frames, width, height)
+		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
 	case pduType2Input:
 		return dispatchSlowPathInput(data.Payload, sink)
 	}
 	return nil
 }
 
-func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height int) error {
+func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height int, metrics serverMetrics) error {
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
@@ -63,16 +63,22 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}
-				go streamFrameUpdates(conn, frames, cache, width, height)
+				metrics.recordBitmapFrame(updates)
+				go streamFrameUpdates(conn, frames, cache, width, height, metrics)
 				return nil
 			}
 		default:
 		}
 	}
-	return writeShareDataPDU(conn, pduType2Update, buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699))
+	update := buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699)
+	if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
+		return err
+	}
+	metrics.recordBitmapFrame([][]byte{update})
+	return nil
 }
 
-func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache, width, height int) {
+func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache, width, height int, metrics serverMetrics) {
 	if cache == nil {
 		cache = newBitmapTileCache()
 	}
@@ -85,6 +91,7 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 			tracef("frame_stream_stop", "err=%v", err)
 			return
 		}
+		metrics.recordBitmapFrame(updates)
 	}
 }
 

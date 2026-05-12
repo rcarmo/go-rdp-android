@@ -42,6 +42,8 @@ type Server struct {
 	authFailures      atomic.Int64
 	inputEvents       atomic.Int64
 	rdpeiContacts     atomic.Int64
+	framesSent        atomic.Int64
+	bitmapBytes       atomic.Int64
 
 	mu sync.Mutex
 	ln net.Listener
@@ -143,6 +145,12 @@ func (s *Server) InputEvents() int64 { return s.inputEvents.Load() }
 // RDPEIContacts returns the total number of decoded RDPEI touch contacts sent to the sink.
 func (s *Server) RDPEIContacts() int64 { return s.rdpeiContacts.Load() }
 
+// FramesSent returns the total number of frame update batches sent to clients.
+func (s *Server) FramesSent() int64 { return s.framesSent.Load() }
+
+// BitmapBytes returns the total number of bitmap update payload bytes sent to clients.
+func (s *Server) BitmapBytes() int64 { return s.bitmapBytes.Load() }
+
 func (s *Server) handleConn(conn net.Conn) {
 	s.activeConns.Add(1)
 	s.acceptedConns.Add(1)
@@ -216,7 +224,8 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes}
+	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if strings.Contains(err.Error(), "auth failed") {
 			s.authFailures.Add(1)
 		} else {

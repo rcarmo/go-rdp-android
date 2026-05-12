@@ -71,6 +71,10 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun rdpeiContacts(): Long = callLong("rdpeiContacts")
 
+    override fun framesSent(): Long = callLong("framesSent")
+
+    override fun bitmapBytes(): Long = callLong("bitmapBytes")
+
     override fun submittedFrames(): Long = callLong("submittedFrames")
 
     override fun droppedFrames(): Long = callLong("droppedFrames")

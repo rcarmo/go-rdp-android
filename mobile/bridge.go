@@ -208,6 +208,26 @@ func (s *Server) RDPEIContacts() int64 {
 	return s.server.RDPEIContacts()
 }
 
+// FramesSent returns the total number of bitmap frame update batches sent by the running server.
+func (s *Server) FramesSent() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.FramesSent()
+}
+
+// BitmapBytes returns the total number of bitmap update payload bytes sent by the running server.
+func (s *Server) BitmapBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.BitmapBytes()
+}
+
 // SubmittedFrames returns the number of frames accepted by the bounded queue.
 func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
 
@@ -257,6 +277,12 @@ func InputEvents() int64 { return defaultServer.InputEvents() }
 
 // RDPEIContacts returns the RDPEI contact count for the default server.
 func RDPEIContacts() int64 { return defaultServer.RDPEIContacts() }
+
+// FramesSent returns the sent bitmap frame count for the default server.
+func FramesSent() int64 { return defaultServer.FramesSent() }
+
+// BitmapBytes returns the bitmap update payload bytes sent by the default server.
+func BitmapBytes() int64 { return defaultServer.BitmapBytes() }
 
 // SubmittedFrames returns the number of frames accepted by the default server queue.
 func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }

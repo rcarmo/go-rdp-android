@@ -48,7 +48,7 @@ func TestHandleMCSDomainSequenceGracefulDisconnectProviderUltimatum(t *testing.T
 
 	done := make(chan error, 1)
 	go func() {
-		done <- handleMCSDomainSequence(serverConn, nil, nil, 320, 240, nil, AccessPolicy{}, nil, protocolSSL, nil)
+		done <- handleMCSDomainSequence(serverConn, nil, nil, 320, 240, nil, AccessPolicy{}, nil, protocolSSL, nil, serverMetrics{})
 	}()
 
 	if err := sendTestMCSDomainPDU(clientConn, mcsDisconnectProviderUltimatumApp, nil); err != nil {
@@ -72,7 +72,7 @@ func TestHandleMCSDomainSequenceGracefulDeactivateAll(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- handleMCSDomainSequence(serverConn, nil, nil, 320, 240, nil, AccessPolicy{}, nil, protocolSSL, nil)
+		done <- handleMCSDomainSequence(serverConn, nil, nil, 320, 240, nil, AccessPolicy{}, nil, protocolSSL, nil, serverMetrics{})
 	}()
 
 	deactivate := make([]byte, 6)

@@ -28,6 +28,8 @@ interface RdpBackend {
     fun authFailures(): Long
     fun inputEvents(): Long
     fun rdpeiContacts(): Long
+    fun framesSent(): Long
+    fun bitmapBytes(): Long
     fun submittedFrames(): Long
     fun droppedFrames(): Long
     fun queuedFrames(): Long
