@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-12
-Current evidence commit: `29bdd24` (`Harden input metric wrapper counters`)
-Latest referenced CI run: `25760585518` (`main` CI, success)
+Current evidence commit: `304951a` (`Prevent frame queue drain hang after close`)
+Latest referenced CI run: `25762274157` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25760585518`:
+Latest checked artifact from CI run `25762274157`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -50,7 +50,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 | Graphics | Functional baseline | 24-bit BGR slow-path bitmap tiles with dirty-tile suppression. Compression/RDPGFX/H.264 pending. |
 | Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; input/RDPEI metric wrappers now tolerate nil sinks and nil counters for safer test/prototype reuse; Android coalesces primary pointer down/move/up into bounded Accessibility strokes; wheel events are decoded/bridged/logged with safe Android degradation; keyboard/text, secondary-button behavior, and physical-device validation remain pending. |
 | True RDP touch | Frame-aware bridge with continuation scaffolding | RDPEI over `drdynvc` parses bounded payloads and routes contacts plus optional rectangle/orientation/pressure metadata through a lifecycle coalescer; gomobile now forwards touch frame boundaries and Android consumes per-frame contact batches, building bounded `GestureDescription` strokes with `continueStroke(...)` chaining for active contacts and grouped frame dispatch for coordinated contacts, with single-contact fallback when multi-stroke dispatch is rejected. Real-client/physical-device multi-touch evidence is still pending. |
-| Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Long-running server starts now always run as a foreground service with a notification Stop action, explicit UI stop routing, serialized mode switching, projection-revocation cleanup (last mode reset + notification removal), missing-credential notification cleanup, non-sticky restart policy, network-change logging/notification refresh, and permission-denial recovery that leaves the server stopped without storing a failed capture mode/scale. Non-secret server settings (capture scale and last successful/explicit mode) are persisted separately from encrypted credentials and restored across Activity/process recreation; service restarts remain explicit. The UI shows compact backend/running/mode/auth/listen-address/TLS-fingerprint/client-count/accepted/auth-failure/handshake-failure/input-enabled/input-event/RDPEI-contact/DVC-fragment/submitted-frame/sent-frame/bitmap-byte/queue/drop/input-scale health state; native mobile restarts drain stale queued frames before/after server lifecycle transitions and guides the user when the AccessibilityService is disabled. Physical-device validation pending. |
+| Android capture | Functional prototype | MediaProjection + ImageReader capture skeleton with test-pattern mode, pacing/backpressure, optional downscale. Long-running server starts now always run as a foreground service with a notification Stop action, explicit UI stop routing, serialized mode switching, projection-revocation cleanup (last mode reset + notification removal), missing-credential notification cleanup, non-sticky restart policy, network-change logging/notification refresh, and permission-denial recovery that leaves the server stopped without storing a failed capture mode/scale. Non-secret server settings (capture scale and last successful/explicit mode) are persisted separately from encrypted credentials and restored across Activity/process recreation; service restarts remain explicit. The UI shows compact backend/running/mode/auth/listen-address/TLS-fingerprint/client-count/accepted/auth-failure/handshake-failure/input-enabled/input-event/RDPEI-contact/DVC-fragment/submitted-frame/sent-frame/bitmap-byte/queue/drop/input-scale health state; native mobile restarts drain stale queued frames before/after server lifecycle transitions, and the frame queue drain path now handles already-closed queues without hanging. The UI also guides the user when the AccessibilityService is disabled. Physical-device validation pending. |
 
 ## Production blockers
 
