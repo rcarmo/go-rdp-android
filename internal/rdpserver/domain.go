@@ -135,18 +135,18 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 				} else {
 					tracef("client_info", "user=%q domain=%q flags=0x%08x", sanitizeForLog(clientInfo.UserName, 64), sanitizeForLog(clientInfo.Domain, 64), clientInfo.Flags)
 					if wait := limiter.lockoutRemaining(remote, clientInfo.UserName); wait > 0 {
-						return fmt.Errorf("auth failed: temporarily locked, retry in %s", wait.Round(time.Second))
+						return fmt.Errorf("%w: temporarily locked, retry in %s", errAuthFailure, wait.Round(time.Second))
 					}
 					if !policy.userAllowed(clientInfo.UserName) {
 						limiter.recordFailure(remote, clientInfo.UserName)
-						return fmt.Errorf("auth failed: user %q not allowed by policy", sanitizeForLog(clientInfo.UserName, 64))
+						return fmt.Errorf("%w: user %q not allowed by policy", errAuthFailure, sanitizeForLog(clientInfo.UserName, 64))
 					}
 					if err := authenticateClientInfo(auth, clientInfo); err != nil {
 						wait := limiter.recordFailure(remote, clientInfo.UserName)
 						if wait > 0 {
-							return fmt.Errorf("auth failed: %w (retry in %s)", err, wait.Round(time.Second))
+							return fmt.Errorf("%w: %v (retry in %s)", errAuthFailure, err, wait.Round(time.Second))
 						}
-						return fmt.Errorf("auth failed: %w", err)
+						return fmt.Errorf("%w: %v", errAuthFailure, err)
 					}
 					limiter.recordSuccess(remote, clientInfo.UserName)
 				}

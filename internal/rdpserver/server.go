@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -230,7 +229,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
 	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, dvcFragments: &s.dvcFragments}
 	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
-		if strings.Contains(err.Error(), "auth failed") {
+		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)
 		} else {
 			s.handshakeFailures.Add(1)
