@@ -52,7 +52,7 @@ func QueuedFrames() int64
 func DroppedFrames() int64
 ```
 
-It also exposes `type Server` and a bounded `FrameQueue` for tests/non-singleton usage. Captured Android `RGBA_8888` buffers are copied into a bounded Go queue and consumed as `frame.Source` by the RDP server.
+It also exposes `type Server` and a bounded `FrameQueue` for tests/non-singleton usage. Captured Android `RGBA_8888` buffers are copied into a bounded Go queue and consumed as `frame.Source` by the RDP server. The bridge drains stale queued frames around native server restarts, handles already-closed queue drains safely, and now reports immediate listen failures (for example, an occupied port) back to Kotlin instead of silently accepting a failed start.
 
 Decoded RDP input is surfaced through a gomobile-friendly callback interface:
 
