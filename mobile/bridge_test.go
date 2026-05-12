@@ -50,6 +50,26 @@ func TestFrameQueueValidationDrainAndClose(t *testing.T) {
 	if err := q.Close(); err != nil {
 		t.Fatal(err)
 	}
+	if drained := q.Drain(); drained != 0 {
+		t.Fatalf("expected closed queue drain to return 0, got %d", drained)
+	}
+}
+
+func TestFrameQueueDrainAfterCloseDoesNotHang(t *testing.T) {
+	q := NewFrameQueue(1)
+	if err := q.Close(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan int64, 1)
+	go func() { done <- q.Drain() }()
+	select {
+	case drained := <-done:
+		if drained != 0 {
+			t.Fatalf("expected zero drained frames, got %d", drained)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("drain hung after close")
+	}
 }
 
 type recordingMobileInputHandler struct {

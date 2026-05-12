@@ -365,10 +365,15 @@ func (q *FrameQueue) Depth() int64 { return int64(len(q.frames)) }
 
 // Drain discards queued frames without closing the queue, allowing reuse across Android service restarts.
 func (q *FrameQueue) Drain() int64 {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	var drained int64
 	for {
 		select {
-		case <-q.frames:
+		case _, ok := <-q.frames:
+			if !ok {
+				return drained
+			}
 			drained++
 		default:
 			return drained
