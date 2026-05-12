@@ -52,6 +52,12 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun activeConnections(): Long = 0
 
+    override fun acceptedConnections(): Long = if (running.get()) 0 else 0
+
+    override fun handshakeFailures(): Long = 0
+
+    override fun authFailures(): Long = 0
+
     override fun submittedFrames(): Long = frameCount.get()
 
     override fun droppedFrames(): Long = 0

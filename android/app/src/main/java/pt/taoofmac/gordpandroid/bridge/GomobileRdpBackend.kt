@@ -61,6 +61,12 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun activeConnections(): Long = callLong("activeConnections")
 
+    override fun acceptedConnections(): Long = callLong("acceptedConnections")
+
+    override fun handshakeFailures(): Long = callLong("handshakeFailures")
+
+    override fun authFailures(): Long = callLong("authFailures")
+
     override fun submittedFrames(): Long = callLong("submittedFrames")
 
     override fun droppedFrames(): Long = callLong("droppedFrames")

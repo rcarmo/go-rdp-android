@@ -23,6 +23,9 @@ interface RdpBackend {
     fun listenAddress(): String
     fun tlsFingerprintSha256(): String
     fun activeConnections(): Long
+    fun acceptedConnections(): Long
+    fun handshakeFailures(): Long
+    fun authFailures(): Long
     fun submittedFrames(): Long
     fun droppedFrames(): Long
     fun queuedFrames(): Long

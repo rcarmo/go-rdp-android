@@ -158,6 +158,36 @@ func (s *Server) ActiveConnections() int64 {
 	return s.server.ActiveConnections()
 }
 
+// AcceptedConnections returns the total number of accepted TCP sessions for the running server.
+func (s *Server) AcceptedConnections() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.AcceptedConnections()
+}
+
+// HandshakeFailures returns the total number of pre-auth handshake failures for the running server.
+func (s *Server) HandshakeFailures() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.HandshakeFailures()
+}
+
+// AuthFailures returns the total number of auth failures for the running server.
+func (s *Server) AuthFailures() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.AuthFailures()
+}
+
 // SubmittedFrames returns the number of frames accepted by the bounded queue.
 func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
 
@@ -192,6 +222,15 @@ func Addr() string { return defaultServer.Addr() }
 
 // ActiveConnections returns the active connection count for the default server.
 func ActiveConnections() int64 { return defaultServer.ActiveConnections() }
+
+// AcceptedConnections returns the accepted connection count for the default server.
+func AcceptedConnections() int64 { return defaultServer.AcceptedConnections() }
+
+// HandshakeFailures returns the handshake failure count for the default server.
+func HandshakeFailures() int64 { return defaultServer.HandshakeFailures() }
+
+// AuthFailures returns the auth failure count for the default server.
+func AuthFailures() int64 { return defaultServer.AuthFailures() }
 
 // SubmittedFrames returns the number of frames accepted by the default server queue.
 func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }

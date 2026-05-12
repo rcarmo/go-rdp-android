@@ -34,8 +34,11 @@ type Server struct {
 
 	tlsConfig      *tls.Config
 	tlsFingerprint string
-	authLimiter    *authBackoffLimiter
-	activeConns    atomic.Int64
+	authLimiter       *authBackoffLimiter
+	activeConns       atomic.Int64
+	acceptedConns     atomic.Int64
+	handshakeFailures atomic.Int64
+	authFailures      atomic.Int64
 
 	mu sync.Mutex
 	ln net.Listener
@@ -122,16 +125,28 @@ func (s *Server) TLSFingerprintSHA256() string { return s.tlsFingerprint }
 // ActiveConnections returns the number of currently accepted TCP sessions.
 func (s *Server) ActiveConnections() int64 { return s.activeConns.Load() }
 
+// AcceptedConnections returns the total number of accepted TCP sessions.
+func (s *Server) AcceptedConnections() int64 { return s.acceptedConns.Load() }
+
+// HandshakeFailures returns the total number of pre-auth handshake failures.
+func (s *Server) HandshakeFailures() int64 { return s.handshakeFailures.Load() }
+
+// AuthFailures returns the total number of authentication or auth-policy failures.
+func (s *Server) AuthFailures() int64 { return s.authFailures.Load() }
+
 func (s *Server) handleConn(conn net.Conn) {
 	s.activeConns.Add(1)
+	s.acceptedConns.Add(1)
 	defer s.activeConns.Add(-1)
 	defer conn.Close()
 	if !s.cfg.Policy.remoteAllowed(conn.RemoteAddr()) {
+		s.authFailures.Add(1)
 		log.Printf("rdp connection denied by CIDR policy from %s", conn.RemoteAddr())
 		return
 	}
 	info, secureConn, err := performInitialHandshakeWithModeAndTLS(conn, s.cfg.Policy.SecurityMode, s.tlsConfig)
 	if err != nil {
+		s.handshakeFailures.Add(1)
 		log.Printf("rdp initial handshake failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
@@ -140,11 +155,13 @@ func (s *Server) handleConn(conn net.Conn) {
 	if info.SelectedProtocol == protocolHybrid {
 		remote := remoteHost(conn.RemoteAddr())
 		if wait := s.authLimiter.lockoutRemaining(remote, ""); wait > 0 {
+			s.authFailures.Add(1)
 			log.Printf("rdp NLA/CredSSP locked out from %s: retry in %s", conn.RemoteAddr(), wait.Round(time.Second))
 			return
 		}
 		clientInfo, err := performCredSSPWithBindings(conn, s.cfg.Authenticator, info.TLSPublicKeyCandidates)
 		if err != nil {
+			s.authFailures.Add(1)
 			wait := s.authLimiter.recordFailure(remote, "")
 			if wait > 0 {
 				log.Printf("rdp NLA/CredSSP failed from %s: %v (retry in %s)", conn.RemoteAddr(), err, wait.Round(time.Second))
@@ -155,6 +172,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		}
 		s.authLimiter.recordSuccess(remote, "")
 		if err := s.checkAndRecordAuthPolicy(remote, clientInfo.UserName, s.cfg.Policy.userAllowed(clientInfo.UserName)); err != nil {
+			s.authFailures.Add(1)
 			log.Printf("rdp NLA/CredSSP denied from %s: user=%q err=%v", conn.RemoteAddr(), sanitizeForLog(clientInfo.UserName, 64), err)
 			return
 		}

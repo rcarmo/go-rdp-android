@@ -14,8 +14,11 @@ import (
 
 var required = map[string]map[string]string{
 	"mobile/Mobile.class": {
+		"acceptedConnections":  "()J",
 		"activeConnections":    "()J",
+		"authFailures":         "()J",
 		"droppedFrames":        "()J",
+		"handshakeFailures":    "()J",
 		"queuedFrames":         "()J",
 		"submittedFrames":      "()J",
 		"addr":                 "()Ljava/lang/String;",
@@ -34,8 +37,11 @@ var required = map[string]map[string]string{
 		"touchContact":  "(JJJJ)V",
 	},
 	"mobile/Server.class": {
+		"acceptedConnections":  "()J",
 		"activeConnections":    "()J",
+		"authFailures":         "()J",
 		"droppedFrames":        "()J",
+		"handshakeFailures":    "()J",
 		"queuedFrames":         "()J",
 		"submittedFrames":      "()J",
 		"addr":                 "()Ljava/lang/String;",

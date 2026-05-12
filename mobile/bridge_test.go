@@ -1,6 +1,7 @@
 package mobile
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -192,6 +193,18 @@ func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	}
 	if srv.SubmittedFrames() != 1 || srv.DroppedFrames() != 0 || srv.QueuedFrames() != 1 {
 		t.Fatalf("unexpected server frame stats submitted=%d dropped=%d queued=%d", srv.SubmittedFrames(), srv.DroppedFrames(), srv.QueuedFrames())
+	}
+	conn, err := net.Dial("tcp", srv.Addr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+	deadline = time.Now().Add(time.Second)
+	for srv.AcceptedConnections() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if srv.AcceptedConnections() != 1 {
+		t.Fatalf("expected accepted connection counter, got %d", srv.AcceptedConnections())
 	}
 	if err := srv.SubmitFrame(1, 1, 2, 2, []byte{1, 2}); err == nil {
 		t.Fatal("expected unsupported pixel stride")
