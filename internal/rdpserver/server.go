@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -189,6 +190,7 @@ func (s *Server) handleConn(conn net.Conn) {
 
 	mcsInfo, err := readMCSConnectInitial(conn)
 	if err != nil {
+		s.handshakeFailures.Add(1)
 		log.Printf("rdp MCS Connect-Initial failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
@@ -208,12 +210,18 @@ func (s *Server) handleConn(conn net.Conn) {
 		sessionHeight,
 	)
 	if err := writeMCSConnectResponse(conn, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+		s.handshakeFailures.Add(1)
 		log.Printf("rdp MCS Connect-Response failed to %s: %v", conn.RemoteAddr(), err)
 		return
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
 	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels); err != nil {
+		if strings.Contains(err.Error(), "auth failed") {
+			s.authFailures.Add(1)
+		} else {
+			s.handshakeFailures.Add(1)
+		}
 		log.Printf("rdp MCS domain sequence failed from %s: %v", conn.RemoteAddr(), err)
 		return
 	}
