@@ -13,7 +13,7 @@ type countingInputSink struct {
 }
 
 func (s *countingInputSink) PointerMove(x, y int) error {
-	s.inputEvents.Add(1)
+	s.recordInputEvent()
 	if s.sink == nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ func (s *countingInputSink) PointerMove(x, y int) error {
 }
 
 func (s *countingInputSink) PointerButton(x, y int, buttons input.ButtonState, down bool) error {
-	s.inputEvents.Add(1)
+	s.recordInputEvent()
 	if s.sink == nil {
 		return nil
 	}
@@ -29,7 +29,7 @@ func (s *countingInputSink) PointerButton(x, y int, buttons input.ButtonState, d
 }
 
 func (s *countingInputSink) Key(scancode uint16, down bool) error {
-	s.inputEvents.Add(1)
+	s.recordInputEvent()
 	if s.sink == nil {
 		return nil
 	}
@@ -37,7 +37,7 @@ func (s *countingInputSink) Key(scancode uint16, down bool) error {
 }
 
 func (s *countingInputSink) Unicode(r rune) error {
-	s.inputEvents.Add(1)
+	s.recordInputEvent()
 	if s.sink == nil {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (s *countingInputSink) Unicode(r rune) error {
 }
 
 func (s *countingInputSink) PointerWheel(x, y int, delta int, horizontal bool) error {
-	s.inputEvents.Add(1)
+	s.recordInputEvent()
 	if s.sink == nil {
 		return nil
 	}
@@ -56,8 +56,8 @@ func (s *countingInputSink) PointerWheel(x, y int, delta int, horizontal bool) e
 }
 
 func (s *countingInputSink) TouchFrame(contacts []input.TouchContact) error {
-	s.inputEvents.Add(1)
-	s.rdpeiContacts.Add(int64(len(contacts)))
+	s.recordInputEvent()
+	s.recordRDPEIContacts(len(contacts))
 	if s.sink == nil {
 		return nil
 	}
@@ -65,4 +65,16 @@ func (s *countingInputSink) TouchFrame(contacts []input.TouchContact) error {
 		return touchSink.TouchFrame(contacts)
 	}
 	return nil
+}
+
+func (s *countingInputSink) recordInputEvent() {
+	if s.inputEvents != nil {
+		s.inputEvents.Add(1)
+	}
+}
+
+func (s *countingInputSink) recordRDPEIContacts(count int) {
+	if s.rdpeiContacts != nil {
+		s.rdpeiContacts.Add(int64(count))
+	}
 }

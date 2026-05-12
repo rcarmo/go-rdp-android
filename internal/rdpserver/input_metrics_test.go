@@ -12,10 +12,10 @@ type metricsRecordingSink struct {
 	touches int
 }
 
-func (s *metricsRecordingSink) PointerMove(_, _ int) error { return nil }
+func (s *metricsRecordingSink) PointerMove(_, _ int) error                                { return nil }
 func (s *metricsRecordingSink) PointerButton(_, _ int, _ input.ButtonState, _ bool) error { return nil }
-func (s *metricsRecordingSink) Key(_ uint16, _ bool) error { return nil }
-func (s *metricsRecordingSink) Unicode(_ rune) error { return nil }
+func (s *metricsRecordingSink) Key(_ uint16, _ bool) error                                { return nil }
+func (s *metricsRecordingSink) Unicode(_ rune) error                                      { return nil }
 func (s *metricsRecordingSink) PointerWheel(_, _ int, _ int, _ bool) error {
 	s.wheels++
 	return nil
@@ -37,6 +37,16 @@ func TestCountingInputSinkAllowsNilSink(t *testing.T) {
 	}
 	if events.Load() != 2 || contacts.Load() != 1 {
 		t.Fatalf("unexpected nil-sink metrics events=%d contacts=%d", events.Load(), contacts.Load())
+	}
+}
+
+func TestCountingInputSinkAllowsNilCounters(t *testing.T) {
+	sink := &countingInputSink{}
+	if err := sink.PointerMove(1, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := sink.TouchFrame([]input.TouchContact{{ID: 1}}); err != nil {
+		t.Fatal(err)
 	}
 }
 
