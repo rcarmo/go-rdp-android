@@ -6,12 +6,15 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
+import java.net.NetworkInterface
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.capture.ScreenCaptureManager
 import io.carmo.go.rdp.android.settings.RdpServerMode
@@ -22,8 +25,15 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     private var testPatternThread: HandlerThread? = null
     private var testPatternHandler: Handler? = null
     private var testPatternFrame = 0
+    @Volatile private var activeMode: String = "stopped"
+    private var networkCallbackRegistered = false
     private val lifecycleLock = Any()
     private lateinit var settingsStore: RdpSettingsStore
+    private lateinit var connectivityManager: ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = onNetworkChanged("available", network)
+        override fun onLost(network: Network) = onNetworkChanged("lost", network)
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -31,7 +41,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         super.onCreate()
         createChannel()
         settingsStore = RdpSettingsStore(this)
+        connectivityManager = getSystemService(ConnectivityManager::class.java)
         captureManager = ScreenCaptureManager(this, this)
+        registerNetworkCallback()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -42,6 +54,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                 captureManager?.stop()
                 stopTestPattern()
                 NativeRdpBridge.stopServer()
+                activeMode = "stopped"
                 stopForeground(STOP_FOREGROUND_REMOVE)
             }
             stopSelfResult(startId)
@@ -61,12 +74,14 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
+            activeMode = "stopped"
             startForeground(NOTIFICATION_ID, notification("missing credentials"))
             stopSelfResult(startId)
             return START_NOT_STICKY
         }
         startForeground(NOTIFICATION_ID, notification(mode))
         synchronized(lifecycleLock) {
+            activeMode = mode
             captureManager?.stop()
             stopTestPattern()
             NativeRdpBridge.stopServer()
@@ -109,7 +124,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             captureManager = null
             stopTestPattern()
             NativeRdpBridge.stopServer()
+            activeMode = "stopped"
         }
+        unregisterNetworkCallback()
         super.onDestroy()
     }
 
@@ -121,6 +138,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         Log.i(TAG, "MediaProjection stopped")
         synchronized(lifecycleLock) {
             settingsStore.saveLastMode(RdpServerMode.NONE)
+            activeMode = "stopped"
             stopForeground(STOP_FOREGROUND_REMOVE)
         }
         stopSelf()
@@ -184,7 +202,45 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         else -> "no frame source"
     }
 
-    private fun notification(mode: String): Notification {
+    private fun registerNetworkCallback() {
+        if (networkCallbackRegistered) return
+        runCatching {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            networkCallbackRegistered = true
+        }.onFailure { Log.w(TAG, "register network callback failed", it) }
+    }
+
+    private fun unregisterNetworkCallback() {
+        if (!networkCallbackRegistered) return
+        runCatching { connectivityManager.unregisterNetworkCallback(networkCallback) }
+            .onFailure { Log.w(TAG, "unregister network callback failed", it) }
+        networkCallbackRegistered = false
+    }
+
+    private fun onNetworkChanged(event: String, network: Network) {
+        val addresses = localIPv4Addresses().ifEmpty { listOf("no IPv4 address") }.joinToString()
+        Log.i(TAG, "Network $event: $network local=$addresses")
+        if (activeMode != "stopped") {
+            runCatching {
+                getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(activeMode, addresses))
+            }.onFailure { Log.w(TAG, "network notification refresh failed", it) }
+        }
+    }
+
+    private fun localIPv4Addresses(): List<String> = runCatching {
+        NetworkInterface.getNetworkInterfaces().asSequence()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.asSequence() }
+            .map { it.hostAddress.orEmpty() }
+            .filter { it.isNotBlank() && !it.contains(':') }
+            .toList()
+            .sorted()
+    }.getOrElse { emptyList() }
+
+    private fun notification(
+        mode: String,
+        addresses: String = localIPv4Addresses().ifEmpty { listOf("no IPv4 address") }.joinToString(),
+    ): Notification {
         val stopIntent = Intent(this, RdpForegroundService::class.java).apply { action = ACTION_STOP }
         val stopPendingIntent = PendingIntent.getService(
             this,
@@ -192,9 +248,11 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val text = "RDP server: $mode • $addresses"
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("go-rdp-android")
-            .setContentText("RDP server running: $mode")
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
             .setSmallIcon(android.R.drawable.presence_online)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
