@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -92,8 +93,9 @@ func TestDRDYNVCVariableLengthChannelIDs(t *testing.T) {
 }
 
 func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
+	var dvcFragments atomic.Int64
 	sink := &recordingTouchSink{}
-	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink, serverMetrics{})
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, sink, serverMetrics{dvcFragments: &dvcFragments})
 
 	capsServer, capsClient := net.Pipe()
 	defer capsServer.Close()
@@ -174,6 +176,9 @@ func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
 	}
 	if len(m.fragments) != 0 {
 		t.Fatalf("fragments not cleared after integration sequence: %#v", m.fragments)
+	}
+	if dvcFragments.Load() != 2 {
+		t.Fatalf("expected two DVC fragments, got %d", dvcFragments.Load())
 	}
 	if len(sink.frames) != 2 || sink.frames[0][0].Flags&input.TouchDown == 0 || sink.frames[1][0].Flags&input.TouchUp == 0 {
 		t.Fatalf("expected down/up touch frames, got %#v", sink.frames)
