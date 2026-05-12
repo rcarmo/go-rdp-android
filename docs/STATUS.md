@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-11
-Current evidence commit: `5a89159` (`Fix Android lifecycle audit findings`)
-Latest referenced CI run: `25703615390` (`main` CI, success)
+Last updated: 2026-05-12
+Current evidence commit: `df621ec` (`Guide users when Accessibility input is disabled`)
+Latest referenced CI run: `25715828923` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25703615390`:
+Latest checked artifact from CI run `25715828923`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
