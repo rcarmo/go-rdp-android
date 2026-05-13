@@ -27,7 +27,7 @@ Default push/PR CI runs without a physical Android device:
 - Go race tests and short parser fuzz smoke.
 - gosec static security scan (currently excluding `G115` cast-noise with findings triaged and documented).
 - Mock server + probe TCP smoke test.
-- TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection.
+- TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection and an `auth-summary.md` artifact that records expected success/failure outcomes.
 - Protocol packet trace artifact from the probe, including client/server hex dumps, logs, JSON/Markdown probe summaries, and an RDP screenshot from bitmap updates.
 - Normal Android debug APK build and APK structure inspection.
 - `gomobile bind` AAR generation.

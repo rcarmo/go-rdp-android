@@ -143,6 +143,18 @@ jobs:
           echo "$nla_bad_status" > test-artifacts/auth/probe-nla-bad-exit-code.txt
           test "$bad_status" -ne 0
           test "$nla_bad_status" -ne 0
+          cat >test-artifacts/auth/auth-summary.md <<EOF
+          # Authentication smoke summary
+
+          | Probe | Expected | Exit code | Artifact |
+          | --- | --- | ---: | --- |
+          | TLS Client Info good password | success | 0 | \`probe-good-summary.md\` |
+          | Hybrid/NLA good password | success | 0 | \`probe-nla-good-summary.md\` |
+          | TLS Client Info bad password | failure | $bad_status | \`probe-bad.log\` |
+          | Hybrid/NLA bad password | failure | $nla_bad_status | \`probe-nla-bad.log\` |
+
+          Server log: \`mock-server.log\`
+          EOF
           grep -q 'selected=0x00000001' test-artifacts/auth/mock-server.log
           grep -q 'selected=0x00000002' test-artifacts/auth/mock-server.log
           grep -q 'auth failed' test-artifacts/auth/mock-server.log

@@ -48,6 +48,7 @@ For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The pro
 - `rdp-screenshot.png`
 - `protocol-trace/index.txt`
 - `mock-server.log`
+- `../auth/auth-summary.md` plus `probe-good.log`, `probe-nla-good.log`, `probe-bad.log`, and `probe-nla-bad.log` for authentication smoke details.
 
 Enable server trace logs:
 
