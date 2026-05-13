@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-13
-Current evidence commit: `b68a007` (`Refresh status after backpressure docs`)
-Latest referenced CI run: `25787847721` (`main` CI, success)
+Current evidence commit: `0520e77` (`Avoid persisting failed native start mode`)
+Latest referenced CI run: `25789820728` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25787847721`:
+Latest checked artifact from CI run `25789820728`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

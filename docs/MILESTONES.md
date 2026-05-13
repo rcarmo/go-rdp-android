@@ -73,7 +73,7 @@ Tasks:
 
 - TLS and pairing/password auth ✅ (static credentials, bcrypt TLS Client Info, cert persistence/rotation/fingerprint)
 - Hybrid/NLA CredSSP auth ✅ (experimental, FreeRDP-gated)
-- foreground notification controls ✅ (foreground start for all server modes, serialized mode switching, notification/UI Stop action, permission-denial cleanup, projection-revocation shutdown, non-sticky restart policy)
+- foreground notification controls ✅ (foreground start for all server modes, serialized mode switching, notification/UI Stop action, permission-denial cleanup, projection-revocation shutdown, non-sticky restart policy, native-start failure teardown)
 - reconnect handling
-- settings UI ✅/partial (credentials, capture scale, last mode, start/stop, compact health; security controls pending)
+- settings UI ✅/partial (credentials, capture scale, last mode, start/stop, compact health, failed-start last-mode reset; security controls pending)
 - optional live CI smoke tests with emulator ✅
