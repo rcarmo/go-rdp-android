@@ -86,23 +86,25 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             captureManager?.stop()
             stopTestPattern()
             NativeRdpBridge.stopServer()
-            settingsStore.save(savedSettings.copy(
-                captureScale = captureScale,
-                lastMode = when {
-                    hasProjection -> RdpServerMode.SCREEN_CAPTURE
-                    testPattern -> RdpServerMode.TEST_PATTERN
-                    else -> RdpServerMode.NONE
-                },
-            ))
+            val requestedMode = when {
+                hasProjection -> RdpServerMode.SCREEN_CAPTURE
+                testPattern -> RdpServerMode.TEST_PATTERN
+                else -> RdpServerMode.NONE
+            }
             NativeRdpBridge.setCredentials(username, password)
             NativeRdpBridge.setInputCoordinateScale(captureScale)
             if (!NativeRdpBridge.startServer(3390, mode)) {
                 Log.e(TAG, "Native RDP server failed to start")
                 activeMode = "stopped"
+                settingsStore.save(savedSettings.copy(lastMode = RdpServerMode.NONE))
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelfResult(startId)
                 return START_NOT_STICKY
             }
+            settingsStore.save(savedSettings.copy(
+                captureScale = captureScale,
+                lastMode = requestedMode,
+            ))
 
             when {
                 hasProjection && data != null -> {
