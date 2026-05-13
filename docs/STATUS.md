@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-13
-Current evidence commit: `8e6c5dd` (`Clarify backpressure validation status`)
-Latest referenced CI run: `25787456633` (`main` CI, success)
+Current evidence commit: `b68a007` (`Refresh status after backpressure docs`)
+Latest referenced CI run: `25787847721` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25787456633`:
+Latest checked artifact from CI run `25787847721`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -59,7 +59,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
 - Security defaults are not production-safe yet: threat model is documented in `docs/THREAT_MODEL.md`, but Android UI controls for security mode/allowlists/backoff/fingerprint display are still pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
-- Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending, and layered backpressure still needs real-device/constrained-network validation.
+- Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending. Prototype layered backpressure is implemented, but still needs real-device/constrained-network validation.
 
 ## Documentation update policy
 
