@@ -32,8 +32,8 @@ type Server struct {
 	frames frame.Source
 	input  input.Sink
 
-	tlsConfig      *tls.Config
-	tlsFingerprint string
+	tlsConfig         *tls.Config
+	tlsFingerprint    string
 	authLimiter       *authBackoffLimiter
 	activeConns       atomic.Int64
 	acceptedConns     atomic.Int64
@@ -85,6 +85,8 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	s.mu.Lock()
 	s.ln = ln
 	s.mu.Unlock()
+	ctxWatcherDone := make(chan struct{})
+	defer close(ctxWatcherDone)
 	defer func() {
 		_ = ln.Close()
 		s.mu.Lock()
@@ -95,8 +97,11 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	}()
 
 	go func() {
-		<-ctx.Done()
-		_ = ln.Close()
+		select {
+		case <-ctx.Done():
+			_ = ln.Close()
+		case <-ctxWatcherDone:
+		}
 	}()
 
 	for {
