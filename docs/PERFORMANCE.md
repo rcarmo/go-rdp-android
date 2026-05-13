@@ -42,6 +42,14 @@ GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench BenchmarkBu
 
 It currently covers 320x240, 1280x720, and 1920x1080 RGBA input frames, reports allocations, and is intended for before/after comparisons when changing tile size, dirty-region logic, compression, or scaling. It is not a CI gate because shared runners are too noisy for stable absolute performance thresholds.
 
+Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-12700`, `benchtime=3x`, commit `36d8d6e`):
+
+| Input size | Time/op | Throughput | Allocated/op | Allocs/op |
+| ---: | ---: | ---: | ---: | ---: |
+| 320x240 | 0.858 ms | 358 MB/s | 0.49 MB | 73 |
+| 1280x720 | 10.02 ms | 368 MB/s | 5.91 MB | 1053 |
+| 1920x1080 | 25.11 ms | 330 MB/s | 13.28 MB | 2537 |
+
 ## Probe metrics
 
 `cmd/probe` records:
@@ -107,5 +115,5 @@ Performance workstreams:
 2. **Adaptive probe/session mode** to keep one RDP connection open while driving navigation, measuring incremental scene changes rather than reconnecting for every screenshot. Status: implemented and validated as the default Go-backed MediaProjection CI path via `cmd/probe -scene-plan`.
 3. **Capture pacing/backpressure** so MediaProjection does not copy frames faster than the RDP encoder can drain them. Status: first pass implemented and emulator-validated with adaptive capture interval based on bridge submission time plus capture telemetry; CI run `25246333819` stayed green and browser scene fell to 302 dirty updates.
 4. **Optional downscale mode** for low-bandwidth viewing. Status: implemented and emulator-validated as `emulator_capture_scale` / `capture_scale` plumbing through CI, Android intent extras, and MediaProjection virtual display sizing; scale=2 run `25247259184` captured 540x1200 frames with 105 full-frame tiles and 2.59 MB/frame payload.
-5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: started with a compatibility-safe 24-bit BGR bitmap encoder; RLE/RDPGFX negotiation and compressed bitmap streams are still pending.
+5. **Compression/RDPGFX** once the slow-path baseline is stable. Status: started with a compatibility-safe 24-bit BGR bitmap encoder; local 320x240/1280x720/1920x1080 benchmark baselines are now recorded above; RLE/RDPGFX negotiation and compressed bitmap streams are still pending.
 6. **H.264/AVC video path** using Android hardware encoding where possible. Status: not started. This should be tracked separately from bitmap/RDPGFX work because it changes the capture pipeline from `ImageReader` RGBA frames toward encoder surfaces or RGBA-to-encoder conversion, and it requires client/protocol capability negotiation for video-oriented graphics updates.
