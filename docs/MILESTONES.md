@@ -36,7 +36,7 @@ Tasks:
 - continuous frame streaming loop ✅ (frame.Source-backed)
 - slow-path keyboard/mouse input decoding ✅
 - basic capability exchange ✅
-- one-session state machine ✅
+- one-session state machine ✅ (listener address cleanup and context-watcher shutdown covered)
 
 ## M2 — Android frame bridge
 
