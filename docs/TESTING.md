@@ -164,6 +164,6 @@ Still requires real Android hardware validation:
 
 - MediaProjection behavior outside emulator.
 - AccessibilityService enablement and actual gesture/key injection UX.
-- Real touch latency and sustained frame pacing.
+- Real touch latency and sustained frame pacing/backpressure under screen changes and constrained networks.
 - Network reachability from a separate RDP client device.
 - Rotation, screen lock, protected content, OEM restrictions.

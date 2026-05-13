@@ -168,7 +168,7 @@ Tag behavior:
 3. **Performance workstreams**
    - Continue dirty-tile suppression improvements.
    - Keep single RDP sessions open for UX navigation and incremental metrics.
-   - Refine capture pacing/backpressure.
+   - Capture pacing/backpressure now has the first production-oriented layers in place: Android adaptive capture interval, bounded queue drops, and server-side queued-frame coalescing; remaining validation is on real devices and constrained networks.
    - Expand downscale/quality modes.
    - Investigate compressed bitmap/RDPGFX updates.
    - Investigate H.264/AVC with Android hardware encoding.

@@ -59,7 +59,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
 - Security defaults are not production-safe yet: threat model is documented in `docs/THREAT_MODEL.md`, but Android UI controls for security mode/allowlists/backoff/fingerprint display are still pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
-- Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending.
+- Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending, and layered backpressure still needs real-device/constrained-network validation.
 
 ## Documentation update policy
 
