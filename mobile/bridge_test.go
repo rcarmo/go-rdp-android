@@ -196,6 +196,33 @@ func TestMobileServerCredentials(t *testing.T) {
 	}
 }
 
+func TestMobileServerSubmitFrameValidation(t *testing.T) {
+	srv := NewServer()
+	cases := []struct {
+		name        string
+		width       int
+		height      int
+		pixelStride int
+		rowStride   int
+		data        []byte
+	}{
+		{name: "zero width", width: 0, height: 1, pixelStride: 4, rowStride: 4, data: []byte{1, 2, 3, 4}},
+		{name: "unsupported pixel stride", width: 1, height: 1, pixelStride: 2, rowStride: 2, data: []byte{1, 2}},
+		{name: "short row stride", width: 2, height: 1, pixelStride: 4, rowStride: 4, data: make([]byte, 8)},
+		{name: "short data", width: 2, height: 2, pixelStride: 4, rowStride: 8, data: make([]byte, 15)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := srv.SubmitFrame(tc.width, tc.height, tc.pixelStride, tc.rowStride, tc.data); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+	}
+	if srv.SubmittedFrames() != 0 || srv.QueuedFrames() != 0 {
+		t.Fatalf("invalid frames should not be queued submitted=%d queued=%d", srv.SubmittedFrames(), srv.QueuedFrames())
+	}
+}
+
 func TestMobileServerStartReportsListenError(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

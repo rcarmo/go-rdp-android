@@ -125,8 +125,29 @@ func (s *Server) Stop() error {
 
 // SubmitFrame queues an Android RGBA_8888 frame for the RDP server.
 func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error {
+	if width <= 0 || height <= 0 {
+		return errors.New("frame dimensions must be positive")
+	}
 	if pixelStride != 4 {
 		return fmt.Errorf("unsupported pixel stride %d", pixelStride)
+	}
+	maxInt := int(^uint(0) >> 1)
+	if width > maxInt/pixelStride {
+		return errors.New("frame row stride overflows")
+	}
+	minRowStride := width * pixelStride
+	if rowStride < minRowStride {
+		return fmt.Errorf("row stride %d is smaller than minimum %d", rowStride, minRowStride)
+	}
+	if rowStride > maxInt/height {
+		return errors.New("frame byte size overflows")
+	}
+	minBytes := rowStride * height
+	if height != 0 && minBytes/height != rowStride {
+		return errors.New("frame byte size overflows")
+	}
+	if len(data) < minBytes {
+		return fmt.Errorf("frame data too short: got %d bytes, need at least %d", len(data), minBytes)
 	}
 	return s.frames.Submit(frame.Frame{
 		Width:     width,
