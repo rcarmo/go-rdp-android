@@ -71,11 +71,8 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 	if src.Width <= 0 || src.Height <= 0 || len(src.Data) == 0 {
 		return nil, false
 	}
-	stride := src.Stride
-	if stride <= 0 {
-		stride = src.Width * 4
-	}
-	if len(src.Data) < stride*src.Height {
+	stride, ok := normalizedFrameStride(src)
+	if !ok {
 		return nil, false
 	}
 	if src.Format != frame.PixelFormatRGBA8888 && src.Format != frame.PixelFormatBGRA8888 {
@@ -152,6 +149,28 @@ func hashBytes(data []byte) uint64 {
 	h := fnv.New64a()
 	_, _ = h.Write(data)
 	return h.Sum64()
+}
+
+func normalizedFrameStride(src frame.Frame) (int, bool) {
+	if src.Width <= 0 || src.Height <= 0 {
+		return 0, false
+	}
+	maxInt := int(^uint(0) >> 1)
+	if src.Width > maxInt/4 {
+		return 0, false
+	}
+	minStride := src.Width * 4
+	stride := src.Stride
+	if stride <= 0 {
+		stride = minStride
+	}
+	if stride < minStride || stride > maxInt/src.Height {
+		return 0, false
+	}
+	if len(src.Data) < stride*src.Height {
+		return 0, false
+	}
+	return stride, true
 }
 
 func minInt(a, b int) int {

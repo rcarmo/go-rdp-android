@@ -44,6 +44,38 @@ func TestBuildFrameBitmapUpdateRGBA(t *testing.T) {
 	}
 }
 
+func TestBuildFrameBitmapUpdatesRejectsInvalidGeometry(t *testing.T) {
+	maxInt := int(^uint(0) >> 1)
+	cases := []struct {
+		name string
+		fr   frame.Frame
+	}{
+		{
+			name: "short row stride",
+			fr:   frame.Frame{Width: 2, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 8)},
+		},
+		{
+			name: "short data",
+			fr:   frame.Frame{Width: 2, Height: 2, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 15)},
+		},
+		{
+			name: "width overflow",
+			fr:   frame.Frame{Width: maxInt/4 + 1, Height: 1, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 16)},
+		},
+		{
+			name: "byte size overflow",
+			fr:   frame.Frame{Width: 1, Height: maxInt/4 + 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 16)},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if updates, ok := buildFrameBitmapUpdates(tc.fr); ok || updates != nil {
+				t.Fatalf("expected invalid frame to be rejected, ok=%v updates=%d", ok, len(updates))
+			}
+		})
+	}
+}
+
 func TestAlignedBitmapRowBytes(t *testing.T) {
 	if got := alignedBitmapRowBytes(1, bitmapBPP24); got != 4 {
 		t.Fatalf("expected one 24bpp pixel to align to 4 bytes, got %d", got)
