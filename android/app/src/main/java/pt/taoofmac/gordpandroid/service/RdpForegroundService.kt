@@ -96,7 +96,13 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             ))
             NativeRdpBridge.setCredentials(username, password)
             NativeRdpBridge.setInputCoordinateScale(captureScale)
-            NativeRdpBridge.startServer(3390, mode)
+            if (!NativeRdpBridge.startServer(3390, mode)) {
+                Log.e(TAG, "Native RDP server failed to start")
+                activeMode = "stopped"
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
 
             when {
                 hasProjection && data != null -> {

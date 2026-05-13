@@ -33,13 +33,21 @@ object NativeRdpBridge : RdpInputCallbacks {
         backend.setCredentials(username, password)
     }
 
-    fun startServer(port: Int, mode: String) {
+    fun startServer(port: Int, mode: String): Boolean {
         frameCount.set(0)
-        running.set(true)
-        lastMode = mode
+        running.set(false)
+        lastMode = "starting"
         backend.setInputCallbacks(this)
-        backend.startServer(port)
-        Log.i(TAG, "startServer(port=$port, mode=$mode, backend=${backend.name})")
+        val started = backend.startServer(port)
+        if (started) {
+            running.set(true)
+            lastMode = mode
+            Log.i(TAG, "startServer(port=$port, mode=$mode, backend=${backend.name})")
+        } else {
+            lastMode = "stopped"
+            Log.w(TAG, "startServer failed(port=$port, mode=$mode, backend=${backend.name})")
+        }
+        return started
     }
 
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {

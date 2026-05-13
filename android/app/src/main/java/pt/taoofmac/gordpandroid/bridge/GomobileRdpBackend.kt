@@ -40,9 +40,9 @@ class GomobileRdpBackend : RdpBackend {
         invoke(method, username, password)
     }
 
-    override fun startServer(port: Int) {
-        val method = findMethod(mobileClass ?: return, "startServer", 1) ?: return
-        invoke(method, port)
+    override fun startServer(port: Int): Boolean {
+        val method = findMethod(mobileClass ?: return false, "startServer", 1) ?: return false
+        return invoke(method, port)
     }
 
     override fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {
@@ -97,10 +97,11 @@ class GomobileRdpBackend : RdpBackend {
             .getOrDefault(0)
     }
 
-    private fun invoke(method: Method, vararg args: Any) {
+    private fun invoke(method: Method, vararg args: Any): Boolean {
         val coerced = method.parameterTypes.mapIndexed { index, type -> coerce(args[index], type) }.toTypedArray()
-        runCatching { method.invoke(null, *coerced) }
+        return runCatching { method.invoke(null, *coerced); true }
             .onFailure { Log.w(TAG, "${method.name} failed", it) }
+            .getOrDefault(false)
     }
 
     private fun coerce(value: Any, type: Class<*>): Any = when {

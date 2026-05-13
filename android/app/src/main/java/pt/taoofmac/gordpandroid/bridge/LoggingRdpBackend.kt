@@ -21,7 +21,7 @@ class LoggingRdpBackend : RdpBackend {
         Log.i(TAG, "setCredentials(user=${username.ifEmpty { "<empty>" }}, passSet=${password.isNotEmpty()}) [$name]")
     }
 
-    override fun startServer(port: Int) {
+    override fun startServer(port: Int): Boolean {
         if (running.compareAndSet(false, true)) {
             this.port = port
             frameCount.set(0)
@@ -29,6 +29,7 @@ class LoggingRdpBackend : RdpBackend {
         } else {
             Log.i(TAG, "startServer ignored; already running [$name]")
         }
+        return true
     }
 
     override fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {
