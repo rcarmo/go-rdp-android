@@ -82,7 +82,9 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 	if cache == nil {
 		cache = newBitmapTileCache()
 	}
-	for fr := range frames.Frames() {
+	frameCh := frames.Frames()
+	for fr := range frameCh {
+		fr = latestAvailableFrame(frameCh, fr)
 		updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, true, width, height)
 		if !ok || len(updates) == 0 {
 			continue
@@ -92,6 +94,21 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 			return
 		}
 		metrics.recordBitmapFrame(updates)
+	}
+}
+
+func latestAvailableFrame(frameCh <-chan frame.Frame, current frame.Frame) frame.Frame {
+	latest := current
+	for {
+		select {
+		case fr, ok := <-frameCh:
+			if !ok {
+				return latest
+			}
+			latest = fr
+		default:
+			return latest
+		}
 	}
 }
 

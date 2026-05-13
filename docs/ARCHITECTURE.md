@@ -145,7 +145,7 @@ Performance controls currently include:
 
 - Dirty-tile suppression.
 - Single-session scene capture in CI.
-- Adaptive capture pacing/backpressure.
+- Adaptive capture pacing/backpressure: Kotlin throttles MediaProjection copies based on bridge submission time, the bounded Go queue drops old frames when full, and the RDP stream loop coalesces queued backlog to the latest frame before encoding so slow clients do not force stale-frame catch-up work.
 - Optional capture downscale (`capture_scale`, `emulator_capture_scale`).
 
 Planned graphics paths include compressed bitmap/RDPGFX and H.264/AVC. Those are separate workstreams because they require different protocol negotiation and, in the H.264 case, likely a MediaCodec/encoder-surface capture path.
