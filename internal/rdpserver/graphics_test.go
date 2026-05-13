@@ -44,6 +44,50 @@ func TestBuildFrameBitmapUpdateRGBA(t *testing.T) {
 	}
 }
 
+func TestBuildFrameBitmapUpdateHandlesStrideConversionAlphaAndAlignment(t *testing.T) {
+	payload, ok := buildFrameBitmapUpdate(frame.Frame{
+		Width:  2,
+		Height: 2,
+		Stride: 12,
+		Format: frame.PixelFormatRGBA8888,
+		Data: []byte{
+			0x10, 0x20, 0x30, 0xaa, 0x40, 0x50, 0x60, 0xbb, 0xee, 0xee, 0xee, 0xee,
+			0x70, 0x80, 0x90, 0xcc, 0xa0, 0xb0, 0xc0, 0xdd, 0xff, 0xff, 0xff, 0xff,
+		},
+	})
+	if !ok {
+		t.Fatal("expected padded RGBA frame conversion")
+	}
+	const bitmapDataOffset = 4 + 18
+	data := payload[bitmapDataOffset:]
+	if len(data) != alignedBitmapRowBytes(2, bitmapBPP24)*2 {
+		t.Fatalf("unexpected bitmap data length %d", len(data))
+	}
+	want := []byte{
+		0x30, 0x20, 0x10, 0x60, 0x50, 0x40, 0x00, 0x00,
+		0x90, 0x80, 0x70, 0xc0, 0xb0, 0xa0, 0x00, 0x00,
+	}
+	if string(data) != string(want) {
+		t.Fatalf("unexpected converted bitmap bytes: got %x want %x", data, want)
+	}
+}
+
+func TestBuildFrameBitmapUpdateHandlesBGRAConversion(t *testing.T) {
+	payload, ok := buildFrameBitmapUpdate(frame.Frame{
+		Width:  1,
+		Height: 1,
+		Stride: 4,
+		Format: frame.PixelFormatBGRA8888,
+		Data:   []byte{0x11, 0x22, 0x33, 0xff},
+	})
+	if !ok {
+		t.Fatal("expected BGRA frame conversion")
+	}
+	if got := payload[len(payload)-4:]; got[0] != 0x11 || got[1] != 0x22 || got[2] != 0x33 || got[3] != 0x00 {
+		t.Fatalf("unexpected BGR/padding bytes: %x", got)
+	}
+}
+
 func TestBuildFrameBitmapUpdatesRejectsInvalidGeometry(t *testing.T) {
 	maxInt := int(^uint(0) >> 1)
 	cases := []struct {
