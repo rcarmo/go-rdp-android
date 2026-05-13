@@ -46,7 +46,7 @@ Tasks:
 - generate gomobile AAR ✅
 - route `NativeRdpBridge` to gomobile with logging fallback ✅
 - move ImageReader buffers into Go frame source ✅
-- add frame throttling/downscaling ✅
+- add frame throttling/downscaling/backpressure ✅ (Android adaptive pacing, bounded queue drops, server-side queued-frame coalescing)
 
 ## M3 — Bitmap updates
 

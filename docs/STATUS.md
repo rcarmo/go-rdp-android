@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-13
-Current evidence commit: `36d8d6e` (`Add bitmap encoder benchmarks`)
-Latest referenced CI run: `25785649505` (`main` CI, success)
+Current evidence commit: `dff1882` (`Coalesce queued frames before streaming`)
+Latest referenced CI run: `25786614267` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25785649505`:
+Latest checked artifact from CI run `25786614267`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
