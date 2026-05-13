@@ -199,18 +199,21 @@ func normalizeFrameForDesktop(src frame.Frame, width, height int) frame.Frame {
 }
 
 func scaleFrameNearest(src frame.Frame, width, height int) (frame.Frame, bool) {
-	if src.Width <= 0 || src.Height <= 0 || width <= 0 || height <= 0 {
+	if width <= 0 || height <= 0 {
 		return frame.Frame{}, false
 	}
-	stride := src.Stride
-	if stride <= 0 {
-		stride = src.Width * 4
-	}
-	if len(src.Data) < stride*src.Height {
+	stride, ok := normalizedFrameStride(src)
+	if !ok {
 		return frame.Frame{}, false
 	}
-
+	maxInt := int(^uint(0) >> 1)
+	if width > maxInt/4 {
+		return frame.Frame{}, false
+	}
 	dstStride := width * 4
+	if dstStride > maxInt/height {
+		return frame.Frame{}, false
+	}
 	dst := make([]byte, dstStride*height)
 	for y := 0; y < height; y++ {
 		sy := (y * src.Height) / height

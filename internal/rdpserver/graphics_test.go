@@ -145,6 +145,47 @@ func TestBuildFrameBitmapUpdatesTilesLargeFrame(t *testing.T) {
 	}
 }
 
+func TestScaleFrameNearestRejectsInvalidGeometry(t *testing.T) {
+	maxInt := int(^uint(0) >> 1)
+	cases := []struct {
+		name          string
+		fr            frame.Frame
+		width, height int
+	}{
+		{
+			name:   "short source stride",
+			fr:     frame.Frame{Width: 2, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 8)},
+			width:  1,
+			height: 1,
+		},
+		{
+			name:   "short source data",
+			fr:     frame.Frame{Width: 2, Height: 2, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 15)},
+			width:  1,
+			height: 1,
+		},
+		{
+			name:   "destination stride overflow",
+			fr:     frame.Frame{Width: 1, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 4)},
+			width:  maxInt/4 + 1,
+			height: 1,
+		},
+		{
+			name:   "destination byte overflow",
+			fr:     frame.Frame{Width: 1, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: make([]byte, 4)},
+			width:  1,
+			height: maxInt/4 + 1,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if scaled, ok := scaleFrameNearest(tc.fr, tc.width, tc.height); ok || len(scaled.Data) != 0 {
+				t.Fatalf("expected invalid scale to fail, ok=%v scaled=%#v", ok, scaled)
+			}
+		})
+	}
+}
+
 func TestBuildFrameBitmapUpdatesForDesktopScalesToClientSize(t *testing.T) {
 	src := frame.Frame{
 		Width:  2,
