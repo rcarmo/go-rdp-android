@@ -164,10 +164,17 @@ func normalizedFrameStride(src frame.Frame) (int, bool) {
 	if stride <= 0 {
 		stride = minStride
 	}
-	if stride < minStride || stride > maxInt/src.Height {
+	if stride < minStride {
 		return 0, false
 	}
-	if len(src.Data) < stride*src.Height {
+	required := minStride
+	if src.Height > 1 {
+		if stride > (maxInt-minStride)/(src.Height-1) {
+			return 0, false
+		}
+		required += stride * (src.Height - 1)
+	}
+	if len(src.Data) < required {
 		return 0, false
 	}
 	return stride, true

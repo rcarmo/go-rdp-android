@@ -125,12 +125,12 @@ func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []b
 	if rowStride < minRowStride {
 		return fmt.Errorf("row stride %d is smaller than minimum %d", rowStride, minRowStride)
 	}
-	if rowStride > maxInt/height {
+	if height > 1 && rowStride > (maxInt-minRowStride)/(height-1) {
 		return errors.New("frame byte size overflows")
 	}
-	minBytes := rowStride * height
-	if height != 0 && minBytes/height != rowStride {
-		return errors.New("frame byte size overflows")
+	minBytes := minRowStride
+	if height > 1 {
+		minBytes += rowStride * (height - 1)
 	}
 	if len(data) < minBytes {
 		return fmt.Errorf("frame data too short: got %d bytes, need at least %d", len(data), minBytes)

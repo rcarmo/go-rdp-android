@@ -223,6 +223,16 @@ func TestMobileServerSubmitFrameValidation(t *testing.T) {
 	}
 }
 
+func TestMobileServerSubmitFrameAcceptsShortFinalRowPadding(t *testing.T) {
+	srv := NewServer()
+	if err := srv.SubmitFrame(2, 2, 4, 12, make([]byte, 20)); err != nil {
+		t.Fatal(err)
+	}
+	if srv.SubmittedFrames() != 1 || srv.QueuedFrames() != 1 {
+		t.Fatalf("expected minimally padded frame to be queued submitted=%d queued=%d", srv.SubmittedFrames(), srv.QueuedFrames())
+	}
+}
+
 func TestMobileServerStartReportsListenError(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

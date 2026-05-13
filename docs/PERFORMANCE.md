@@ -61,7 +61,7 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 - aggregate read and bitmap throughput in Mbps;
 - average update size and update read time.
 
-The current slow-path bitmap renderer sends uncompressed 24-bit BGR tiles with 4-byte row alignment. This is still classic bitmap update transport, but it avoids sending an unused alpha byte and cuts payload by roughly 25% versus the initial 32-bit BGRA baseline. Android frame ingress and the Go bitmap tiling/scaling paths validate dimensions, row stride, backing data length, and integer-overflow cases before queueing, reading, or allocating frame buffers; malformed frame metadata is dropped rather than silently producing partial tiles or oversized allocations. For a 1080x2400 emulator screen and an 80x80 tile size, one full frame is:
+The current slow-path bitmap renderer sends uncompressed 24-bit BGR tiles with 4-byte row alignment. This is still classic bitmap update transport, but it avoids sending an unused alpha byte and cuts payload by roughly 25% versus the initial 32-bit BGRA baseline. Android frame ingress and the Go bitmap tiling/scaling paths validate dimensions, row stride, minimum backing data length, and integer-overflow cases before queueing, reading, or allocating frame buffers; Android-style unpadded final rows are accepted, while malformed frame metadata is dropped rather than silently producing partial tiles or oversized allocations. For a 1080x2400 emulator screen and an 80x80 tile size, one full frame is:
 
 ```text
 ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates

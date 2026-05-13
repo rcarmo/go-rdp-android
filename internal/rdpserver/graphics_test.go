@@ -45,6 +45,30 @@ func TestBuildFrameBitmapUpdateRGBA(t *testing.T) {
 	}
 }
 
+func TestBuildFrameBitmapUpdateAcceptsShortFinalRowPadding(t *testing.T) {
+	payload, ok := buildFrameBitmapUpdate(frame.Frame{
+		Width:  2,
+		Height: 2,
+		Stride: 12,
+		Format: frame.PixelFormatRGBA8888,
+		Data: []byte{
+			0x10, 0x20, 0x30, 0xaa, 0x40, 0x50, 0x60, 0xbb, 0xee, 0xee, 0xee, 0xee,
+			0x70, 0x80, 0x90, 0xcc, 0xa0, 0xb0, 0xc0, 0xdd,
+		},
+	})
+	if !ok {
+		t.Fatal("expected frame with unpadded final row to convert")
+	}
+	data := payload[4+18:]
+	want := []byte{
+		0x30, 0x20, 0x10, 0x60, 0x50, 0x40, 0x00, 0x00,
+		0x90, 0x80, 0x70, 0xc0, 0xb0, 0xa0, 0x00, 0x00,
+	}
+	if string(data) != string(want) {
+		t.Fatalf("unexpected converted bitmap bytes: got %x want %x", data, want)
+	}
+}
+
 func TestBuildFrameBitmapUpdateHandlesStrideConversionAlphaAndAlignment(t *testing.T) {
 	payload, ok := buildFrameBitmapUpdate(frame.Frame{
 		Width:  2,
