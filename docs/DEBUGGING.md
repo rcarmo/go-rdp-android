@@ -240,6 +240,7 @@ If capture is too slow or memory-heavy:
 - Use `emulator_capture_scale=2` or higher.
 - Inspect `captureStats` for high submit times.
 - Inspect per-scene tile counts for dirty-tile suppression effectiveness.
+- Check Android-side frame geometry if frames stop appearing: the bridge accepts Android-style unpadded final rows, but still rejects invalid dimensions, pixel stride, row stride, data length, and overflow cases before queueing.
 
 ## Android service/network debugging
 
@@ -253,6 +254,10 @@ Network lost: ... local=no IPv4 address
 Use those lines to troubleshoot Wi-Fi reconnects, IP changes, hotspot mode, and VPN routing. The server still binds all interfaces; the notification/log refresh is diagnostic and does not silently restart the listener.
 
 If the service is started without credentials, it logs a refusal, removes the temporary foreground notification, and stops without opening a listener.
+
+If native startup fails after credentials are present, look for `Native RDP server failed to start` in logcat and a `startServer failed(...)` line from `GoRdpAndroid`. The mobile bridge binds the listener synchronously before reporting success, so occupied ports or other listen errors should leave health as `running=false`, remove the foreground notification, reset the persisted last mode to `none`, and avoid starting MediaProjection/test-pattern capture.
+
+If listener shutdown behavior looks suspicious, check that `addr=n/a` or an empty gomobile address is reported after Stop. Core `Server.Serve` clears its listener address and stops its context-watcher goroutine on all exit paths, so stale addresses after Stop should be treated as a regression.
 
 ## Authentication debugging
 

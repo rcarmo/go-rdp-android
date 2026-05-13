@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-13
-Current evidence commit: `3e4fbe5` (`Stop Serve context watcher on exit`)
-Latest referenced CI run: `25791187694` (`main` CI, success)
+Current evidence commit: `c860b1b` (`Refresh docs after Serve watcher cleanup`)
+Latest referenced CI run: `25791784418` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25791187694`:
+Latest checked artifact from CI run `25791784418`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
