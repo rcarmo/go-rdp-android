@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,6 +24,7 @@ type Server struct {
 	cancel   context.CancelFunc
 	done     chan error
 	server   *rdpserver.Server
+	addr     string
 	frames   *FrameQueue
 	input    *mobileInputSink
 	username string
@@ -57,37 +59,20 @@ func (s *Server) Start(port int) error {
 	if err != nil {
 		return err
 	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		s.frames.Drain()
+		return err
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.ctx = ctx
 	s.cancel = cancel
 	s.server = srv
+	s.addr = ln.Addr().String()
 	done := make(chan error, 1)
 	s.done = done
-	go func() { done <- srv.Listen(ctx) }()
-	readyDeadline := time.NewTimer(500 * time.Millisecond)
-	defer readyDeadline.Stop()
-	for {
-		if srv.Addr() != nil {
-			return nil
-		}
-		select {
-		case err := <-done:
-			cancel()
-			s.ctx = nil
-			s.cancel = nil
-			s.done = nil
-			s.server = nil
-			s.frames.Drain()
-			return err
-		case <-readyDeadline.C:
-			// Listener startup normally publishes Addr immediately after net.Listen.
-			// If scheduling is unusually slow, keep the asynchronous startup behavior
-			// rather than blocking Android service startup indefinitely.
-			return nil
-		default:
-			time.Sleep(5 * time.Millisecond)
-		}
-	}
+	go func() { done <- srv.Serve(ctx, ln) }()
+	return nil
 }
 
 // Stop terminates the server and releases queued frames.
@@ -99,6 +84,7 @@ func (s *Server) Stop() error {
 	s.cancel = nil
 	s.done = nil
 	s.server = nil
+	s.addr = ""
 	s.ctx = nil
 	s.mu.Unlock()
 
@@ -176,10 +162,7 @@ func (s *Server) SetInputHandler(handler InputHandler) {
 func (s *Server) Addr() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.server == nil || s.server.Addr() == nil {
-		return ""
-	}
-	return s.server.Addr().String()
+	return s.addr
 }
 
 // TLSFingerprintSHA256 returns the current TLS certificate fingerprint when running.

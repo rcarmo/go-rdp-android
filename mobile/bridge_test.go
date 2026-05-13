@@ -260,12 +260,8 @@ func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 	if err := srv.Start(0); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(time.Second)
-	for srv.Addr() == "" && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
 	if srv.Addr() == "" {
-		t.Fatal("server did not expose address")
+		t.Fatal("server did not expose address synchronously")
 	}
 	if err := srv.SubmitFrame(1, 1, 4, 4, []byte{1, 2, 3, 4}); err != nil {
 		t.Fatal(err)
@@ -278,7 +274,7 @@ func TestMobileServerLifecycleAndSubmitFrame(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = conn.Close()
-	deadline = time.Now().Add(time.Second)
+	deadline := time.Now().Add(time.Second)
 	for srv.AcceptedConnections() == 0 && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
