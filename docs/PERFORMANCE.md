@@ -32,6 +32,16 @@ Expected artifact files include:
 - `performance-summary.md` — markdown roll-up of the JSON summaries.
 - `rdp-capture-plan.txt` — selected tile/update count.
 
+## Local bitmap encoder benchmarks
+
+The slow-path 24-bit BGR tile encoder has a Go benchmark for repeatable local comparisons across representative desktop sizes:
+
+```sh
+GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench BenchmarkBuildFrameBitmapUpdates24BGR -benchmem
+```
+
+It currently covers 320x240, 1280x720, and 1920x1080 RGBA input frames, reports allocations, and is intended for before/after comparisons when changing tile size, dirty-region logic, compression, or scaling. It is not a CI gate because shared runners are too noisy for stable absolute performance thresholds.
+
 ## Probe metrics
 
 `cmd/probe` records:

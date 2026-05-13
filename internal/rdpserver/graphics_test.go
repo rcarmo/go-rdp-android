@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -256,6 +257,42 @@ func TestBuildFrameBitmapUpdatesForDesktopScalesToClientSize(t *testing.T) {
 	if pixel[0] != 0x00 || pixel[1] != 0x00 || pixel[2] != 0xff {
 		t.Fatalf("unexpected scaled top-left pixel (BGR): %x", pixel)
 	}
+}
+
+func BenchmarkBuildFrameBitmapUpdates24BGR(b *testing.B) {
+	for _, size := range []struct {
+		width  int
+		height int
+	}{
+		{320, 240},
+		{1280, 720},
+		{1920, 1080},
+	} {
+		b.Run(fmt.Sprintf("%dx%d", size.width, size.height), func(b *testing.B) {
+			fr := benchmarkFrame(size.width, size.height)
+			b.SetBytes(int64(size.width * size.height * 4))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				updates, ok := buildFrameBitmapUpdates(fr)
+				if !ok || len(updates) == 0 {
+					b.Fatalf("expected updates, got ok=%v len=%d", ok, len(updates))
+				}
+			}
+		})
+	}
+}
+
+func benchmarkFrame(width, height int) frame.Frame {
+	data := make([]byte, width*height*4)
+	for i := 0; i < len(data); i += 4 {
+		p := i / 4
+		data[i+0] = byte(p)
+		data[i+1] = byte(p >> 8)
+		data[i+2] = byte(p >> 16)
+		data[i+3] = 0xff
+	}
+	return frame.Frame{Width: width, Height: height, Stride: width * 4, Format: frame.PixelFormatRGBA8888, Data: data}
 }
 
 func TestBuildFrameBitmapUpdatesCacheResetsOnResize(t *testing.T) {
