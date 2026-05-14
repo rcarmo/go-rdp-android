@@ -261,6 +261,8 @@ If listener shutdown behavior looks suspicious, check that `addr=n/a` or an empt
 
 For RDPEI touch issues after toggling Accessibility, verify that new touch frames start only while `input=enabled` in the health line. The Android input service clears any pending frame batch when Accessibility is disconnected at frame start or disappears before frame end; stale contacts affecting a later reconnect should be treated as a regression.
 
+Use the app's **Refresh Status** button before collecting a report, then **Share Diagnostics** to export bounded text diagnostics through Android's share sheet. The shared text is intended for bug reports and includes the compact bridge health, configured username, password-present flag, capture scale, last mode, and Accessibility state; it deliberately omits the password and raw frame data.
+
 ## Authentication debugging
 
 The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:

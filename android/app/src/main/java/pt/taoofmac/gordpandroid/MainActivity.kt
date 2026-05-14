@@ -103,6 +103,14 @@ class MainActivity : Activity() {
                 startTestPatternService(creds)
             }
         }
+        val refreshStatus = Button(this).apply {
+            text = "Refresh Status"
+            setOnClickListener { updateStatus() }
+        }
+        val shareDiagnostics = Button(this).apply {
+            text = "Share Diagnostics"
+            setOnClickListener { shareDiagnostics() }
+        }
         val stop = Button(this).apply {
             text = "Stop RDP Service"
             setOnClickListener {
@@ -124,6 +132,8 @@ class MainActivity : Activity() {
             addView(accessibility)
             addView(capture)
             addView(testPattern)
+            addView(refreshStatus)
+            addView(shareDiagnostics)
             addView(stop)
         })
 
@@ -244,6 +254,30 @@ class MainActivity : Activity() {
             Toast.makeText(this, "Screen capture permission was not granted", Toast.LENGTH_SHORT).show()
             updateStatus()
         }
+    }
+
+    private fun shareDiagnostics() {
+        val diagnosticText = buildDiagnosticText()
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "go-rdp-android diagnostics")
+            putExtra(Intent.EXTRA_TEXT, diagnosticText)
+        }, "Share go-rdp-android diagnostics"))
+    }
+
+    private fun buildDiagnosticText(): String {
+        val settings = settingsStore.load()
+        val creds = credentialStore.load()
+        val accessibilityState = if (isRdpAccessibilityEnabled()) "enabled" else "disabled"
+        return listOf(
+            "go-rdp-android diagnostics",
+            "backend_health=${NativeRdpBridge.healthStatus()}",
+            "configured_user=${creds?.username ?: "<none>"}",
+            "password_configured=${creds?.password?.isNotEmpty() == true}",
+            "capture_scale=${settings.captureScale}",
+            "last_mode=${settings.lastMode.name.lowercase()}",
+            "accessibility=$accessibilityState",
+        ).joinToString("\n")
     }
 
     private fun resolveCaptureScale(): Int {
