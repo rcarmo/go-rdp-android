@@ -36,13 +36,19 @@ object NativeRdpBridge : RdpInputCallbacks {
     }
 
     fun setSecurityMode(mode: String): Boolean {
-        securityMode = mode
-        return backend.setSecurityMode(mode)
+        val ok = backend.setSecurityMode(mode)
+        if (ok) {
+            securityMode = mode
+        }
+        return ok
     }
 
     fun setFailedAuthPolicy(limit: Int, backoffMs: Int, backoffMaxMs: Int): Boolean {
-        failedAuthPolicy = "limit=$limit backoffMs=$backoffMs maxMs=$backoffMaxMs"
-        return backend.setFailedAuthPolicy(limit, backoffMs, backoffMaxMs)
+        val ok = backend.setFailedAuthPolicy(limit, backoffMs, backoffMaxMs)
+        if (ok) {
+            failedAuthPolicy = "limit=$limit backoffMs=$backoffMs maxMs=$backoffMaxMs"
+        }
+        return ok
     }
 
     fun startServer(port: Int, mode: String): Boolean {

@@ -256,7 +256,7 @@ Use those lines to troubleshoot Wi-Fi reconnects, IP changes, hotspot mode, and 
 
 If the service is started without credentials, it logs a refusal, removes the temporary foreground notification, and stops without opening a listener.
 
-If native startup fails after credentials are present, look for `Native RDP server failed to start` in logcat and a `startServer failed(...)` line from `GoRdpAndroid`. The mobile bridge binds the listener synchronously before reporting success, so occupied ports or other listen errors should leave health as `running=false`, remove the foreground notification, reset the persisted last mode to `none`, and avoid starting MediaProjection/test-pattern capture.
+If native startup fails after credentials are present, look for `Native RDP policy configuration failed` or `Native RDP server failed to start` in logcat and a `startServer failed(...)` line from `GoRdpAndroid`. The service now treats invalid/unsupported security or failed-auth policy configuration as a startup failure before binding. The mobile bridge binds the listener synchronously before reporting success, so occupied ports or other listen errors should leave health as `running=false`, remove the foreground notification, reset the persisted last mode to `none`, and avoid starting MediaProjection/test-pattern capture.
 
 If listener shutdown behavior looks suspicious, check that `addr=n/a` or an empty gomobile address is reported after Stop. Core `Server.Serve` clears its listener address and stops its context-watcher goroutine on all exit paths, so stale addresses after Stop should be treated as a regression.
 

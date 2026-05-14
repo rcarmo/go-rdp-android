@@ -96,9 +96,17 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                 else -> RdpServerMode.NONE
             }
             NativeRdpBridge.setCredentials(username, password)
-            NativeRdpBridge.setSecurityMode(securityMode)
-            NativeRdpBridge.setFailedAuthPolicy(failedAuthLimit, failedAuthBackoffMs, failedAuthBackoffMaxMs)
+            val policyConfigured = NativeRdpBridge.setSecurityMode(securityMode) &&
+                NativeRdpBridge.setFailedAuthPolicy(failedAuthLimit, failedAuthBackoffMs, failedAuthBackoffMaxMs)
             NativeRdpBridge.setInputCoordinateScale(captureScale)
+            if (!policyConfigured) {
+                Log.e(TAG, "Native RDP policy configuration failed")
+                activeMode = "stopped"
+                settingsStore.save(savedSettings.copy(lastMode = RdpServerMode.NONE))
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
             if (!NativeRdpBridge.startServer(3390, mode)) {
                 Log.e(TAG, "Native RDP server failed to start")
                 activeMode = "stopped"
