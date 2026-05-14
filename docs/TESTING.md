@@ -29,6 +29,7 @@ Default push/PR CI runs without a physical Android device:
 - Mock server + probe TCP smoke test.
 - TLS-only Client Info and Hybrid/NLA CredSSP authentication smoke tests, including bad-password rejection and an `auth-summary.md` artifact that records expected success/failure outcomes.
 - Protocol packet trace artifact from the probe, including client/server hex dumps, logs, JSON/Markdown probe summaries, and an RDP screenshot from bitmap updates.
+- Always-uploaded CI diagnostics now include mock-server logs, client/probe logs, JSON and Markdown summaries, and screenshots for the mock/probe, auth, FreeRDP, Android build, gomobile, and emulator/UX paths where applicable.
 - Normal Android debug APK build and APK structure inspection.
 - `gomobile bind` AAR generation.
 - Generated AAR Java API signature verification.
