@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-14
-Current evidence commit: `db44eee` (`Clear stale touch frames without accessibility`)
-Latest referenced CI run: `25847958905` (`main` CI, success)
+Current evidence commit: `107ee82` (`Refresh docs after accessibility touch cleanup`)
+Latest referenced CI run: `25848274672` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25847958905`:
+Latest checked artifact from CI run `25848274672`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
