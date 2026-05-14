@@ -10,19 +10,26 @@ import android.content.Context
 class RdpSettingsStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun load(): RdpServerSettings = RdpServerSettings(
-        port = prefs.getInt(KEY_PORT, DEFAULT_PORT).coerceIn(MIN_PORT, MAX_PORT),
-        captureScale = prefs.getInt(KEY_CAPTURE_SCALE, DEFAULT_CAPTURE_SCALE).coerceIn(MIN_CAPTURE_SCALE, MAX_CAPTURE_SCALE),
-        lastMode = prefs.getString(KEY_LAST_MODE, RdpServerMode.NONE.name)?.let { raw ->
-            runCatching { RdpServerMode.valueOf(raw) }.getOrNull()
-        } ?: RdpServerMode.NONE,
-        securityMode = prefs.getString(KEY_SECURITY_MODE, RdpSecurityMode.NEGOTIATE.wireValue)?.let { raw ->
-            RdpSecurityMode.fromWireValue(raw)
-        } ?: RdpSecurityMode.NEGOTIATE,
-        failedAuthLimit = prefs.getInt(KEY_FAILED_AUTH_LIMIT, DEFAULT_FAILED_AUTH_LIMIT).coerceIn(MIN_FAILED_AUTH_LIMIT, MAX_FAILED_AUTH_LIMIT),
-        failedAuthBackoffMs = prefs.getInt(KEY_FAILED_AUTH_BACKOFF_MS, DEFAULT_FAILED_AUTH_BACKOFF_MS).coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS),
-        failedAuthBackoffMaxMs = prefs.getInt(KEY_FAILED_AUTH_BACKOFF_MAX_MS, DEFAULT_FAILED_AUTH_BACKOFF_MAX_MS).coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS),
-    )
+    fun load(): RdpServerSettings {
+        val failedAuthBackoffMs = prefs.getInt(KEY_FAILED_AUTH_BACKOFF_MS, DEFAULT_FAILED_AUTH_BACKOFF_MS)
+            .coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS)
+        val failedAuthBackoffMaxMs = prefs.getInt(KEY_FAILED_AUTH_BACKOFF_MAX_MS, DEFAULT_FAILED_AUTH_BACKOFF_MAX_MS)
+            .coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS)
+            .coerceAtLeast(failedAuthBackoffMs)
+        return RdpServerSettings(
+            port = prefs.getInt(KEY_PORT, DEFAULT_PORT).coerceIn(MIN_PORT, MAX_PORT),
+            captureScale = prefs.getInt(KEY_CAPTURE_SCALE, DEFAULT_CAPTURE_SCALE).coerceIn(MIN_CAPTURE_SCALE, MAX_CAPTURE_SCALE),
+            lastMode = prefs.getString(KEY_LAST_MODE, RdpServerMode.NONE.name)?.let { raw ->
+                runCatching { RdpServerMode.valueOf(raw) }.getOrNull()
+            } ?: RdpServerMode.NONE,
+            securityMode = prefs.getString(KEY_SECURITY_MODE, RdpSecurityMode.NEGOTIATE.wireValue)?.let { raw ->
+                RdpSecurityMode.fromWireValue(raw)
+            } ?: RdpSecurityMode.NEGOTIATE,
+            failedAuthLimit = prefs.getInt(KEY_FAILED_AUTH_LIMIT, DEFAULT_FAILED_AUTH_LIMIT).coerceIn(MIN_FAILED_AUTH_LIMIT, MAX_FAILED_AUTH_LIMIT),
+            failedAuthBackoffMs = failedAuthBackoffMs,
+            failedAuthBackoffMaxMs = failedAuthBackoffMaxMs,
+        )
+    }
 
     fun save(settings: RdpServerSettings) {
         prefs.edit()
