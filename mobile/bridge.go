@@ -190,9 +190,14 @@ func (s *Server) SetFailedAuthPolicy(limit int, backoffMillis int, backoffMaxMil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	backoff := time.Duration(backoffMillis) * time.Millisecond
+	backoffMax := time.Duration(backoffMaxMillis) * time.Millisecond
+	if backoffMax < backoff {
+		backoffMax = backoff
+	}
 	s.failedAuthLimit = limit
-	s.failedAuthBackoff = time.Duration(backoffMillis) * time.Millisecond
-	s.failedAuthBackoffMax = time.Duration(backoffMaxMillis) * time.Millisecond
+	s.failedAuthBackoff = backoff
+	s.failedAuthBackoffMax = backoffMax
 	return nil
 }
 

@@ -213,6 +213,12 @@ func TestMobileServerSecurityPolicy(t *testing.T) {
 	if srv.failedAuthLimit != 3 || srv.failedAuthBackoff != 250*time.Millisecond || srv.failedAuthBackoffMax != time.Second {
 		t.Fatalf("unexpected failed-auth policy limit=%d backoff=%s max=%s", srv.failedAuthLimit, srv.failedAuthBackoff, srv.failedAuthBackoffMax)
 	}
+	if err := srv.SetFailedAuthPolicy(3, 2000, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if srv.failedAuthBackoff != 2*time.Second || srv.failedAuthBackoffMax != 2*time.Second {
+		t.Fatalf("expected max backoff normalization, backoff=%s max=%s", srv.failedAuthBackoff, srv.failedAuthBackoffMax)
+	}
 	if err := srv.SetFailedAuthPolicy(-1, 0, 0); err == nil {
 		t.Fatal("expected invalid failed-auth policy error")
 	}

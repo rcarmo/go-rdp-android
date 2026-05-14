@@ -338,20 +338,32 @@ class MainActivity : Activity() {
         ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
         ?: settingsStore.load().failedAuthBackoffMs
 
-    private fun resolveFailedAuthBackoffMaxMs(): Int = failedAuthBackoffMaxInput.text?.toString()?.toIntOrNull()
-        ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
-        ?: settingsStore.load().failedAuthBackoffMaxMs
+    private fun resolveFailedAuthBackoffMaxMs(): Int {
+        val backoff = resolveFailedAuthBackoffMs()
+        val maxBackoff = failedAuthBackoffMaxInput.text?.toString()?.toIntOrNull()
+            ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
+            ?: settingsStore.load().failedAuthBackoffMaxMs
+        return maxBackoff.coerceAtLeast(backoff)
+    }
 
-    private fun RdpServerSettings.withFailedAuthPolicy(): RdpServerSettings = copy(
-        failedAuthLimit = resolveFailedAuthLimit(),
-        failedAuthBackoffMs = resolveFailedAuthBackoffMs(),
-        failedAuthBackoffMaxMs = resolveFailedAuthBackoffMaxMs(),
-    )
+    private fun RdpServerSettings.withFailedAuthPolicy(): RdpServerSettings {
+        val limit = resolveFailedAuthLimit()
+        val backoff = resolveFailedAuthBackoffMs()
+        val maxBackoff = resolveFailedAuthBackoffMaxMs()
+        return copy(
+            failedAuthLimit = limit,
+            failedAuthBackoffMs = backoff,
+            failedAuthBackoffMaxMs = maxBackoff,
+        )
+    }
 
     private fun Intent.putFailedAuthPolicyExtras() {
-        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_LIMIT, resolveFailedAuthLimit())
-        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MS, resolveFailedAuthBackoffMs())
-        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, resolveFailedAuthBackoffMaxMs())
+        val limit = resolveFailedAuthLimit()
+        val backoff = resolveFailedAuthBackoffMs()
+        val maxBackoff = resolveFailedAuthBackoffMaxMs()
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_LIMIT, limit)
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MS, backoff)
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, maxBackoff)
     }
 
     companion object {
