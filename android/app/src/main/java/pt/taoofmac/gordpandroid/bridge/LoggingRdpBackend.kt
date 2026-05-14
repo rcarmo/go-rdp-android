@@ -21,6 +21,11 @@ class LoggingRdpBackend : RdpBackend {
         Log.i(TAG, "setCredentials(user=${username.ifEmpty { "<empty>" }}, passSet=${password.isNotEmpty()}) [$name]")
     }
 
+    override fun setSecurityMode(mode: String): Boolean {
+        Log.i(TAG, "setSecurityMode(mode=$mode) [$name]")
+        return true
+    }
+
     override fun startServer(port: Int): Boolean {
         if (running.compareAndSet(false, true)) {
             this.port = port

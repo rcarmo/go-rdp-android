@@ -196,6 +196,19 @@ func TestMobileServerCredentials(t *testing.T) {
 	}
 }
 
+func TestMobileServerSecurityMode(t *testing.T) {
+	srv := NewServer()
+	if err := srv.SetSecurityMode("tls-only"); err != nil {
+		t.Fatal(err)
+	}
+	if got := srv.securityMode; got != "tls-only" {
+		t.Fatalf("security mode = %q", got)
+	}
+	if err := srv.SetSecurityMode("invalid"); err == nil {
+		t.Fatal("expected invalid security mode error")
+	}
+}
+
 func TestMobileServerSubmitFrameValidation(t *testing.T) {
 	srv := NewServer()
 	cases := []struct {

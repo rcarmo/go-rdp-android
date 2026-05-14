@@ -11,7 +11,9 @@ import android.text.TextUtils
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ArrayAdapter
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import io.carmo.go.rdp.android.auth.RdpCredentialStore
@@ -19,6 +21,7 @@ import io.carmo.go.rdp.android.auth.RdpCredentials
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.input.RdpAccessibilityService
 import io.carmo.go.rdp.android.service.RdpForegroundService
+import io.carmo.go.rdp.android.settings.RdpSecurityMode
 import io.carmo.go.rdp.android.settings.RdpServerMode
 import io.carmo.go.rdp.android.settings.RdpSettingsStore
 
@@ -34,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var usernameInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var captureScaleInput: EditText
+    private lateinit var securityModeInput: Spinner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +79,10 @@ class MainActivity : Activity() {
             hint = "Capture scale (1-4)"
             setText(captureScale.toString())
             inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        securityModeInput = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, RdpSecurityMode.entries.toTypedArray())
+            setSelection(RdpSecurityMode.entries.indexOf(savedSettings.securityMode).coerceAtLeast(0))
         }
 
         val saveCredentials = Button(this).apply {
@@ -128,6 +136,7 @@ class MainActivity : Activity() {
             addView(usernameInput)
             addView(passwordInput)
             addView(captureScaleInput)
+            addView(securityModeInput)
             addView(saveCredentials)
             addView(accessibility)
             addView(capture)
@@ -162,7 +171,7 @@ class MainActivity : Activity() {
             "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\nAccessibility: $accessibilityState\n\nHealth: $health"
         } else {
             val settings = settingsStore.load()
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
     }
 
@@ -187,7 +196,7 @@ class MainActivity : Activity() {
             return false
         }
         credentialStore.save(username, password)
-        settingsStore.saveCaptureScale(resolveCaptureScale())
+        settingsStore.save(settingsStore.load().copy(captureScale = resolveCaptureScale(), securityMode = resolveSecurityMode()))
         if (showToast) {
             Toast.makeText(this, "Credentials saved", Toast.LENGTH_SHORT).show()
         }
@@ -210,10 +219,12 @@ class MainActivity : Activity() {
 
     private fun startTestPatternService(creds: RdpCredentials) {
         val captureScale = resolveCaptureScale()
-        settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.TEST_PATTERN))
+        val securityMode = resolveSecurityMode()
+        settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.TEST_PATTERN, securityMode = securityMode))
         val intent = Intent(this, RdpForegroundService::class.java).apply {
             putExtra(RdpForegroundService.EXTRA_TEST_PATTERN, true)
             putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
+            putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, securityMode.wireValue)
             putExtra(RdpForegroundService.EXTRA_USERNAME, creds.username)
             putExtra(RdpForegroundService.EXTRA_PASSWORD, creds.password)
         }
@@ -240,11 +251,12 @@ class MainActivity : Activity() {
         pendingUsername = ""
         pendingPassword = ""
         if (resultCode == RESULT_OK && data != null) {
-            settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.SCREEN_CAPTURE))
+            settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.SCREEN_CAPTURE, securityMode = resolveSecurityMode()))
             val intent = Intent(this, RdpForegroundService::class.java).apply {
                 putExtra(RdpForegroundService.EXTRA_RESULT_CODE, resultCode)
                 putExtra(RdpForegroundService.EXTRA_RESULT_DATA, data)
                 putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
+                putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, resolveSecurityMode().wireValue)
                 putExtra(RdpForegroundService.EXTRA_USERNAME, username)
                 putExtra(RdpForegroundService.EXTRA_PASSWORD, password)
             }
@@ -275,6 +287,7 @@ class MainActivity : Activity() {
             "configured_user=${creds?.username ?: "<none>"}",
             "password_configured=${creds?.password?.isNotEmpty() == true}",
             "capture_scale=${settings.captureScale}",
+            "security_mode=${settings.securityMode.wireValue}",
             "last_mode=${settings.lastMode.name.lowercase()}",
             "accessibility=$accessibilityState",
         ).joinToString("\n")
@@ -284,6 +297,10 @@ class MainActivity : Activity() {
         return captureScaleInput.text?.toString()?.toIntOrNull()
             ?.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
             ?: settingsStore.load().captureScale
+    }
+
+    private fun resolveSecurityMode(): RdpSecurityMode {
+        return securityModeInput.selectedItem as? RdpSecurityMode ?: settingsStore.load().securityMode
     }
 
     companion object {

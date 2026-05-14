@@ -31,6 +31,7 @@ var required = map[string]map[string]string{
 		"stopServer":           "()V",
 		"submitFrame":          "(JJJJ[B)V",
 		"setInputHandler":      "(Lmobile/InputHandler;)V",
+		"setSecurityMode":      "(Ljava/lang/String;)V",
 		"tlsFingerprintSHA256": "()Ljava/lang/String;",
 	},
 	"mobile/InputHandler.class": {
@@ -59,6 +60,7 @@ var required = map[string]map[string]string{
 		"stop":                 "()V",
 		"submitFrame":          "(JJJJ[B)V",
 		"setInputHandler":      "(Lmobile/InputHandler;)V",
+		"setSecurityMode":      "(Ljava/lang/String;)V",
 		"tlsFingerprintSHA256": "()Ljava/lang/String;",
 	},
 	"mobile/FrameQueue.class": {

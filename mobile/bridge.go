@@ -19,16 +19,17 @@ var defaultServer = NewServer()
 
 // Server is a gomobile-friendly wrapper around the RDP server core.
 type Server struct {
-	mu       sync.Mutex
-	ctx      context.Context
-	cancel   context.CancelFunc
-	done     chan error
-	server   *rdpserver.Server
-	addr     string
-	frames   *FrameQueue
-	input    *mobileInputSink
-	username string
-	password string
+	mu           sync.Mutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	done         chan error
+	server       *rdpserver.Server
+	addr         string
+	frames       *FrameQueue
+	input        *mobileInputSink
+	username     string
+	password     string
+	securityMode rdpserver.SecurityMode
 }
 
 // NewServer creates a mobile bridge server instance.
@@ -55,7 +56,15 @@ func (s *Server) Start(port int) error {
 		auth = rdpserver.StaticCredentials{Username: s.username, Password: s.password}
 	}
 	s.frames.Drain()
-	srv, err := rdpserver.New(rdpserver.Config{Addr: addr, Width: 1280, Height: 720, Authenticator: auth}, s.frames, s.input)
+	srv, err := rdpserver.New(rdpserver.Config{
+		Addr:          addr,
+		Width:         1280,
+		Height:        720,
+		Authenticator: auth,
+		Policy: rdpserver.AccessPolicy{
+			SecurityMode: s.securityMode,
+		},
+	}, s.frames, s.input)
 	if err != nil {
 		return err
 	}
@@ -151,6 +160,21 @@ func (s *Server) SetCredentials(username, password string) {
 	defer s.mu.Unlock()
 	s.username = username
 	s.password = password
+}
+
+// SetSecurityMode configures the accepted RDP security mode for future sessions.
+func (s *Server) SetSecurityMode(mode string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch rdpserver.SecurityMode(mode) {
+	case "", rdpserver.SecurityModeNegotiate:
+		s.securityMode = rdpserver.SecurityModeNegotiate
+	case rdpserver.SecurityModeRDPOnly, rdpserver.SecurityModeTLSOnly, rdpserver.SecurityModeNLARequired:
+		s.securityMode = rdpserver.SecurityMode(mode)
+	default:
+		return fmt.Errorf("unsupported security mode %q", mode)
+	}
+	return nil
 }
 
 // SetInputHandler installs the callback target for decoded RDP input events.
@@ -287,6 +311,9 @@ func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error {
 
 // SetCredentials configures simple username/password authentication for future sessions.
 func SetCredentials(username, password string) { defaultServer.SetCredentials(username, password) }
+
+// SetSecurityMode configures the accepted RDP security mode for future sessions.
+func SetSecurityMode(mode string) error { return defaultServer.SetSecurityMode(mode) }
 
 // SetInputHandler installs the callback target on the default singleton server.
 func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handler) }

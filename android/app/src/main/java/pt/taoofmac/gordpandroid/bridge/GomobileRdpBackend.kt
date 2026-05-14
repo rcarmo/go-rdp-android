@@ -40,6 +40,11 @@ class GomobileRdpBackend : RdpBackend {
         invoke(method, username, password)
     }
 
+    override fun setSecurityMode(mode: String): Boolean {
+        val method = findMethod(mobileClass ?: return false, "setSecurityMode", 1) ?: return false
+        return invoke(method, mode)
+    }
+
     override fun startServer(port: Int): Boolean {
         val method = findMethod(mobileClass ?: return false, "startServer", 1) ?: return false
         return invoke(method, port)

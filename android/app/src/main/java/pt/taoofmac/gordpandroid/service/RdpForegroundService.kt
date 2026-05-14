@@ -71,6 +71,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             ?: savedSettings.captureScale
         val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
+        val securityMode = intent?.getStringExtra(EXTRA_SECURITY_MODE) ?: savedSettings.securityMode.wireValue
         val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
@@ -92,6 +93,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                 else -> RdpServerMode.NONE
             }
             NativeRdpBridge.setCredentials(username, password)
+            NativeRdpBridge.setSecurityMode(securityMode)
             NativeRdpBridge.setInputCoordinateScale(captureScale)
             if (!NativeRdpBridge.startServer(3390, mode)) {
                 Log.e(TAG, "Native RDP server failed to start")
@@ -273,6 +275,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_TEST_PATTERN = "test_pattern"
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
+        const val EXTRA_SECURITY_MODE = "security_mode"
         const val EXTRA_USERNAME = "rdp_username"
         const val EXTRA_PASSWORD = "rdp_password"
         const val ACTION_STOP = "io.carmo.go.rdp.android.service.STOP"

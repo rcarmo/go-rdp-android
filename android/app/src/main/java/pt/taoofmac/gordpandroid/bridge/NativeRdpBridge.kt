@@ -16,6 +16,7 @@ object NativeRdpBridge : RdpInputCallbacks {
     private val running = AtomicBoolean(false)
     private val credentialsConfigured = AtomicBoolean(false)
     @Volatile private var lastMode: String = "stopped"
+    @Volatile private var securityMode: String = "negotiate"
     private val inputCoordinateScale = AtomicInteger(1)
     private val backend: RdpBackend by lazy {
         val go = GomobileRdpBackend()
@@ -31,6 +32,11 @@ object NativeRdpBridge : RdpInputCallbacks {
     fun setCredentials(username: String, password: String) {
         credentialsConfigured.set(username.isNotBlank() && password.isNotEmpty())
         backend.setCredentials(username, password)
+    }
+
+    fun setSecurityMode(mode: String): Boolean {
+        securityMode = mode
+        return backend.setSecurityMode(mode)
     }
 
     fun startServer(port: Int, mode: String): Boolean {
@@ -107,7 +113,7 @@ object NativeRdpBridge : RdpInputCallbacks {
         val fingerprint = backend.tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
         val input = if (RdpAccessibilityService.isConnected()) "enabled" else "disabled"
         val auth = if (credentialsConfigured.get()) "credentials" else "missing"
-        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, auth=$auth, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, accepted=${backend.acceptedConnections()}, authFailures=${backend.authFailures()}, handshakeFailures=${backend.handshakeFailures()}, input=$input, inputEvents=${backend.inputEvents()}, rdpeiContacts=${backend.rdpeiContacts()}, dvcFragments=${backend.dvcFragments()}, frames=${frameCount.get()}, sentFrames=${backend.framesSent()}, bitmapBytes=${backend.bitmapBytes()}, queued=${backend.queuedFrames()}, dropped=${backend.droppedFrames()}, inputScale=${inputCoordinateScale.get()}"
+        return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, security=$securityMode, auth=$auth, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, accepted=${backend.acceptedConnections()}, authFailures=${backend.authFailures()}, handshakeFailures=${backend.handshakeFailures()}, input=$input, inputEvents=${backend.inputEvents()}, rdpeiContacts=${backend.rdpeiContacts()}, dvcFragments=${backend.dvcFragments()}, frames=${frameCount.get()}, sentFrames=${backend.framesSent()}, bitmapBytes=${backend.bitmapBytes()}, queued=${backend.queuedFrames()}, dropped=${backend.droppedFrames()}, inputScale=${inputCoordinateScale.get()}"
     }
 
     private const val TAG = "GoRdpAndroid"

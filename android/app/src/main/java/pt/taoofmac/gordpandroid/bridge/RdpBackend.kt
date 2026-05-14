@@ -17,6 +17,7 @@ interface RdpBackend {
 
     fun setInputCallbacks(callbacks: RdpInputCallbacks)
     fun setCredentials(username: String, password: String)
+    fun setSecurityMode(mode: String): Boolean
     fun startServer(port: Int): Boolean
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray)
     fun stopServer()
