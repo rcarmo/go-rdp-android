@@ -29,6 +29,10 @@ import io.carmo.go.rdp.android.settings.RdpSettingsStore
 class MainActivity : Activity() {
     private val projectionRequestCode = 1001
     private var pendingCaptureScale: Int = 1
+    private var pendingSecurityMode: RdpSecurityMode = RdpSecurityMode.NEGOTIATE
+    private var pendingFailedAuthLimit: Int = RdpSettingsStore.DEFAULT_FAILED_AUTH_LIMIT
+    private var pendingFailedAuthBackoffMs: Int = RdpSettingsStore.DEFAULT_FAILED_AUTH_BACKOFF_MS
+    private var pendingFailedAuthBackoffMaxMs: Int = RdpSettingsStore.DEFAULT_FAILED_AUTH_BACKOFF_MAX_MS
     private var pendingUsername: String = ""
     private var pendingPassword: String = ""
 
@@ -257,6 +261,10 @@ class MainActivity : Activity() {
 
     private fun requestScreenCapture(scale: Int, username: String, password: String) {
         pendingCaptureScale = scale.coerceIn(RdpSettingsStore.MIN_CAPTURE_SCALE, RdpSettingsStore.MAX_CAPTURE_SCALE)
+        pendingSecurityMode = resolveSecurityMode()
+        pendingFailedAuthLimit = resolveFailedAuthLimit()
+        pendingFailedAuthBackoffMs = resolveFailedAuthBackoffMs()
+        pendingFailedAuthBackoffMaxMs = resolveFailedAuthBackoffMaxMs()
         pendingUsername = username
         pendingPassword = password
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -268,19 +276,37 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != projectionRequestCode) return
         val captureScale = pendingCaptureScale
+        val securityMode = pendingSecurityMode
+        val failedAuthLimit = pendingFailedAuthLimit
+        val failedAuthBackoffMs = pendingFailedAuthBackoffMs
+        val failedAuthBackoffMaxMs = pendingFailedAuthBackoffMaxMs
         val username = pendingUsername
         val password = pendingPassword
-        pendingCaptureScale = settingsStore.load().captureScale
+        val savedSettings = settingsStore.load()
+        pendingCaptureScale = savedSettings.captureScale
+        pendingSecurityMode = savedSettings.securityMode
+        pendingFailedAuthLimit = savedSettings.failedAuthLimit
+        pendingFailedAuthBackoffMs = savedSettings.failedAuthBackoffMs
+        pendingFailedAuthBackoffMaxMs = savedSettings.failedAuthBackoffMaxMs
         pendingUsername = ""
         pendingPassword = ""
         if (resultCode == RESULT_OK && data != null) {
-            settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.SCREEN_CAPTURE, securityMode = resolveSecurityMode()).withFailedAuthPolicy())
+            settingsStore.save(savedSettings.copy(
+                captureScale = captureScale,
+                lastMode = RdpServerMode.SCREEN_CAPTURE,
+                securityMode = securityMode,
+                failedAuthLimit = failedAuthLimit,
+                failedAuthBackoffMs = failedAuthBackoffMs,
+                failedAuthBackoffMaxMs = failedAuthBackoffMaxMs,
+            ))
             val intent = Intent(this, RdpForegroundService::class.java).apply {
                 putExtra(RdpForegroundService.EXTRA_RESULT_CODE, resultCode)
                 putExtra(RdpForegroundService.EXTRA_RESULT_DATA, data)
                 putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
-                putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, resolveSecurityMode().wireValue)
-                putFailedAuthPolicyExtras()
+                putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, securityMode.wireValue)
+                putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_LIMIT, failedAuthLimit)
+                putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MS, failedAuthBackoffMs)
+                putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, failedAuthBackoffMaxMs)
                 putExtra(RdpForegroundService.EXTRA_USERNAME, username)
                 putExtra(RdpForegroundService.EXTRA_PASSWORD, password)
             }
