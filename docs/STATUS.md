@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-14
-Current evidence commit: `94d825f` (`Add redacted Android diagnostics sharing`)
-Latest referenced CI run: `25886677897` (`main` CI, success)
+Current evidence commit: `60c5e82` (`Add log-level trace control`)
+Latest referenced CI run: `25887406819` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25886677897`:
+Latest checked artifact from CI run `25887406819`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
