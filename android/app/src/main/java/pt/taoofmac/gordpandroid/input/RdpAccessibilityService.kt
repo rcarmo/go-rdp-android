@@ -159,11 +159,12 @@ class RdpAccessibilityService : AccessibilityService() {
         }
 
         fun handleTouchFrameStart(contactCount: Int): Boolean {
+            val serviceConnected = activeService?.get() != null
             synchronized(touchDispatchLock) {
                 inProgressFrameExpectedContacts = contactCount.coerceAtLeast(0)
-                inProgressFrameEvents = ArrayList(inProgressFrameExpectedContacts)
+                inProgressFrameEvents = if (serviceConnected) ArrayList(inProgressFrameExpectedContacts) else null
             }
-            return activeService?.get() != null
+            return serviceConnected
         }
 
         fun handleTouchContact(contactId: Int, x: Int, y: Int, flags: Int): Boolean {
@@ -182,9 +183,14 @@ class RdpAccessibilityService : AccessibilityService() {
         }
 
         fun handleTouchFrameEnd(): Boolean {
-            val service = activeService?.get() ?: return false
+            val service = activeService?.get()
             synchronized(touchDispatchLock) {
-                val frameEvents = inProgressFrameEvents ?: return true
+                val frameEvents = inProgressFrameEvents ?: return service != null
+                if (service == null) {
+                    inProgressFrameExpectedContacts = 0
+                    inProgressFrameEvents = null
+                    return false
+                }
                 val expectedContacts = inProgressFrameExpectedContacts
                 inProgressFrameExpectedContacts = 0
                 inProgressFrameEvents = null
