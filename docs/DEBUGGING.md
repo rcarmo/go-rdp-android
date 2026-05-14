@@ -50,10 +50,11 @@ For packet traces in CI, inspect `mock-probe-artifacts/protocol-trace/`. The pro
 - `mock-server.log`
 - `../auth/auth-summary.md` plus `probe-good.log`, `probe-nla-good.log`, `probe-bad.log`, and `probe-nla-bad.log` for authentication smoke details.
 
-Enable server trace logs:
+Enable server trace logs with either the legacy boolean knob or the runtime log-level knob:
 
 ```bash
 GO_RDP_ANDROID_TRACE=1 go run ./cmd/mock-server -test-pattern
+GO_RDP_ANDROID_LOG_LEVEL=debug go run ./cmd/mock-server -test-pattern
 ```
 
 Common protocol failure points:

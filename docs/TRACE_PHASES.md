@@ -1,6 +1,6 @@
 # Trace phase taxonomy
 
-`GO_RDP_ANDROID_TRACE=1` enables bounded server trace lines in the form:
+`GO_RDP_ANDROID_TRACE=1` enables bounded server trace lines in the form. The broader runtime knob `GO_RDP_ANDROID_LOG_LEVEL=trace` or `GO_RDP_ANDROID_LOG_LEVEL=debug` enables the same trace stream while keeping the legacy boolean variable supported for CI/probe scripts.
 
 ```text
 trace phase=<phase> key=value ...
