@@ -45,6 +45,11 @@ class GomobileRdpBackend : RdpBackend {
         return invoke(method, mode)
     }
 
+    override fun setFailedAuthPolicy(limit: Int, backoffMs: Int, backoffMaxMs: Int): Boolean {
+        val method = findMethod(mobileClass ?: return false, "setFailedAuthPolicy", 3) ?: return false
+        return invoke(method, limit, backoffMs, backoffMaxMs)
+    }
+
     override fun startServer(port: Int): Boolean {
         val method = findMethod(mobileClass ?: return false, "startServer", 1) ?: return false
         return invoke(method, port)

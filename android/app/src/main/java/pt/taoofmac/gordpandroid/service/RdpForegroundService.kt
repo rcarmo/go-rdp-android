@@ -72,6 +72,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
         val securityMode = intent?.getStringExtra(EXTRA_SECURITY_MODE) ?: savedSettings.securityMode.wireValue
+        val failedAuthLimit = intent?.getIntExtra(EXTRA_FAILED_AUTH_LIMIT, savedSettings.failedAuthLimit) ?: savedSettings.failedAuthLimit
+        val failedAuthBackoffMs = intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MS, savedSettings.failedAuthBackoffMs) ?: savedSettings.failedAuthBackoffMs
+        val failedAuthBackoffMaxMs = intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, savedSettings.failedAuthBackoffMaxMs) ?: savedSettings.failedAuthBackoffMaxMs
         val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
@@ -94,6 +97,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             }
             NativeRdpBridge.setCredentials(username, password)
             NativeRdpBridge.setSecurityMode(securityMode)
+            NativeRdpBridge.setFailedAuthPolicy(failedAuthLimit, failedAuthBackoffMs, failedAuthBackoffMaxMs)
             NativeRdpBridge.setInputCoordinateScale(captureScale)
             if (!NativeRdpBridge.startServer(3390, mode)) {
                 Log.e(TAG, "Native RDP server failed to start")
@@ -276,6 +280,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_TEST_PATTERN = "test_pattern"
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
         const val EXTRA_SECURITY_MODE = "security_mode"
+        const val EXTRA_FAILED_AUTH_LIMIT = "failed_auth_limit"
+        const val EXTRA_FAILED_AUTH_BACKOFF_MS = "failed_auth_backoff_ms"
+        const val EXTRA_FAILED_AUTH_BACKOFF_MAX_MS = "failed_auth_backoff_max_ms"
         const val EXTRA_USERNAME = "rdp_username"
         const val EXTRA_PASSWORD = "rdp_password"
         const val ACTION_STOP = "io.carmo.go.rdp.android.service.STOP"

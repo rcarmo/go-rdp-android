@@ -26,6 +26,11 @@ class LoggingRdpBackend : RdpBackend {
         return true
     }
 
+    override fun setFailedAuthPolicy(limit: Int, backoffMs: Int, backoffMaxMs: Int): Boolean {
+        Log.i(TAG, "setFailedAuthPolicy(limit=$limit backoffMs=$backoffMs backoffMaxMs=$backoffMaxMs) [$name]")
+        return true
+    }
+
     override fun startServer(port: Int): Boolean {
         if (running.compareAndSet(false, true)) {
             this.port = port

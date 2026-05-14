@@ -196,7 +196,7 @@ func TestMobileServerCredentials(t *testing.T) {
 	}
 }
 
-func TestMobileServerSecurityMode(t *testing.T) {
+func TestMobileServerSecurityPolicy(t *testing.T) {
 	srv := NewServer()
 	if err := srv.SetSecurityMode("tls-only"); err != nil {
 		t.Fatal(err)
@@ -206,6 +206,15 @@ func TestMobileServerSecurityMode(t *testing.T) {
 	}
 	if err := srv.SetSecurityMode("invalid"); err == nil {
 		t.Fatal("expected invalid security mode error")
+	}
+	if err := srv.SetFailedAuthPolicy(3, 250, 1000); err != nil {
+		t.Fatal(err)
+	}
+	if srv.failedAuthLimit != 3 || srv.failedAuthBackoff != 250*time.Millisecond || srv.failedAuthBackoffMax != time.Second {
+		t.Fatalf("unexpected failed-auth policy limit=%d backoff=%s max=%s", srv.failedAuthLimit, srv.failedAuthBackoff, srv.failedAuthBackoffMax)
+	}
+	if err := srv.SetFailedAuthPolicy(-1, 0, 0); err == nil {
+		t.Fatal("expected invalid failed-auth policy error")
 	}
 }
 

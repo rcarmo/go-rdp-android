@@ -23,6 +23,7 @@ import io.carmo.go.rdp.android.input.RdpAccessibilityService
 import io.carmo.go.rdp.android.service.RdpForegroundService
 import io.carmo.go.rdp.android.settings.RdpSecurityMode
 import io.carmo.go.rdp.android.settings.RdpServerMode
+import io.carmo.go.rdp.android.settings.RdpServerSettings
 import io.carmo.go.rdp.android.settings.RdpSettingsStore
 
 class MainActivity : Activity() {
@@ -38,6 +39,9 @@ class MainActivity : Activity() {
     private lateinit var passwordInput: EditText
     private lateinit var captureScaleInput: EditText
     private lateinit var securityModeInput: Spinner
+    private lateinit var failedAuthLimitInput: EditText
+    private lateinit var failedAuthBackoffInput: EditText
+    private lateinit var failedAuthBackoffMaxInput: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +87,21 @@ class MainActivity : Activity() {
         securityModeInput = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, RdpSecurityMode.entries.toTypedArray())
             setSelection(RdpSecurityMode.entries.indexOf(savedSettings.securityMode).coerceAtLeast(0))
+        }
+        failedAuthLimitInput = EditText(this).apply {
+            hint = "Failed auth limit (0 disables)"
+            setText(savedSettings.failedAuthLimit.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        failedAuthBackoffInput = EditText(this).apply {
+            hint = "Failed auth backoff ms"
+            setText(savedSettings.failedAuthBackoffMs.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
+        }
+        failedAuthBackoffMaxInput = EditText(this).apply {
+            hint = "Failed auth max backoff ms"
+            setText(savedSettings.failedAuthBackoffMaxMs.toString())
+            inputType = InputType.TYPE_CLASS_NUMBER
         }
 
         val saveCredentials = Button(this).apply {
@@ -137,6 +156,9 @@ class MainActivity : Activity() {
             addView(passwordInput)
             addView(captureScaleInput)
             addView(securityModeInput)
+            addView(failedAuthLimitInput)
+            addView(failedAuthBackoffInput)
+            addView(failedAuthBackoffMaxInput)
             addView(saveCredentials)
             addView(accessibility)
             addView(capture)
@@ -171,7 +193,7 @@ class MainActivity : Activity() {
             "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\nAccessibility: $accessibilityState\n\nHealth: $health"
         } else {
             val settings = settingsStore.load()
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
     }
 
@@ -196,7 +218,7 @@ class MainActivity : Activity() {
             return false
         }
         credentialStore.save(username, password)
-        settingsStore.save(settingsStore.load().copy(captureScale = resolveCaptureScale(), securityMode = resolveSecurityMode()))
+        settingsStore.save(settingsStore.load().copy(captureScale = resolveCaptureScale(), securityMode = resolveSecurityMode()).withFailedAuthPolicy())
         if (showToast) {
             Toast.makeText(this, "Credentials saved", Toast.LENGTH_SHORT).show()
         }
@@ -220,11 +242,12 @@ class MainActivity : Activity() {
     private fun startTestPatternService(creds: RdpCredentials) {
         val captureScale = resolveCaptureScale()
         val securityMode = resolveSecurityMode()
-        settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.TEST_PATTERN, securityMode = securityMode))
+        settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.TEST_PATTERN, securityMode = securityMode).withFailedAuthPolicy())
         val intent = Intent(this, RdpForegroundService::class.java).apply {
             putExtra(RdpForegroundService.EXTRA_TEST_PATTERN, true)
             putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
             putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, securityMode.wireValue)
+            putFailedAuthPolicyExtras()
             putExtra(RdpForegroundService.EXTRA_USERNAME, creds.username)
             putExtra(RdpForegroundService.EXTRA_PASSWORD, creds.password)
         }
@@ -251,12 +274,13 @@ class MainActivity : Activity() {
         pendingUsername = ""
         pendingPassword = ""
         if (resultCode == RESULT_OK && data != null) {
-            settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.SCREEN_CAPTURE, securityMode = resolveSecurityMode()))
+            settingsStore.save(settingsStore.load().copy(captureScale = captureScale, lastMode = RdpServerMode.SCREEN_CAPTURE, securityMode = resolveSecurityMode()).withFailedAuthPolicy())
             val intent = Intent(this, RdpForegroundService::class.java).apply {
                 putExtra(RdpForegroundService.EXTRA_RESULT_CODE, resultCode)
                 putExtra(RdpForegroundService.EXTRA_RESULT_DATA, data)
                 putExtra(RdpForegroundService.EXTRA_CAPTURE_SCALE, captureScale)
                 putExtra(RdpForegroundService.EXTRA_SECURITY_MODE, resolveSecurityMode().wireValue)
+                putFailedAuthPolicyExtras()
                 putExtra(RdpForegroundService.EXTRA_USERNAME, username)
                 putExtra(RdpForegroundService.EXTRA_PASSWORD, password)
             }
@@ -288,6 +312,9 @@ class MainActivity : Activity() {
             "password_configured=${creds?.password?.isNotEmpty() == true}",
             "capture_scale=${settings.captureScale}",
             "security_mode=${settings.securityMode.wireValue}",
+            "failed_auth_limit=${settings.failedAuthLimit}",
+            "failed_auth_backoff_ms=${settings.failedAuthBackoffMs}",
+            "failed_auth_backoff_max_ms=${settings.failedAuthBackoffMaxMs}",
             "last_mode=${settings.lastMode.name.lowercase()}",
             "accessibility=$accessibilityState",
         ).joinToString("\n")
@@ -301,6 +328,30 @@ class MainActivity : Activity() {
 
     private fun resolveSecurityMode(): RdpSecurityMode {
         return securityModeInput.selectedItem as? RdpSecurityMode ?: settingsStore.load().securityMode
+    }
+
+    private fun resolveFailedAuthLimit(): Int = failedAuthLimitInput.text?.toString()?.toIntOrNull()
+        ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_LIMIT, RdpSettingsStore.MAX_FAILED_AUTH_LIMIT)
+        ?: settingsStore.load().failedAuthLimit
+
+    private fun resolveFailedAuthBackoffMs(): Int = failedAuthBackoffInput.text?.toString()?.toIntOrNull()
+        ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
+        ?: settingsStore.load().failedAuthBackoffMs
+
+    private fun resolveFailedAuthBackoffMaxMs(): Int = failedAuthBackoffMaxInput.text?.toString()?.toIntOrNull()
+        ?.coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
+        ?: settingsStore.load().failedAuthBackoffMaxMs
+
+    private fun RdpServerSettings.withFailedAuthPolicy(): RdpServerSettings = copy(
+        failedAuthLimit = resolveFailedAuthLimit(),
+        failedAuthBackoffMs = resolveFailedAuthBackoffMs(),
+        failedAuthBackoffMaxMs = resolveFailedAuthBackoffMaxMs(),
+    )
+
+    private fun Intent.putFailedAuthPolicyExtras() {
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_LIMIT, resolveFailedAuthLimit())
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MS, resolveFailedAuthBackoffMs())
+        putExtra(RdpForegroundService.EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, resolveFailedAuthBackoffMaxMs())
     }
 
     companion object {

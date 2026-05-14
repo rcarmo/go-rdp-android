@@ -19,17 +19,20 @@ var defaultServer = NewServer()
 
 // Server is a gomobile-friendly wrapper around the RDP server core.
 type Server struct {
-	mu           sync.Mutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	done         chan error
-	server       *rdpserver.Server
-	addr         string
-	frames       *FrameQueue
-	input        *mobileInputSink
-	username     string
-	password     string
-	securityMode rdpserver.SecurityMode
+	mu                   sync.Mutex
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	done                 chan error
+	server               *rdpserver.Server
+	addr                 string
+	frames               *FrameQueue
+	input                *mobileInputSink
+	username             string
+	password             string
+	securityMode         rdpserver.SecurityMode
+	failedAuthLimit      int
+	failedAuthBackoff    time.Duration
+	failedAuthBackoffMax time.Duration
 }
 
 // NewServer creates a mobile bridge server instance.
@@ -62,7 +65,10 @@ func (s *Server) Start(port int) error {
 		Height:        720,
 		Authenticator: auth,
 		Policy: rdpserver.AccessPolicy{
-			SecurityMode: s.securityMode,
+			SecurityMode:         s.securityMode,
+			FailedAuthLimit:      s.failedAuthLimit,
+			FailedAuthBackoff:    s.failedAuthBackoff,
+			FailedAuthBackoffMax: s.failedAuthBackoffMax,
 		},
 	}, s.frames, s.input)
 	if err != nil {
@@ -174,6 +180,19 @@ func (s *Server) SetSecurityMode(mode string) error {
 	default:
 		return fmt.Errorf("unsupported security mode %q", mode)
 	}
+	return nil
+}
+
+// SetFailedAuthPolicy configures host-level failed-auth backoff for future sessions.
+func (s *Server) SetFailedAuthPolicy(limit int, backoffMillis int, backoffMaxMillis int) error {
+	if limit < 0 || backoffMillis < 0 || backoffMaxMillis < 0 {
+		return errors.New("failed auth policy values must be non-negative")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failedAuthLimit = limit
+	s.failedAuthBackoff = time.Duration(backoffMillis) * time.Millisecond
+	s.failedAuthBackoffMax = time.Duration(backoffMaxMillis) * time.Millisecond
 	return nil
 }
 
@@ -314,6 +333,11 @@ func SetCredentials(username, password string) { defaultServer.SetCredentials(us
 
 // SetSecurityMode configures the accepted RDP security mode for future sessions.
 func SetSecurityMode(mode string) error { return defaultServer.SetSecurityMode(mode) }
+
+// SetFailedAuthPolicy configures failed-auth backoff for future sessions.
+func SetFailedAuthPolicy(limit int, backoffMillis int, backoffMaxMillis int) error {
+	return defaultServer.SetFailedAuthPolicy(limit, backoffMillis, backoffMaxMillis)
+}
 
 // SetInputHandler installs the callback target on the default singleton server.
 func SetInputHandler(handler InputHandler) { defaultServer.SetInputHandler(handler) }
