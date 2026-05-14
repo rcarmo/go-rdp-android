@@ -259,6 +259,8 @@ If native startup fails after credentials are present, look for `Native RDP serv
 
 If listener shutdown behavior looks suspicious, check that `addr=n/a` or an empty gomobile address is reported after Stop. Core `Server.Serve` clears its listener address and stops its context-watcher goroutine on all exit paths, so stale addresses after Stop should be treated as a regression.
 
+For RDPEI touch issues after toggling Accessibility, verify that new touch frames start only while `input=enabled` in the health line. The Android input service clears any pending frame batch when Accessibility is disconnected at frame start or disappears before frame end; stale contacts affecting a later reconnect should be treated as a regression.
+
 ## Authentication debugging
 
 The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:

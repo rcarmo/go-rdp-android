@@ -65,7 +65,7 @@ Goal: translate RDP input into Android interactions.
 Tasks:
 - decode pointer/keyboard input ✅ (slow-path and Fast-Path)
 - Kotlin input callback surface ✅
-- Accessibility gesture injection ✅/partial (taps/drags/RDPEI strokes; keyboard/text and failure callbacks pending)
+- Accessibility gesture injection ✅/partial (taps/drags/RDPEI strokes with stale-frame cleanup across service disconnects; keyboard/text and failure callbacks pending)
 - true RDP touch support via RDPEI/dynamic virtual channels (`drdynvc`) ✅/partial (protocol/sink/Android bridge done; broad real-device validation pending)
 - text/clipboard handling plan
 
