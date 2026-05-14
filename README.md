@@ -19,7 +19,7 @@ Implemented or validated today:
 - Synthetic test-pattern frame source for emulator/CI validation without capture permission.
 - RDP 24-bit BGR bitmap update tiling sized for safe TPKT/PER envelopes.
 - Dirty-tile suppression for post-initial streamed frames.
-- Adaptive capture pacing/backpressure telemetry in the Android capture loop.
+- Layered capture pacing/backpressure: Android adaptive capture interval, bounded Go queue drops, and server-side queued-frame coalescing.
 - Optional MediaProjection downscale mode (`capture_scale` / `emulator_capture_scale`).
 - Keyboard, mouse, pointer, wheel decode/degrade, and RDPEI touch validation in CI using scripted emulator input and synthetic dynamic-channel touch packets.
 - Gherkin-style UX stories under `features/ux/` and a Playwright-based PDF report generator.
