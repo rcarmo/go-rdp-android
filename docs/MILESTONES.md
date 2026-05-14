@@ -75,5 +75,5 @@ Tasks:
 - Hybrid/NLA CredSSP auth ✅ (experimental, FreeRDP-gated)
 - foreground notification controls ✅ (foreground start for all server modes, serialized mode switching, notification/UI Stop action, permission-denial cleanup, projection-revocation shutdown, non-sticky restart policy, native-start failure teardown)
 - reconnect handling
-- settings UI ✅/partial (credentials, capture scale, last mode, start/stop, compact health, failed-start last-mode reset; security controls pending)
+- settings UI ✅/partial (credentials, capture scale, security mode, failed-auth policy, last mode, start/stop, compact health, redacted diagnostics sharing, failed-start last-mode reset; allowlists/TLS rotation controls pending)
 - optional live CI smoke tests with emulator ✅

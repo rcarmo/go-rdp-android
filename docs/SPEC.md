@@ -247,6 +247,6 @@ Recommendation: `gomobile bind` first.
 
 1. Validate at least one Microsoft Remote Desktop client with NLA to active streaming.
 2. Validate MediaProjection, Accessibility gestures, service lifecycle, screen off/on, and multi-touch behavior on a physical Android device.
-3. Surface security mode, allowlists, failed-auth backoff, TLS fingerprint, and rotation controls in Android UI.
+3. Continue Android security UI: security mode and failed-auth backoff are surfaced; allowlists, TLS fingerprint display, and rotation controls remain.
 4. Upstream reusable CredSSP, `drdynvc`, RDPEI, and protocol primitives into `rcarmo/go-rdp` once the app-side behavior is stable.
 5. Continue graphics production work: benchmark raw bitmap transport, add dirty-region propagation from Android capture, then investigate RLE/RDPGFX/H.264 paths.

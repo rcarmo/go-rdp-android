@@ -44,7 +44,7 @@ Responsibilities:
 
 - Ask the user for MediaProjection permission.
 - Start/stop the foreground service for real capture or test-pattern sessions, including notification/UI stop actions and non-sticky restart behavior.
-- Persist and restore non-secret server settings (capture scale and last selected mode) separately from encrypted credentials; process-death recovery still requires an explicit user restart.
+- Persist and restore non-secret server settings (capture scale, security mode, failed-auth policy, and last selected mode) separately from encrypted credentials; process-death recovery still requires an explicit user restart.
 - Create a downscaled or full-size virtual display.
 - Copy throttled `RGBA_8888` frames from `ImageReader` into the Go bridge.
 - Prefer a gomobile backend when `mobile.aar` is bundled.
@@ -65,6 +65,8 @@ func StartServer(port int) error
 func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error
 func StopServer() error
 func SetCredentials(username, password string)
+func SetSecurityMode(mode string) error
+func SetFailedAuthPolicy(limit int, backoffMillis int, backoffMaxMillis int) error
 func SetInputHandler(handler InputHandler)
 func Addr() string
 func TLSFingerprintSHA256() string
@@ -84,7 +86,7 @@ func DroppedFrames() int64
 
 Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding, and exposes submitted/queued/dropped counters for health reporting. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state. Frame ingress validates dimensions, stride, data length, and integer-overflow cases before accepting buffers; the bitmap tiler and desktop scaler repeat those geometry checks before reading or allocating derived frames. The queue is reusable across Android service restarts: restart paths drain stale frames, closed queues do not hang drain calls, and mobile server startup now reports immediate listen failures before the UI treats the server as running. Listener lifecycle cleanup is bounded as well: `Server.Serve` clears its active address and stops its context-watcher goroutine on any exit path, not only on context cancellation. The bridge also exposes lightweight runtime health values (`Addr`, `TLSFingerprintSHA256`, active/accepted connection counts, auth/handshake failure counts, decoded input events, RDPEI contact totals, DVC fragment counts, sent frame batches, and bitmap payload byte totals) that the Android UI combines with local mode/auth/input/frame state.
 
-`SetCredentials` configures the current username/password authenticator for future sessions. The server has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally. Access policy controls (security mode + allowed users/CIDRs) are normalized at startup and enforced at connection/auth boundaries, including optional failed-auth lockout/backoff controls. TLS settings support persisted self-signed cert/key paths, optional startup rotation, and SHA-256 fingerprint exposure for client trust guidance.
+`SetCredentials` configures the current username/password authenticator for future sessions. `SetSecurityMode` and `SetFailedAuthPolicy` expose the core access-policy controls to Android; the UI persists these non-secret values, normalizes failed-auth max-backoff so it is never below the initial backoff, and treats backend policy-configuration failure as startup failure before binding a listener. The server has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally. Access policy controls (security mode + allowed users/CIDRs) are normalized at startup and enforced at connection/auth boundaries, including optional failed-auth lockout/backoff controls. TLS settings support persisted self-signed cert/key paths, optional startup rotation, and SHA-256 fingerprint exposure for client trust guidance.
 
 ## RDP server core
 
