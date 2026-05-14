@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-13
-Current evidence commit: `c4990b1` (`Refresh status after latest green run`)
-Latest referenced CI run: `25846326159` (`main` CI, success)
+Current evidence commit: `06ccf61` (`Refresh status after README update`)
+Latest referenced CI run: `25846637470` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -31,7 +31,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25846326159`:
+Latest checked artifact from CI run `25846637470`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
