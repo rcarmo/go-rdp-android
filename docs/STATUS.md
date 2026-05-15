@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-14
-Current evidence commit: `1f1e040` (`Normalize persisted failed-auth backoff`)
-Latest referenced CI run: `25890580637` (`main` CI, success)
+Current evidence commit: `d6d9aa0` (`Refresh docs after Android policy controls`)
+Latest referenced CI run: `25890892075` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25890580637`:
+Latest checked artifact from CI run `25890892075`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
