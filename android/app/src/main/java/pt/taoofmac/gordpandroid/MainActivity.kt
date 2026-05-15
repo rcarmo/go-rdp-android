@@ -13,6 +13,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -39,6 +40,7 @@ class MainActivity : Activity() {
     private lateinit var credentialStore: RdpCredentialStore
     private lateinit var settingsStore: RdpSettingsStore
     private lateinit var status: TextView
+    private lateinit var debugPanel: TextView
     private lateinit var usernameInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var captureScaleInput: EditText
@@ -72,6 +74,11 @@ class MainActivity : Activity() {
 
         status = TextView(this).apply {
             textSize = 16f
+        }
+        debugPanel = TextView(this).apply {
+            textSize = 12f
+            maxLines = 12
+            setTextIsSelectable(true)
         }
         usernameInput = EditText(this).apply {
             hint = "RDP username"
@@ -152,24 +159,27 @@ class MainActivity : Activity() {
             }
         }
 
-        setContentView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(32, 64, 32, 32)
-            addView(status)
-            addView(usernameInput)
-            addView(passwordInput)
-            addView(captureScaleInput)
-            addView(securityModeInput)
-            addView(failedAuthLimitInput)
-            addView(failedAuthBackoffInput)
-            addView(failedAuthBackoffMaxInput)
-            addView(saveCredentials)
-            addView(accessibility)
-            addView(capture)
-            addView(testPattern)
-            addView(refreshStatus)
-            addView(shareDiagnostics)
-            addView(stop)
+        setContentView(ScrollView(this).apply {
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(32, 64, 32, 32)
+                addView(status)
+                addView(debugPanel)
+                addView(usernameInput)
+                addView(passwordInput)
+                addView(captureScaleInput)
+                addView(securityModeInput)
+                addView(failedAuthLimitInput)
+                addView(failedAuthBackoffInput)
+                addView(failedAuthBackoffMaxInput)
+                addView(saveCredentials)
+                addView(accessibility)
+                addView(capture)
+                addView(testPattern)
+                addView(refreshStatus)
+                addView(shareDiagnostics)
+                addView(stop)
+            })
         })
 
         updateStatus()
@@ -199,6 +209,23 @@ class MainActivity : Activity() {
             val settings = settingsStore.load()
             "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
+        debugPanel.text = buildDebugPanelText(health, accessibilityState)
+    }
+
+    private fun buildDebugPanelText(health: String, accessibilityState: String): String {
+        val settings = settingsStore.load()
+        val creds = credentialStore.load()
+        return listOf(
+            "Debug panel",
+            "backend_health=$health",
+            "configured_user=${creds?.username ?: "<none>"}",
+            "password_configured=${creds?.password?.isNotEmpty() == true}",
+            "capture_scale=${settings.captureScale}",
+            "security_mode=${settings.securityMode.wireValue}",
+            "failed_auth=${settings.failedAuthLimit}/${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms",
+            "last_mode=${settings.lastMode.name.lowercase()}",
+            "accessibility=$accessibilityState",
+        ).joinToString("\n")
     }
 
     private fun isRdpAccessibilityEnabled(): Boolean {
