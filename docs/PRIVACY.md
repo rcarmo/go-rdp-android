@@ -13,7 +13,7 @@
 
 - The server listens only after credentials are configured and the user starts test-pattern or screen-capture mode.
 - Long-running modes run as an Android foreground service with a persistent notification and Stop action.
-- Explicit Stop, MediaProjection revocation, missing credentials, native startup failure, or invalid policy configuration leave the server stopped.
+- Explicit Stop, MediaProjection revocation, missing credentials, native startup failure, or invalid policy configuration stop capture/test-pattern sources and leave the server stopped.
 - The service is `START_NOT_STICKY`: after process death it requires an explicit user/UI restart rather than silently reopening a listener.
 
 ## Remote input
