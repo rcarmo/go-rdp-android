@@ -207,7 +207,7 @@ class MainActivity : Activity() {
             "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\nAccessibility: $accessibilityState\n\nHealth: $health"
         } else {
             val settings = settingsStore.load()
-            "Native Android RDP server prototype\n\nConfigured user: ${creds.username}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nConfigured user: ${displayUsername(creds.username)}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
         }
         debugPanel.text = buildDebugPanelText(health, accessibilityState)
     }
@@ -218,7 +218,7 @@ class MainActivity : Activity() {
         return listOf(
             "Debug panel",
             "backend_health=$health",
-            "configured_user=${creds?.username ?: "<none>"}",
+            "configured_user=${displayUsername(creds?.username)}",
             "password_configured=${creds?.password?.isNotEmpty() == true}",
             "capture_scale=${settings.captureScale}",
             "security_mode=${settings.securityMode.wireValue}",
@@ -361,7 +361,7 @@ class MainActivity : Activity() {
         return listOf(
             "go-rdp-android diagnostics",
             "backend_health=${NativeRdpBridge.healthStatus()}",
-            "configured_user=${creds?.username ?: "<none>"}",
+            "configured_user=${displayUsername(creds?.username)}",
             "password_configured=${creds?.password?.isNotEmpty() == true}",
             "capture_scale=${settings.captureScale}",
             "security_mode=${settings.securityMode.wireValue}",
@@ -371,6 +371,11 @@ class MainActivity : Activity() {
             "last_mode=${settings.lastMode.name.lowercase()}",
             "accessibility=$accessibilityState",
         ).joinToString("\n")
+    }
+
+    private fun displayUsername(username: String?): String {
+        val value = username?.takeIf { it.isNotBlank() } ?: return "<none>"
+        return if (value.length <= MAX_DISPLAY_USERNAME) value else value.take(MAX_DISPLAY_USERNAME) + "…"
     }
 
     private fun resolveCaptureScale(): Int {
@@ -425,5 +430,6 @@ class MainActivity : Activity() {
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
         const val EXTRA_USERNAME = "rdp_username"
         const val EXTRA_PASSWORD = "rdp_password"
+        private const val MAX_DISPLAY_USERNAME = 64
     }
 }
