@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-14
-Current evidence commit: `1244235` (`Bound displayed Android usernames`)
-Latest referenced CI run: `25901646552` (`main` CI, success)
+Current evidence commit: `02c391e` (`Refresh status after username bounds`)
+Latest referenced CI run: `25901875340` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25901646552`:
+Latest checked artifact from CI run `25901875340`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -58,7 +58,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - No physical Android device validation yet.
 - Microsoft Remote Desktop compatibility is not yet validated.
 - FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
-- Security defaults are not production-safe yet: threat model is documented in `docs/THREAT_MODEL.md`, but Android UI controls for security mode/allowlists/backoff/fingerprint display are still pending.
+- Security defaults are not production-safe yet: threat model is documented in `docs/THREAT_MODEL.md` and user-facing privacy/security copy lives in `docs/PRIVACY.md`; Android UI controls for allowlists and TLS fingerprint/rotation remain pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending. Prototype layered backpressure is implemented, but still needs real-device/constrained-network validation.
 
@@ -71,6 +71,7 @@ Update this page together with the relevant feature docs when changing behavior:
 - `docs/SPEC.md` for feasibility/protocol scope changes.
 - `docs/TRACE_PHASES.md` for server/Android trace phase and diagnostic-bundle changes.
 - `docs/THREAT_MODEL.md` for LAN exposure, Android permission, auth, storage, or security-default changes.
+- `docs/PRIVACY.md` for user-facing capture/listening/input/diagnostic/security-default copy.
 - `docs/TESTING.md` for CI gates, artifacts, or validation commands.
 - `docs/PERFORMANCE.md` for capture/graphics metrics or performance decisions.
 - `docs/MILESTONES.md` and `/workspace/workitems/` for roadmap state.

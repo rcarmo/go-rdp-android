@@ -25,7 +25,7 @@ Implemented or validated today:
 - Gherkin-style UX stories under `features/ux/` and a Playwright-based PDF report generator.
 - GitHub Actions coverage for Go tests, race tests, fuzz smoke, classic and NLA authentication smokes, Android APK builds, gomobile AAR/API checks, FreeRDP compatibility probes, emulator capture tests, and UX PDF artifacts.
 - Tag-driven CI/CD policy for build, UX, and release tag classes, including signed APK/AAB staging, SBOM, checksum, and release-note artifacts for `v*` tags.
-- Security documentation in `docs/THREAT_MODEL.md` covering LAN exposure, Android permission boundaries, Accessibility/MediaProjection risk, RDP auth, local storage, and current mitigations.
+- Security documentation in `docs/THREAT_MODEL.md` plus user-facing privacy/security copy in `docs/PRIVACY.md` covering capture, listening state, credentials, remote input, diagnostics, and recommended defaults.
 
 Partially implemented / experimental:
 
@@ -66,6 +66,7 @@ docs/                            Architecture, testing, performance and release 
 - [Testing and CI](docs/TESTING.md)
 - [Debugging](docs/DEBUGGING.md)
 - [Threat model](docs/THREAT_MODEL.md)
+- [Privacy/security notes](docs/PRIVACY.md)
 - [Performance](docs/PERFORMANCE.md)
 - [Release/tag policy](docs/RELEASES.md)
 - [Specification and feasibility notes](docs/SPEC.md)

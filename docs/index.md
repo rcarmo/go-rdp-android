@@ -8,6 +8,7 @@ Start here when working on `go-rdp-android`.
 - [ARCHITECTURE](ARCHITECTURE.md) — current Android/Kotlin, gomobile, Go RDP server, capture, graphics, input, CI, and release architecture.
 - [ANDROID](ANDROID.md) — Android app/gomobile bridge notes.
 - [THREAT_MODEL](THREAT_MODEL.md) — LAN exposure, Android permissions, Accessibility, MediaProjection, auth, and storage risk model.
+- [PRIVACY](PRIVACY.md) — user-facing privacy/security copy for capture, listening state, credentials, input, and diagnostics.
 - [MILESTONES](MILESTONES.md) — staged implementation plan.
 
 ## Validation and operations
