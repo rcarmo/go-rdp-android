@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-14
-Current evidence commit: `1d3568f` (`Refresh status after latest policy CI`)
-Latest referenced CI run: `25900645020` (`main` CI, success)
+Current evidence commit: `1244235` (`Bound displayed Android usernames`)
+Latest referenced CI run: `25901646552` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25900645020`:
+Latest checked artifact from CI run `25901646552`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
