@@ -78,9 +78,15 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
-            activeMode = "stopped"
             startForeground(NOTIFICATION_ID, notification("missing credentials"))
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            synchronized(lifecycleLock) {
+                settingsStore.saveLastMode(RdpServerMode.NONE)
+                captureManager?.stop()
+                stopTestPattern()
+                NativeRdpBridge.stopServer()
+                activeMode = "stopped"
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            }
             stopSelfResult(startId)
             return START_NOT_STICKY
         }

@@ -254,7 +254,7 @@ Network lost: ... local=no IPv4 address
 
 Use those lines to troubleshoot Wi-Fi reconnects, IP changes, hotspot mode, and VPN routing. The server still binds all interfaces; the notification/log refresh is diagnostic and does not silently restart the listener.
 
-If the service is started without credentials, it logs a refusal, removes the temporary foreground notification, and stops without opening a listener.
+If the service is started without credentials, it logs a refusal, stops any existing capture/test-pattern source and native listener, resets the persisted last mode to `none`, removes the temporary foreground notification, and stops without opening a listener.
 
 If native startup fails after credentials are present, look for `Native RDP policy configuration failed` or `Native RDP server failed to start` in logcat and a `startServer failed(...)` line from `GoRdpAndroid`. The service now treats invalid/unsupported security or failed-auth policy configuration as a startup failure before binding. The mobile bridge binds the listener synchronously before reporting success, so occupied ports or other listen errors should leave health as `running=false`, remove the foreground notification, reset the persisted last mode to `none`, and avoid starting MediaProjection/test-pattern capture.
 
