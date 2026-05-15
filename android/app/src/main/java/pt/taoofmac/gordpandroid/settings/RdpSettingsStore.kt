@@ -32,14 +32,18 @@ class RdpSettingsStore(context: Context) {
     }
 
     fun save(settings: RdpServerSettings) {
+        val failedAuthBackoffMs = settings.failedAuthBackoffMs.coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS)
+        val failedAuthBackoffMaxMs = settings.failedAuthBackoffMaxMs
+            .coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS)
+            .coerceAtLeast(failedAuthBackoffMs)
         prefs.edit()
             .putInt(KEY_PORT, settings.port.coerceIn(MIN_PORT, MAX_PORT))
             .putInt(KEY_CAPTURE_SCALE, settings.captureScale.coerceIn(MIN_CAPTURE_SCALE, MAX_CAPTURE_SCALE))
             .putString(KEY_LAST_MODE, settings.lastMode.name)
             .putString(KEY_SECURITY_MODE, settings.securityMode.wireValue)
             .putInt(KEY_FAILED_AUTH_LIMIT, settings.failedAuthLimit.coerceIn(MIN_FAILED_AUTH_LIMIT, MAX_FAILED_AUTH_LIMIT))
-            .putInt(KEY_FAILED_AUTH_BACKOFF_MS, settings.failedAuthBackoffMs.coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS))
-            .putInt(KEY_FAILED_AUTH_BACKOFF_MAX_MS, settings.failedAuthBackoffMaxMs.coerceIn(MIN_FAILED_AUTH_BACKOFF_MS, MAX_FAILED_AUTH_BACKOFF_MS))
+            .putInt(KEY_FAILED_AUTH_BACKOFF_MS, failedAuthBackoffMs)
+            .putInt(KEY_FAILED_AUTH_BACKOFF_MAX_MS, failedAuthBackoffMaxMs)
             .apply()
     }
 
