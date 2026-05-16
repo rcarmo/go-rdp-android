@@ -159,6 +159,18 @@ rdp_input_screenshots=ok
 | `performance-summary.md` | Human-readable metrics rollup. |
 | `ux-report/ux-report.pdf` | Final UX report deliverable. |
 
+## Real-client validation matrix
+
+Use this matrix for manual client evidence before a public APK. Keep screenshots/logs alongside the run notes and copy any surprising behavior into [STATUS](STATUS.md).
+
+| Date | Android device/build | Client platform/version | Security mode | Result | Evidence | Known limitations |
+| --- | --- | --- | --- | --- | --- | --- |
+| pending | pending | FreeRDP CI `/sec:rdp`, `/sec:tls`, `/sec:nla` | rdp/tls/nla | automated active-streaming gate passes | `freerdp-compat-probe` artifact | Mock/test-pattern evidence, not physical Android hardware. |
+| pending | pending | Microsoft Remote Desktop | nla-required | pending | screenshot, client log, app diagnostics | Release blocker until active streaming and disconnect behavior are recorded. |
+| pending | pending | Microsoft Remote Desktop | tls-only | pending | screenshot, client log, app diagnostics | Compatibility fallback only for non-NLA behavior. |
+
+For each manual row, record the app diagnostics text, TLS fingerprint/certificate warning behavior, client screenshot or log, security mode, whether bitmap streaming became active, input behavior, and logoff/disconnect cleanup.
+
 ## Blocked on physical devices
 
 Still requires real Android hardware validation:
