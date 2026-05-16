@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-16
-Current evidence commit: `bb94ab5` (`Refresh status after known limitations`)
-Latest referenced CI run: `25959173032` (`main` CI, success)
+Current evidence commit: `cc22243` (`Refresh status after limitations evidence`)
+Latest referenced CI run: `25959333948` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25959173032`:
+Latest checked artifact from CI run `25959333948`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -61,6 +61,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; allowlists are server-core/mock-server-only for the first polished APK, and Android TLS certificate rotation remains pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending. Prototype layered backpressure is implemented, but still needs real-device/constrained-network validation.
+- Release signing secret presence could not be confirmed from automation (`gh secret list` returned no visible repository secrets on 2026-05-16); controlled `v*` release-candidate/dry-run tagging is blocked until the repository owner confirms `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`.
 
 ## Documentation update policy
 
