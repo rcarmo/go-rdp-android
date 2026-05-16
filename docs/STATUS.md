@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-16
-Current evidence commit: `a862192` (`Refresh status after cleanup docs`)
-Latest referenced CI run: `25956329959` (`main` CI, success)
+Current evidence commit: `137c03a` (`Expose copyable TLS fingerprint`)
+Latest referenced CI run: `25956539798` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -32,7 +32,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25956329959`:
+Latest checked artifact from CI run `25956539798`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
