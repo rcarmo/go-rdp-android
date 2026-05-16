@@ -171,10 +171,14 @@ class MainActivity : Activity() {
                 setPadding(32, 64, 32, 32)
                 addView(status)
                 addView(debugPanel)
+                addView(settingHelp("Credentials", "Required before the app opens TCP/3390. Use a strong unique password."))
                 addView(usernameInput)
                 addView(passwordInput)
+                addView(settingHelp("Capture scale", "1 = full resolution; higher values reduce bandwidth/CPU by downscaling capture."))
                 addView(captureScaleInput)
+                addView(settingHelp("Security mode", "Prefer NLA required. Use TLS only for non-NLA clients; RDP only for isolated compatibility tests."))
                 addView(securityModeInput)
+                addView(settingHelp("Failed-auth protection", "Limit 0 disables lockout. Backoff is milliseconds; max backoff is normalized to be at least the initial backoff."))
                 addView(failedAuthLimitInput)
                 addView(failedAuthBackoffInput)
                 addView(failedAuthBackoffMaxInput)
@@ -204,6 +208,12 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+    }
+
+    private fun settingHelp(title: String, body: String): TextView = TextView(this).apply {
+        text = "$title\n$body"
+        textSize = 13f
+        setPadding(0, 18, 0, 4)
     }
 
     private fun updateStatus() {
