@@ -17,7 +17,9 @@ import android.view.WindowManager
 import java.net.NetworkInterface
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
 import io.carmo.go.rdp.android.capture.ScreenCaptureManager
+import io.carmo.go.rdp.android.settings.RdpSecurityMode
 import io.carmo.go.rdp.android.settings.RdpServerMode
+import io.carmo.go.rdp.android.settings.RdpServerSettings
 import io.carmo.go.rdp.android.settings.RdpSettingsStore
 
 class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
@@ -72,9 +74,8 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val username = intent?.getStringExtra(EXTRA_USERNAME)?.trim().orEmpty()
         val password = intent?.getStringExtra(EXTRA_PASSWORD).orEmpty()
         val securityMode = intent?.getStringExtra(EXTRA_SECURITY_MODE) ?: savedSettings.securityMode.wireValue
-        val failedAuthLimit = intent?.getIntExtra(EXTRA_FAILED_AUTH_LIMIT, savedSettings.failedAuthLimit) ?: savedSettings.failedAuthLimit
-        val failedAuthBackoffMs = intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MS, savedSettings.failedAuthBackoffMs) ?: savedSettings.failedAuthBackoffMs
-        val failedAuthBackoffMaxMs = intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, savedSettings.failedAuthBackoffMaxMs) ?: savedSettings.failedAuthBackoffMaxMs
+        val securityModeSetting = RdpSecurityMode.fromWireValue(securityMode) ?: savedSettings.securityMode
+        val failedAuthPolicy = failedAuthPolicyFromIntent(intent, savedSettings)
         val mode = serviceMode(hasProjection, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
@@ -103,7 +104,11 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             }
             NativeRdpBridge.setCredentials(username, password)
             val policyConfigured = NativeRdpBridge.setSecurityMode(securityMode) &&
-                NativeRdpBridge.setFailedAuthPolicy(failedAuthLimit, failedAuthBackoffMs, failedAuthBackoffMaxMs)
+                NativeRdpBridge.setFailedAuthPolicy(
+                    failedAuthPolicy.limit,
+                    failedAuthPolicy.backoffMs,
+                    failedAuthPolicy.backoffMaxMs,
+                )
             NativeRdpBridge.setInputCoordinateScale(captureScale)
             if (!policyConfigured) {
                 Log.e(TAG, "Native RDP policy configuration failed")
@@ -124,6 +129,10 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             settingsStore.save(savedSettings.copy(
                 captureScale = captureScale,
                 lastMode = requestedMode,
+                securityMode = securityModeSetting,
+                failedAuthLimit = failedAuthPolicy.limit,
+                failedAuthBackoffMs = failedAuthPolicy.backoffMs,
+                failedAuthBackoffMaxMs = failedAuthPolicy.backoffMaxMs,
             ))
 
             when {
@@ -265,6 +274,23 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
             .toList()
             .sorted()
     }.getOrElse { emptyList() }
+
+    private fun failedAuthPolicyFromIntent(intent: Intent?, savedSettings: RdpServerSettings): FailedAuthPolicy {
+        val limit = (intent?.getIntExtra(EXTRA_FAILED_AUTH_LIMIT, savedSettings.failedAuthLimit) ?: savedSettings.failedAuthLimit)
+            .coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_LIMIT, RdpSettingsStore.MAX_FAILED_AUTH_LIMIT)
+        val backoffMs = (intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MS, savedSettings.failedAuthBackoffMs) ?: savedSettings.failedAuthBackoffMs)
+            .coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
+        val backoffMaxMs = (intent?.getIntExtra(EXTRA_FAILED_AUTH_BACKOFF_MAX_MS, savedSettings.failedAuthBackoffMaxMs) ?: savedSettings.failedAuthBackoffMaxMs)
+            .coerceIn(RdpSettingsStore.MIN_FAILED_AUTH_BACKOFF_MS, RdpSettingsStore.MAX_FAILED_AUTH_BACKOFF_MS)
+            .coerceAtLeast(backoffMs)
+        return FailedAuthPolicy(limit, backoffMs, backoffMaxMs)
+    }
+
+    private data class FailedAuthPolicy(
+        val limit: Int,
+        val backoffMs: Int,
+        val backoffMaxMs: Int,
+    )
 
     private fun notification(
         mode: String,
