@@ -185,6 +185,60 @@ func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCManagerRDPGFXCapsNegotiation(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil, serverMetrics{})
+	markDRDYNVCCapsForTest(m)
+	create := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize(), 9}
+	create = append(create, []byte(rdpgfxDynamicChannelName)...)
+	create = append(create, 0)
+
+	done := make(chan error, 1)
+	go func() { done <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(create)) }()
+	first := readTestDomainPDUFromPipe(t, client)
+	firstStatic, err := parseStaticVirtualChannelPDU(first.Data)
+	if err != nil {
+		t.Fatalf("parse create response static PDU: %v", err)
+	}
+	if code := binary.LittleEndian.Uint32(firstStatic.Data[2:6]); code != drdynvcCreateOK {
+		t.Fatalf("create response code = 0x%x", code)
+	}
+	waitForDRDYNVCTestHandler(t, done, "rdpgfx create")
+	if !m.hasRDPGFXChannel || m.rdpgfxChannelID != 9 {
+		t.Fatalf("unexpected RDPGFX channel state: %#v", m)
+	}
+
+	capsPayload := []byte{0x02, 0x00}
+	capsPayload = appendLE32Bytes(capsPayload, rdpgfxCapsVersion8)
+	capsPayload = appendLE32Bytes(capsPayload, 0)
+	capsPayload = appendLE32Bytes(capsPayload, rdpgfxCapsVersion106)
+	capsPayload = appendLE32Bytes(capsPayload, 0x05)
+	capsData := buildDRDYNVCDataPDU(9, buildRDPGFXPDU(rdpgfxCmdCapsAdvertise, 0, capsPayload))
+
+	capsDone := make(chan error, 1)
+	go func() { capsDone <- m.handleStaticPDU(server, buildStaticVirtualChannelPDU(capsData)) }()
+	capsResponse := readTestDomainPDUFromPipe(t, client)
+	capsStatic, err := parseStaticVirtualChannelPDU(capsResponse.Data)
+	if err != nil {
+		t.Fatalf("parse caps response static PDU: %v", err)
+	}
+	capsDVC, err := parseDRDYNVCPDU(capsStatic.Data)
+	if err != nil {
+		t.Fatalf("parse caps response DVC: %v", err)
+	}
+	confirm, err := parseRDPGFXPDU(capsDVC.Data)
+	if err != nil {
+		t.Fatalf("parse caps confirm: %v", err)
+	}
+	if confirm.CmdID != rdpgfxCmdCapsConfirm || !m.rdpgfxCapsConfirmed || m.rdpgfxCapability.Version != rdpgfxCapsVersion106 {
+		t.Fatalf("unexpected caps confirm/state: confirm=%#v manager=%#v", confirm, m)
+	}
+	waitForDRDYNVCTestHandler(t, capsDone, "rdpgfx caps")
+}
+
 func TestDRDYNVCManagerCreateRDPEIWritesResponseAndSCReady(t *testing.T) {
 	server, client := net.Pipe()
 	defer server.Close()
@@ -381,7 +435,7 @@ func TestDRDYNVCManagerCloseAndReopenRDPEI(t *testing.T) {
 	markDRDYNVCCapsForTest(m)
 	markRDPEIChannelForTest(m, 9)
 	m.touchLifecycle.ApplyFrame([]input.TouchContact{{ID: 1, X: 1, Y: 2, Flags: input.TouchDown}})
-	if err := m.handleDynamicDataFirst(9, 2, []byte{1}); err != nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 9, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment: %v", err)
 	}
 	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 9}
@@ -506,22 +560,22 @@ func TestDRDYNVCManagerHandlesMultipleSimultaneousFragments(t *testing.T) {
 	m.channels[10] = "other"
 	rdpei := withRDPEIHeader(rdpeiEventTouch, rdpeiTouchEventPayloadForTest(1, 10, 20, rdpeiContactFlagDown|rdpeiContactFlagInRange|rdpeiContactFlagInContact))
 	other := []byte{1, 2, 3, 4}
-	if err := m.handleDynamicDataFirst(9, uint32(len(rdpei)), rdpei[:3]); err != nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 9, uint32(len(rdpei)), rdpei[:3]); err != nil {
 		t.Fatalf("rdpei data-first: %v", err)
 	}
-	if err := m.handleDynamicDataFirst(10, uint32(len(other)), other[:2]); err != nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 10, uint32(len(other)), other[:2]); err != nil {
 		t.Fatalf("other data-first: %v", err)
 	}
 	if len(m.fragments) != 2 {
 		t.Fatalf("expected two pending fragments: %#v", m.fragments)
 	}
-	if err := m.handleDynamicData(10, other[2:]); err != nil {
+	if err := m.handleDynamicData(discardConn{}, 10, other[2:]); err != nil {
 		t.Fatalf("other completion: %v", err)
 	}
 	if len(sink.frames) != 0 || len(m.fragments) != 1 {
 		t.Fatalf("other channel should complete without RDPEI dispatch frames=%#v fragments=%#v", sink.frames, m.fragments)
 	}
-	if err := m.handleDynamicData(9, rdpei[3:]); err != nil {
+	if err := m.handleDynamicData(discardConn{}, 9, rdpei[3:]); err != nil {
 		t.Fatalf("rdpei completion: %v", err)
 	}
 	if len(m.fragments) != 0 || len(sink.frames) != 1 {
@@ -562,7 +616,7 @@ func TestDRDYNVCSizeBounds(t *testing.T) {
 		t.Fatal("expected oversized drdynvc PDU error")
 	}
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil, serverMetrics{})
-	if err := m.handleDynamicDataFirst(1, drdynvcMaxFragmentSize+1, []byte{1}); err == nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 1, drdynvcMaxFragmentSize+1, []byte{1}); err == nil {
 		t.Fatal("expected oversized data-first length error")
 	}
 }
@@ -570,11 +624,11 @@ func TestDRDYNVCSizeBounds(t *testing.T) {
 func TestDRDYNVCFragmentLimitAndCleanup(t *testing.T) {
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil, serverMetrics{})
 	for i := uint32(1); i <= drdynvcMaxFragments; i++ {
-		if err := m.handleDynamicDataFirst(i, 2, []byte{1}); err != nil {
+		if err := m.handleDynamicDataFirst(discardConn{}, i, 2, []byte{1}); err != nil {
 			t.Fatalf("fragment %d: %v", i, err)
 		}
 	}
-	if err := m.handleDynamicDataFirst(99, 2, []byte{1}); err == nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 99, 2, []byte{1}); err == nil {
 		t.Fatal("expected pending fragment limit error")
 	}
 	for _, frag := range m.fragments {
@@ -584,7 +638,7 @@ func TestDRDYNVCFragmentLimitAndCleanup(t *testing.T) {
 	if len(m.fragments) != 0 {
 		t.Fatalf("expected stale fragments to be cleaned up: %#v", m.fragments)
 	}
-	if err := m.handleDynamicDataFirst(99, 2, []byte{1}); err != nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 99, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment after cleanup: %v", err)
 	}
 }
@@ -593,7 +647,7 @@ func TestDRDYNVCCloseClearsNonRDPEIFragment(t *testing.T) {
 	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil, serverMetrics{})
 	markDRDYNVCCapsForTest(m)
 	m.channels[11] = "other"
-	if err := m.handleDynamicDataFirst(11, 2, []byte{1}); err != nil {
+	if err := m.handleDynamicDataFirst(discardConn{}, 11, 2, []byte{1}); err != nil {
 		t.Fatalf("fragment: %v", err)
 	}
 	closePDU := []byte{(drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdClose}).serialize(), 11}

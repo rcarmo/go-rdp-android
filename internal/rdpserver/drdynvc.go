@@ -42,11 +42,15 @@ type drdynvcManager struct {
 	negotiatedCapsVersion uint16
 	rdpeiChannelID        uint32
 	hasRDPEIChannel       bool
+	rdpgfxChannelID       uint32
+	hasRDPGFXChannel      bool
+	rdpgfxCapsConfirmed   bool
+	rdpgfxCapability      rdpgfxCapabilitySet
 	channels              map[uint32]string
 	fragments             map[uint32]*drdynvcFragment
 	touchLifecycle        *input.TouchLifecycleCoalescer
 	sink                  input.Sink
-	metrics              serverMetrics
+	metrics               serverMetrics
 }
 
 type drdynvcFragment struct {
@@ -132,37 +136,56 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 				code = drdynvcCreateOK
 				tracef("drdynvc_create", "channel=%d name=%q accepted=true", pdu.ChannelID, pdu.Name)
 			}
+		} else if pdu.Name == rdpgfxDynamicChannelName {
+			if m.hasRDPGFXChannel {
+				code = drdynvcCreateAlreadyExists
+				tracef("drdynvc_create", "channel=%d name=%q accepted=false active_rdpgfx=%d", pdu.ChannelID, pdu.Name, m.rdpgfxChannelID)
+			} else {
+				m.channels[pdu.ChannelID] = pdu.Name
+				m.rdpgfxChannelID = pdu.ChannelID
+				m.hasRDPGFXChannel = true
+				m.rdpgfxCapsConfirmed = false
+				m.rdpgfxCapability = rdpgfxCapabilitySet{}
+				code = drdynvcCreateOK
+				tracef("drdynvc_create", "channel=%d name=%q accepted=true", pdu.ChannelID, pdu.Name)
+			}
 		} else {
 			tracef("drdynvc_create", "channel=%d name=%q accepted=false", pdu.ChannelID, pdu.Name)
 		}
 		if err := m.writeStaticPayload(conn, buildDRDYNVCCreateResponsePDU(pdu.ChannelID, code)); err != nil {
 			return err
 		}
-		if code == drdynvcCreateOK {
+		if code == drdynvcCreateOK && pdu.Name == rdpeiDynamicChannelName {
 			return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(pdu.ChannelID, buildRDPEISCReadyPDU(rdpeiProtocolV300, nil)))
 		}
 	case drdynvcCmdData:
 		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {
 			return err
 		}
-		return m.handleDynamicData(pdu.ChannelID, pdu.Data)
+		return m.handleDynamicData(conn, pdu.ChannelID, pdu.Data)
 	case drdynvcCmdDataFirst:
 		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {
 			return err
 		}
-			tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
-		return m.handleDynamicDataFirst(pdu.ChannelID, pdu.Length, pdu.Data)
+		tracef("drdynvc_data_first", "channel=%d expected=%d fragment_len=%d", pdu.ChannelID, pdu.Length, len(pdu.Data))
+		return m.handleDynamicDataFirst(conn, pdu.ChannelID, pdu.Length, pdu.Data)
 	case drdynvcCmdClose:
 		if err := m.requireCaps(pdu.Header.Cmd); err != nil {
 			return err
 		}
-		tracef("drdynvc_close", "channel=%d rdpei=%t", pdu.ChannelID, pdu.ChannelID == m.rdpeiChannelID)
+		tracef("drdynvc_close", "channel=%d rdpei=%t rdpgfx=%t", pdu.ChannelID, pdu.ChannelID == m.rdpeiChannelID, pdu.ChannelID == m.rdpgfxChannelID)
 		delete(m.channels, pdu.ChannelID)
 		delete(m.fragments, pdu.ChannelID)
 		if pdu.ChannelID == m.rdpeiChannelID {
 			m.hasRDPEIChannel = false
 			m.rdpeiChannelID = 0
 			m.touchLifecycle.Reset()
+		}
+		if pdu.ChannelID == m.rdpgfxChannelID {
+			m.hasRDPGFXChannel = false
+			m.rdpgfxChannelID = 0
+			m.rdpgfxCapsConfirmed = false
+			m.rdpgfxCapability = rdpgfxCapabilitySet{}
 		}
 	}
 	return nil
@@ -185,7 +208,7 @@ func (m *drdynvcManager) requireOpenChannel(cmd uint8, channelID uint32) error {
 	return nil
 }
 
-func (m *drdynvcManager) handleDynamicDataFirst(channelID, expected uint32, data []byte) error {
+func (m *drdynvcManager) handleDynamicDataFirst(conn net.Conn, channelID, expected uint32, data []byte) error {
 	m.cleanupFragments(time.Now())
 	if expected > drdynvcMaxFragmentSize {
 		return fmt.Errorf("drdynvc data-first length %d exceeds maximum %d", expected, drdynvcMaxFragmentSize)
@@ -197,7 +220,7 @@ func (m *drdynvcManager) handleDynamicDataFirst(channelID, expected uint32, data
 		return fmt.Errorf("drdynvc data-first length %d smaller than fragment %d", expected, len(data))
 	}
 	if expected == uint32(len(data)) {
-		return m.handleDynamicData(channelID, data)
+		return m.handleDynamicData(conn, channelID, data)
 	}
 	if _, exists := m.fragments[channelID]; !exists && len(m.fragments) >= drdynvcMaxFragments {
 		return fmt.Errorf("drdynvc pending fragments %d exceeds maximum %d", len(m.fragments)+1, drdynvcMaxFragments)
@@ -207,7 +230,7 @@ func (m *drdynvcManager) handleDynamicDataFirst(channelID, expected uint32, data
 	return nil
 }
 
-func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error {
+func (m *drdynvcManager) handleDynamicData(conn net.Conn, channelID uint32, data []byte) error {
 	m.cleanupFragments(time.Now())
 	if len(data) > drdynvcMaxFragmentSize {
 		return fmt.Errorf("drdynvc data length %d exceeds maximum %d", len(data), drdynvcMaxFragmentSize)
@@ -230,18 +253,44 @@ func (m *drdynvcManager) handleDynamicData(channelID uint32, data []byte) error 
 		data = append([]byte(nil), frag.data...)
 		delete(m.fragments, channelID)
 	}
-	if !m.hasRDPEIChannel || channelID != m.rdpeiChannelID {
+	switch {
+	case m.hasRDPEIChannel && channelID == m.rdpeiChannelID:
+		if len(data) > rdpeiMaxPDUSize {
+			return fmt.Errorf("RDPEI dynamic data length %d exceeds maximum %d", len(data), rdpeiMaxPDUSize)
+		}
+		pdu, err := parseRDPEIPDU(data)
+		if err != nil {
+			return fmt.Errorf("parse RDPEI dynamic data: %w", err)
+		}
+		traceRDPEIPDU(pdu)
+		return dispatchRDPEITouchEvent(pdu, m.sink, m.touchLifecycle)
+	case m.hasRDPGFXChannel && channelID == m.rdpgfxChannelID:
+		return m.handleRDPGFXData(conn, data)
+	default:
 		return nil
 	}
-	if len(data) > rdpeiMaxPDUSize {
-		return fmt.Errorf("RDPEI dynamic data length %d exceeds maximum %d", len(data), rdpeiMaxPDUSize)
+}
+
+func (m *drdynvcManager) handleRDPGFXData(conn net.Conn, data []byte) error {
+	if len(data) > rdpgfxMaxPDUSize {
+		return fmt.Errorf("RDPGFX dynamic data length %d exceeds maximum %d", len(data), rdpgfxMaxPDUSize)
 	}
-	pdu, err := parseRDPEIPDU(data)
+	pdu, err := parseRDPGFXPDU(data)
 	if err != nil {
-		return fmt.Errorf("parse RDPEI dynamic data: %w", err)
+		return fmt.Errorf("parse RDPGFX dynamic data: %w", err)
 	}
-	traceRDPEIPDU(pdu)
-	return dispatchRDPEITouchEvent(pdu, m.sink, m.touchLifecycle)
+	traceRDPGFXPDU(pdu)
+	if pdu.CmdID != rdpgfxCmdCapsAdvertise {
+		return nil
+	}
+	capability, ok := negotiateRDPGFXCapability(pdu.Caps)
+	if !ok {
+		return fmt.Errorf("RDPGFX client advertised no supported capabilities")
+	}
+	m.rdpgfxCapsConfirmed = true
+	m.rdpgfxCapability = capability
+	tracef("rdpgfx_caps_confirm", "channel=%d version=0x%08x flags=0x%08x", m.rdpgfxChannelID, capability.Version, capability.Flags)
+	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, buildRDPGFXCapsConfirmPDU(capability)))
 }
 
 func (m *drdynvcManager) cleanupFragments(now time.Time) {
