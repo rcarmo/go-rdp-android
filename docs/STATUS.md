@@ -58,7 +58,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - No physical Android device validation yet.
 - Microsoft Remote Desktop compatibility is not yet validated.
 - FreeRDP CI now enforces non-timeout shutdown; protocol-native logoff/deactivate behavior from diverse real clients still needs broader validation.
-- Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; Android UI controls for allowlists and TLS certificate rotation remain pending.
+- Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; allowlists are server-core/mock-server-only for the first polished APK, and Android TLS certificate rotation remains pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics pipeline is still raw/slow-path-first; compressed bitmap/RDPGFX/H.264 are pending. Prototype layered backpressure is implemented, but still needs real-device/constrained-network validation.
 

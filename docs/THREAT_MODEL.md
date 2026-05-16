@@ -67,14 +67,14 @@ Current mitigations:
 
 - Explicit credential setup is required before Android service start.
 - `AccessPolicy.SecurityMode` can require TLS-only or NLA-required operation.
-- CIDR allowlists can restrict accepted client networks.
+- CIDR allowlists can restrict accepted client networks in server-core/mock-server deployments; Android UI intentionally defers allowlist editing for the first polished APK.
 - Failed-auth lockout/backoff can slow brute-force attempts.
 - Static and dynamic virtual-channel payloads, RDPEI payloads, and fragment buffers have bounded sizes and cleanup.
 - FreeRDP compatibility gates plus parser/fuzz smoke cover active protocol paths.
 
 Required before public production use:
 
-- UI controls for network allowlist/security mode instead of mock-server-only knobs.
+- Android UI controls for network/user allowlists after the first polished APK, or another explicit release decision to keep allowlists server-core-only.
 - Clear in-app warning when listening on hotspot/VPN/mobile interfaces.
 - User-visible connected-client count and stop-server action.
 

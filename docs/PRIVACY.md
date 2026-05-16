@@ -42,5 +42,5 @@
 - Avoid `rdp-only` except for isolated compatibility testing because it does not provide the TLS/NLA protections expected on shared networks.
 - Use a strong unique password.
 - Keep the foreground notification visible while testing and stop the service when done.
-- Do not expose the listening port beyond a trusted LAN/VPN.
+- Do not expose the listening port beyond a trusted LAN/VPN. Android allowlist editing is deferred for the first polished APK even though the Go server core supports allowlists.
 - Verify the TLS fingerprint from the app/logs when connecting from clients that show certificate warnings.
