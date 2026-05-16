@@ -221,10 +221,10 @@ class MainActivity : Activity() {
         val health = NativeRdpBridge.healthStatus()
         val accessibilityState = if (isRdpAccessibilityEnabled()) "enabled" else "disabled — open Accessibility Settings and enable go-rdp-android"
         status.text = if (creds == null) {
-            "Native Android RDP server prototype\n\n1. Set username/password\n2. Enable Accessibility\n3. Grant screen capture\n4. Start service\n\nServer start is blocked until credentials are configured.\nAccessibility: $accessibilityState\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nFirst-run checklist:\n1. Set username/password and tap Save Credentials\n2. Prefer Security = NLA required\n3. Enable Accessibility only if remote input is needed\n4. Grant screen capture or start the test pattern server\n5. Connect to the shown address on TCP/3390\n\nServer start is blocked until credentials are configured.\nPlain RDP is for isolated compatibility tests only.\nAccessibility: $accessibilityState\n\nHealth: $health"
         } else {
             val settings = settingsStore.load()
-            "Native Android RDP server prototype\n\nConfigured user: ${displayUsername(creds.username)}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n1. Enable Accessibility\n2. Grant screen capture\n3. Start service\n\nHealth: $health"
+            "Native Android RDP server prototype\n\nConfigured user: ${displayUsername(creds.username)}\nCapture scale: ${settings.captureScale}x downscale\nSecurity: ${settings.securityMode.label}\nFailed auth: limit=${settings.failedAuthLimit}, backoff=${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms\nLast mode: ${settings.lastMode.name.lowercase().replace('_', ' ')}\nAccessibility: $accessibilityState\n\nStart checklist:\n1. Confirm Security = NLA required unless testing compatibility\n2. Enable Accessibility only if remote input is needed\n3. Grant screen capture or start test pattern\n4. Connect to the health/notification address on TCP/3390\n\nHealth: $health"
         }
         debugPanel.text = buildDebugPanelText(health, accessibilityState)
     }
