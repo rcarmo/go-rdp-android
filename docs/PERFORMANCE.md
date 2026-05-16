@@ -81,6 +81,12 @@ ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 
 This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
 
+## FreeRDP soak snapshot: 2026-05-16 scheduled run
+
+Scheduled workflow run `25952455936` exercised 30 `/sec:nla` FreeRDP sessions against the mock server with an 8-second per-iteration hold and 45-second timeout guard. The run passed with RSS ranging from 18,936 KB to 24,880 KB, a 5,944 KB delta against the 51,200 KB threshold. Each iteration exited via the expected controlled termination path (`exit_code=143`) rather than a timeout hang.
+
+This is not a substitute for physical Android device stability testing, but it is the current close-to-release soak evidence for server-side session cleanup and gross RSS growth.
+
 ## Downscale baseline: 2026-05-02 emulator run
 
 Manual workflow run `25247259184` used `emulator_capture_scale=2`, reducing MediaProjection/RDP capture from 1080x2400 to 540x1200.
