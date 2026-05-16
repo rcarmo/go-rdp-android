@@ -56,8 +56,12 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 ## Current identifiers
 
 - SemVer: `0.1.1`
+- `VERSION`: `0.1.1`
+- Android `versionName`: `0.1.1`
 - Android package/application ID: `io.carmo.go.rdp.android`
 - Android versionCode: `2`
+
+Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`.
 
 ## Notes
 
