@@ -33,7 +33,7 @@
 ## Diagnostics
 
 - The in-app debug panel and Share Diagnostics action are bounded and redacted.
-- Diagnostics include health counters, selected security mode, failed-auth policy, capture scale, bounded username, and password-present status.
+- Diagnostics include health counters, selected security mode, failed-auth policy, capture scale, bounded username, password-present status, and the TLS fingerprint when the native server is running.
 - Diagnostics do not include the password or raw frame data.
 
 ## Recommended defaults before broader use

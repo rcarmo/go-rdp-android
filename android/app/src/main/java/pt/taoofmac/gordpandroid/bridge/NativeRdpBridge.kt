@@ -120,9 +120,11 @@ object NativeRdpBridge : RdpInputCallbacks {
         Log.i(TAG, "stopServer(backend=${backend.name})")
     }
 
+    fun tlsFingerprintSha256(): String = backend.tlsFingerprintSha256()
+
     fun healthStatus(): String {
         val address = backend.listenAddress().ifEmpty { "n/a" }
-        val fingerprint = backend.tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
+        val fingerprint = tlsFingerprintSha256().takeIf { it.isNotEmpty() }?.take(16)?.plus("…") ?: "n/a"
         val input = if (RdpAccessibilityService.isConnected()) "enabled" else "disabled"
         val auth = if (credentialsConfigured.get()) "credentials" else "missing"
         return "backend=${backend.name}, running=${running.get()}, mode=$lastMode, security=$securityMode, failedAuth={$failedAuthPolicy}, auth=$auth, addr=$address, tls=$fingerprint, clients=${backend.activeConnections()}, accepted=${backend.acceptedConnections()}, authFailures=${backend.authFailures()}, handshakeFailures=${backend.handshakeFailures()}, input=$input, inputEvents=${backend.inputEvents()}, rdpeiContacts=${backend.rdpeiContacts()}, dvcFragments=${backend.dvcFragments()}, frames=${frameCount.get()}, sentFrames=${backend.framesSent()}, bitmapBytes=${backend.bitmapBytes()}, queued=${backend.queuedFrames()}, dropped=${backend.droppedFrames()}, inputScale=${inputCoordinateScale.get()}"

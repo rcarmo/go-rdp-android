@@ -1,6 +1,8 @@
 package io.carmo.go.rdp.android
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -145,6 +147,10 @@ class MainActivity : Activity() {
             text = "Refresh Status"
             setOnClickListener { updateStatus() }
         }
+        val copyTlsFingerprint = Button(this).apply {
+            text = "Copy TLS Fingerprint"
+            setOnClickListener { copyTlsFingerprint() }
+        }
         val shareDiagnostics = Button(this).apply {
             text = "Share Diagnostics"
             setOnClickListener { shareDiagnostics() }
@@ -177,6 +183,7 @@ class MainActivity : Activity() {
                 addView(capture)
                 addView(testPattern)
                 addView(refreshStatus)
+                addView(copyTlsFingerprint)
                 addView(shareDiagnostics)
                 addView(stop)
             })
@@ -223,6 +230,7 @@ class MainActivity : Activity() {
             "capture_scale=${settings.captureScale}",
             "security_mode=${settings.securityMode.wireValue}",
             "failed_auth=${settings.failedAuthLimit}/${settings.failedAuthBackoffMs}-${settings.failedAuthBackoffMaxMs}ms",
+            "tls_fingerprint_sha256=${NativeRdpBridge.tlsFingerprintSha256().ifEmpty { "n/a" }}",
             "last_mode=${settings.lastMode.name.lowercase()}",
             "accessibility=$accessibilityState",
         ).joinToString("\n")
@@ -345,6 +353,19 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun copyTlsFingerprint() {
+        val fingerprint = NativeRdpBridge.tlsFingerprintSha256()
+        if (fingerprint.isEmpty()) {
+            Toast.makeText(this, "TLS fingerprint is only available while the native server is running", Toast.LENGTH_LONG).show()
+            updateStatus()
+            return
+        }
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(ClipData.newPlainText("go-rdp-android TLS fingerprint", fingerprint))
+        Toast.makeText(this, "TLS fingerprint copied", Toast.LENGTH_SHORT).show()
+        updateStatus()
+    }
+
     private fun shareDiagnostics() {
         val diagnosticText = buildDiagnosticText()
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
@@ -368,6 +389,7 @@ class MainActivity : Activity() {
             "failed_auth_limit=${settings.failedAuthLimit}",
             "failed_auth_backoff_ms=${settings.failedAuthBackoffMs}",
             "failed_auth_backoff_max_ms=${settings.failedAuthBackoffMaxMs}",
+            "tls_fingerprint_sha256=${NativeRdpBridge.tlsFingerprintSha256().ifEmpty { "n/a" }}",
             "last_mode=${settings.lastMode.name.lowercase()}",
             "accessibility=$accessibilityState",
         ).joinToString("\n")
