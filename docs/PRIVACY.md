@@ -38,7 +38,8 @@
 
 ## Recommended defaults before broader use
 
-- Prefer `nla-required` or `tls-only` over plain RDP.
+- Release recommendation: use `nla-required` whenever the client supports it; use `tls-only` only for clients without NLA.
+- Avoid `rdp-only` except for isolated compatibility testing because it does not provide the TLS/NLA protections expected on shared networks.
 - Use a strong unique password.
 - Keep the foreground notification visible while testing and stop the service when done.
 - Do not expose the listening port beyond a trusted LAN/VPN.

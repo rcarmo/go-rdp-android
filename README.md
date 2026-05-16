@@ -175,7 +175,7 @@ Tag behavior:
    - Investigate H.264/AVC with Android hardware encoding.
 
 4. **Security and release readiness**
-   - Security mode, failed-auth backoff controls, and copyable TLS fingerprint are now surfaced in Android UI; continue with CIDR/user allowlists plus TLS rotation controls.
+   - Security mode, failed-auth backoff controls, and copyable TLS fingerprint are now surfaced in Android UI; release guidance recommends `nla-required` first and reserves `rdp-only` for isolated compatibility testing. Continue with CIDR/user allowlists plus TLS rotation controls.
    - Continue hardening TLS Client Info and Hybrid/NLA CredSSP authentication paths against real clients.
    - Validate signed release APK/AAB staging with production secrets.
    - Validate version/tag consistency for `vX.X.X` releases.

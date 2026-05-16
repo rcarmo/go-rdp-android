@@ -95,8 +95,7 @@ Current mitigations:
 
 Required before public production use:
 
-- Default Android UX should recommend or require TLS/NLA rather than insecure RDP.
-- Fingerprint display should be prominent in setup/troubleshooting screens.
+- Keep the release recommendation explicit: prefer `nla-required`, use `tls-only` only for clients without NLA, and reserve `rdp-only` for isolated compatibility testing.
 - Documentation must warn that changing/rotating certs requires client trust revalidation.
 
 ### MediaProjection capture
