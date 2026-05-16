@@ -274,6 +274,17 @@ For RDPEI touch issues after toggling Accessibility, verify that new touch frame
 
 Use the app's bounded selectable debug panel for current-session health/settings, tap **Refresh Status** before collecting a report, then **Share Diagnostics** to export bounded text diagnostics through Android's share sheet. The shared text is intended for bug reports and includes the compact bridge health, bounded configured username, password-present flag, capture scale, selected security mode, failed-auth backoff/lockout policy, TLS fingerprint when the server is running, last mode, and Accessibility state; it deliberately omits the password and raw frame data. For MediaProjection starts, these non-secret policy settings are snapshotted before the Android permission dialog and reused when consent returns, so changing fields while the dialog is open should not silently alter the pending service start.
 
+## Common user-facing failure snippets
+
+| Symptom | Check/fix |
+| --- | --- |
+| Certificate warning in client | Start the server, tap **Copy TLS Fingerprint**, and compare the copied SHA-256 fingerprint with the client warning/details. Re-check after any cert rotation. |
+| Wrong password or lockout | Confirm username/password in the app, review `authFailures` in health/diagnostics, and wait for the configured failed-auth backoff window before retrying. |
+| Accessibility disabled / no remote input | Open Android Accessibility Settings from the app and enable `go-rdp-android`; health should show `input=enabled`. |
+| MediaProjection revoked or denied | Re-tap **Grant Screen Capture**; denied/revoked capture intentionally stops the service and does not silently restart. |
+| Cannot reach IP/port | Confirm the foreground notification/app health address, TCP/3390 reachability, same LAN/VPN routing, no hotspot isolation, and that the service is still running. |
+| Microsoft client fails but FreeRDP works | Record platform/client version, security mode, cert warning, screenshot/logs, and disconnect behavior; Microsoft-client active-streaming validation remains a release blocker. |
+
 ## Authentication debugging
 
 The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:

@@ -43,6 +43,8 @@ Use `/sec:tls` only for clients that cannot complete NLA, and reserve `/sec:rdp`
 
 Microsoft Remote Desktop should be configured with the same host, port, username, and password, with NLA enabled when the client exposes that option. Microsoft-client active-streaming validation is still a release blocker, so record platform/client version, selected security mode, screenshots/logs, and disconnect behavior in the client matrix when testing it.
 
+For common user failures, see [DEBUGGING](DEBUGGING.md): certificate warnings, wrong password/backoff, Accessibility disabled, MediaProjection denied/revoked, and unreachable IP/port all have release-triage snippets.
+
 Current Go mobile-facing API scaffold lives in `mobile/bridge.go`:
 
 ```go
