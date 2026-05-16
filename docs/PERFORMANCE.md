@@ -50,6 +50,18 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 | 1280x720 | 10.02 ms | 368 MB/s | 5.91 MB | 1053 |
 | 1920x1080 | 25.11 ms | 330 MB/s | 13.28 MB | 2537 |
 
+## Known performance limitations for the first APK
+
+The first polished APK is still a raw-bitmap prototype rather than a production graphics stack:
+
+- Graphics are classic slow-path 24-bit BGR bitmap updates, not RDPGFX, RLE, H.264, or an Android hardware encoder path.
+- Full-screen changes are bandwidth-heavy: a 1080x2400 full frame is roughly 7.8 MB after the 24-bit BGR reduction, before transport overhead.
+- Full-frame changes are split into hundreds of bitmap rectangles at the current 80x80 tile size, which favors compatibility and debuggability over latency.
+- Dirty-tile suppression, optional downscale, Android capture pacing, bounded queue drops, and server-side queued-frame coalescing reduce stale work but do not change the raw-bitmap ceiling.
+- Real-device FPS, latency feel, CPU/battery impact, memory stability, and constrained-network behavior still need measurement before any broad release claims.
+
+Release notes should describe this as suitable for LAN/testing and initial compatibility validation, not as a low-bandwidth remote-desktop replacement.
+
 ## Probe metrics
 
 `cmd/probe` records:
