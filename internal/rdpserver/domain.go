@@ -115,7 +115,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
 					return nil
 				case pduTypeData:
-					if err := handleShareDataPDU(conn, share, frames, sink, sessionWidth, sessionHeight, metrics); err != nil {
+					if err := handleShareDataPDU(conn, share, frames, sink, sessionWidth, sessionHeight, metrics, dvc); err != nil {
 						return err
 					}
 					continue

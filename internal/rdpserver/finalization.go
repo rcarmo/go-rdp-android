@@ -23,7 +23,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int, metrics serverMetrics) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -46,6 +46,9 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 	case pduType2FontList:
 		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
 			return err
+		}
+		if dvc != nil && dvc.rdpgfxReady() {
+			return writeInitialRDPGFXUpdate(conn, frames, width, height, metrics, dvc)
 		}
 		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
 	case pduType2Input:
@@ -75,6 +78,40 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		return err
 	}
 	metrics.recordBitmapFrame([][]byte{update})
+	return nil
+}
+
+func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
+	create, ok := buildRDPGFXCreateSurfacePDU(0, width, height)
+	if !ok {
+		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
+	}
+	mapped, ok := buildRDPGFXMapSurfaceToOutputPDU(0, 0, 0)
+	if !ok {
+		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
+	}
+	if err := dvc.writeRDPGFXPayload(conn, create); err != nil {
+		return err
+	}
+	if err := dvc.writeRDPGFXPayload(conn, mapped); err != nil {
+		return err
+	}
+	if frames != nil {
+		select {
+		case fr := <-frames.Frames():
+			pdus, ok := buildRDPGFXUncompressedFramePDUs(0, 1, fr, width, height)
+			if ok {
+				for _, pdu := range pdus {
+					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
+						return err
+					}
+				}
+				metrics.recordBitmapFrame(pdus)
+				return nil
+			}
+		default:
+		}
+	}
 	return nil
 }
 

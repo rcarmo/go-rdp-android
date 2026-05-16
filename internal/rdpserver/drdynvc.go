@@ -305,6 +305,17 @@ func (m *drdynvcManager) cleanupFragments(now time.Time) {
 	}
 }
 
+func (m *drdynvcManager) rdpgfxReady() bool {
+	return m != nil && m.hasRDPGFXChannel && m.rdpgfxCapsConfirmed && m.rdpgfxChannelID != 0
+}
+
+func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error {
+	if !m.rdpgfxReady() {
+		return fmt.Errorf("RDPGFX channel is not ready")
+	}
+	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, payload))
+}
+
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
 	if !m.enabled() {
 		return nil

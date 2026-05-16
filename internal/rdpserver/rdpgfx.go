@@ -3,13 +3,27 @@ package rdpserver
 import (
 	"encoding/binary"
 	"fmt"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
 const (
 	rdpgfxDynamicChannelName = "Microsoft::Windows::RDS::Graphics"
 
-	rdpgfxCmdCapsAdvertise uint16 = 0x0001
-	rdpgfxCmdCapsConfirm   uint16 = 0x0002
+	rdpgfxCmdWireToSurface1     uint16 = 0x0001
+	rdpgfxCmdCreateSurface      uint16 = 0x0009
+	rdpgfxCmdStartFrame         uint16 = 0x000b
+	rdpgfxCmdEndFrame           uint16 = 0x000c
+	rdpgfxCmdResetGraphics      uint16 = 0x000e
+	rdpgfxCmdMapSurfaceToOutput uint16 = 0x000f
+	rdpgfxCmdCapsAdvertise      uint16 = 0x0012
+	rdpgfxCmdCapsConfirm        uint16 = 0x0013
+
+	rdpgfxCodecUncompressed uint16 = 0x0000
+	rdpgfxCodecClearCodec   uint16 = 0x0008
+	rdpgfxCodecPlanar       uint16 = 0x000a
+
+	rdpgfxPixelFormatXRGB8888 byte = 0x20
 
 	rdpgfxCapsVersion8   uint32 = 0x00080004
 	rdpgfxCapsVersion81  uint32 = 0x00080105
@@ -113,6 +127,92 @@ func buildRDPGFXCapsConfirmPDU(cap rdpgfxCapabilitySet) []byte {
 	binary.LittleEndian.PutUint32(payload[0:4], cap.Version)
 	binary.LittleEndian.PutUint32(payload[4:8], cap.Flags)
 	return buildRDPGFXPDU(rdpgfxCmdCapsConfirm, 0, payload)
+}
+
+func buildRDPGFXCreateSurfacePDU(surfaceID uint16, width, height int) ([]byte, bool) {
+	if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
+		return nil, false
+	}
+	payload := make([]byte, 7)
+	binary.LittleEndian.PutUint16(payload[0:2], surfaceID)
+	binary.LittleEndian.PutUint16(payload[2:4], uint16(width))  // #nosec G115 -- bounded above.
+	binary.LittleEndian.PutUint16(payload[4:6], uint16(height)) // #nosec G115 -- bounded above.
+	payload[6] = rdpgfxPixelFormatXRGB8888
+	return buildRDPGFXPDU(rdpgfxCmdCreateSurface, 0, payload), true
+}
+
+func buildRDPGFXMapSurfaceToOutputPDU(surfaceID uint16, originX, originY int) ([]byte, bool) {
+	if originX < 0 || originY < 0 || originX > 32767 || originY > 32767 {
+		return nil, false
+	}
+	payload := make([]byte, 6)
+	binary.LittleEndian.PutUint16(payload[0:2], surfaceID)
+	binary.LittleEndian.PutUint16(payload[2:4], uint16(originX)) // #nosec G115 -- bounded above.
+	binary.LittleEndian.PutUint16(payload[4:6], uint16(originY)) // #nosec G115 -- bounded above.
+	return buildRDPGFXPDU(rdpgfxCmdMapSurfaceToOutput, 0, payload), true
+}
+
+func buildRDPGFXStartFramePDU(frameID uint32) []byte {
+	payload := make([]byte, 8)
+	binary.LittleEndian.PutUint32(payload[0:4], uint32(0))
+	binary.LittleEndian.PutUint32(payload[4:8], frameID)
+	return buildRDPGFXPDU(rdpgfxCmdStartFrame, 0, payload)
+}
+
+func buildRDPGFXEndFramePDU(frameID uint32) []byte {
+	payload := make([]byte, 4)
+	binary.LittleEndian.PutUint32(payload[0:4], frameID)
+	return buildRDPGFXPDU(rdpgfxCmdEndFrame, 0, payload)
+}
+
+func buildRDPGFXWireToSurface1PDU(surfaceID uint16, codecID uint16, pixelFormat byte, destLeft, destTop, destRight, destBottom uint16, bitmapData []byte) []byte {
+	payload := make([]byte, 0, 17+len(bitmapData))
+	payload = appendLE16Bytes(payload, surfaceID)
+	payload = appendLE16Bytes(payload, codecID)
+	payload = append(payload, pixelFormat)
+	payload = appendLE16Bytes(payload, destLeft)
+	payload = appendLE16Bytes(payload, destTop)
+	payload = appendLE16Bytes(payload, destRight)
+	payload = appendLE16Bytes(payload, destBottom)
+	payload = appendLE32Bytes(payload, uint32(len(bitmapData))) // #nosec G115 -- payload length is bounded by allocation.
+	payload = append(payload, bitmapData...)
+	return buildRDPGFXPDU(rdpgfxCmdWireToSurface1, 0, payload)
+}
+
+func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src frame.Frame, width, height int) ([][]byte, bool) {
+	normalized := normalizeFrameForDesktop(src, width, height)
+	stride, ok := normalizedFrameStride(normalized)
+	if !ok || normalized.Format != frame.PixelFormatRGBA8888 && normalized.Format != frame.PixelFormatBGRA8888 {
+		return nil, false
+	}
+	maxInt := int(^uint(0) >> 1)
+	if normalized.Width > maxInt/4 || normalized.Height > maxInt/(normalized.Width*4) {
+		return nil, false
+	}
+	pixels := make([]byte, normalized.Width*normalized.Height*4)
+	for y := 0; y < normalized.Height; y++ {
+		for x := 0; x < normalized.Width; x++ {
+			si := y*stride + x*4
+			di := (y*normalized.Width + x) * 4
+			switch normalized.Format {
+			case frame.PixelFormatBGRA8888:
+				pixels[di+0] = normalized.Data[si+0]
+				pixels[di+1] = normalized.Data[si+1]
+				pixels[di+2] = normalized.Data[si+2]
+				pixels[di+3] = 0x00
+			case frame.PixelFormatRGBA8888:
+				pixels[di+0] = normalized.Data[si+2]
+				pixels[di+1] = normalized.Data[si+1]
+				pixels[di+2] = normalized.Data[si+0]
+				pixels[di+3] = 0x00
+			}
+		}
+	}
+	return [][]byte{
+		buildRDPGFXStartFramePDU(frameID),
+		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecUncompressed, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width-1), uint16(normalized.Height-1), pixels), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+		buildRDPGFXEndFramePDU(frameID),
+	}, true
 }
 
 func buildRDPGFXPDU(cmdID, flags uint16, payload []byte) []byte {

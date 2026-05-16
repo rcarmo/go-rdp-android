@@ -3,6 +3,9 @@ package rdpserver
 import (
 	"encoding/binary"
 	"testing"
+	"time"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
 func TestParseRDPGFXCapsAdvertise(t *testing.T) {
@@ -60,6 +63,54 @@ func TestBuildRDPGFXCapsConfirmPDU(t *testing.T) {
 	}
 	if binary.LittleEndian.Uint32(pdu[8:12]) != rdpgfxCapsVersion10 || binary.LittleEndian.Uint32(pdu[12:16]) != 7 {
 		t.Fatalf("unexpected caps confirm payload: %x", pdu[8:])
+	}
+}
+
+func TestBuildRDPGFXSurfaceAndFramePDUs(t *testing.T) {
+	create, ok := buildRDPGFXCreateSurfacePDU(1, 640, 480)
+	if !ok {
+		t.Fatal("expected create surface PDU")
+	}
+	if pdu, err := parseRDPGFXPDU(create); err != nil || pdu.CmdID != rdpgfxCmdCreateSurface {
+		t.Fatalf("unexpected create pdu=%#v err=%v", pdu, err)
+	}
+	mapped, ok := buildRDPGFXMapSurfaceToOutputPDU(1, 0, 0)
+	if !ok {
+		t.Fatal("expected map surface PDU")
+	}
+	if pdu, err := parseRDPGFXPDU(mapped); err != nil || pdu.CmdID != rdpgfxCmdMapSurfaceToOutput {
+		t.Fatalf("unexpected map pdu=%#v err=%v", pdu, err)
+	}
+
+	src := frame.Frame{
+		Width:     2,
+		Height:    1,
+		Stride:    8,
+		Format:    frame.PixelFormatRGBA8888,
+		Timestamp: time.Now(),
+		Data:      []byte{0x11, 0x22, 0x33, 0xff, 0x44, 0x55, 0x66, 0xff},
+	}
+	pdus, ok := buildRDPGFXUncompressedFramePDUs(1, 42, src, 2, 1)
+	if !ok || len(pdus) != 3 {
+		t.Fatalf("expected three frame PDUs, ok=%t len=%d", ok, len(pdus))
+	}
+	for i, want := range []uint16{rdpgfxCmdStartFrame, rdpgfxCmdWireToSurface1, rdpgfxCmdEndFrame} {
+		pdu, err := parseRDPGFXPDU(pdus[i])
+		if err != nil {
+			t.Fatalf("parse frame pdu %d: %v", i, err)
+		}
+		if pdu.CmdID != want {
+			t.Fatalf("frame pdu %d cmd=0x%x want=0x%x", i, pdu.CmdID, want)
+		}
+	}
+	wire := pdus[1]
+	if codec := binary.LittleEndian.Uint16(wire[10:12]); codec != rdpgfxCodecUncompressed {
+		t.Fatalf("codec=0x%x", codec)
+	}
+	payload := wire[25:]
+	want := []byte{0x33, 0x22, 0x11, 0x00, 0x66, 0x55, 0x44, 0x00}
+	if string(payload) != string(want) {
+		t.Fatalf("unexpected xrgb payload: got=%x want=%x", payload, want)
 	}
 }
 
