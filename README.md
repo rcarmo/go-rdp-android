@@ -33,6 +33,14 @@ Partially implemented / experimental:
 - Accessibility input injection. Pointer taps/drags and frame-aware RDPEI touch contacts now reach bounded Accessibility gesture paths with continuation/multi-stroke fallback; richer keyboard/text, secondary-button behavior, gesture failure handling, and physical-device validation still need hardening.
 - Performance. Slow-path 24-bit bitmap transport works and is measured; compressed bitmap/RDPGFX/H.264 work is still pending.
 
+## Known limitations
+
+- Physical Android-device validation is still pending; current automated evidence comes from CI, emulator, Go tests, and FreeRDP probes.
+- Microsoft Remote Desktop active-streaming validation is still pending, especially NLA behavior and certificate-warning UX.
+- Accessibility input depends on Android service availability and user consent; richer keyboard/text, secondary-button, and gesture-failure handling remain limited.
+- Graphics use raw 24-bit bitmap updates with dirty-tile suppression/downscale/backpressure, not compressed bitmap, RDPGFX, or H.264 transport.
+- Public release defaults should prefer `nla-required`; `tls-only` is for non-NLA clients, and plain RDP is only for isolated compatibility testing.
+
 ## Package and version
 
 - SemVer: `0.1.1`
