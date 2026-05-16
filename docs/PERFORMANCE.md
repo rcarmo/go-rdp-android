@@ -50,17 +50,22 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 | 1280x720 | 10.02 ms | 368 MB/s | 5.91 MB | 1053 |
 | 1920x1080 | 25.11 ms | 330 MB/s | 13.28 MB | 2537 |
 
-## Known performance limitations for the first APK
+## Compressed graphics release requirement
 
-The first polished APK is still a raw-bitmap prototype rather than a production graphics stack:
+The first public APK must include a negotiated compressed graphics path. The current slow-path 24-bit BGR bitmap transport remains useful as a fallback, compatibility gate, and benchmark oracle, but it is no longer acceptable as the only release graphics path.
 
-- Graphics are classic slow-path 24-bit BGR bitmap updates, not RDPGFX, RLE, H.264, or an Android hardware encoder path.
+Release requirement:
+
+- Prefer RDPGFX (`Microsoft::Windows::RDS::Graphics`) over `drdynvc`, reusing the existing dynamic virtual channel foundation.
+- Keep slow-path 24-bit BGR bitmap updates as fallback for clients that cannot negotiate RDPGFX.
+- Expose artifacts/diagnostics that show whether a session used RDPGFX or fallback bitmap transport.
+- Re-measure bandwidth, latency feel, CPU/battery, and memory stability on a physical device before claiming release performance.
+
+Current raw-bitmap baseline limitations that RDPGFX/compression must address:
+
 - Full-screen changes are bandwidth-heavy: a 1080x2400 full frame is roughly 7.8 MB after the 24-bit BGR reduction, before transport overhead.
 - Full-frame changes are split into hundreds of bitmap rectangles at the current 80x80 tile size, which favors compatibility and debuggability over latency.
 - Dirty-tile suppression, optional downscale, Android capture pacing, bounded queue drops, and server-side queued-frame coalescing reduce stale work but do not change the raw-bitmap ceiling.
-- Real-device FPS, latency feel, CPU/battery impact, memory stability, and constrained-network behavior still need measurement before any broad release claims.
-
-Release notes should describe this as suitable for LAN/testing and initial compatibility validation, not as a low-bandwidth remote-desktop replacement.
 
 ## Probe metrics
 
