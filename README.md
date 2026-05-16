@@ -62,7 +62,7 @@ docs/                            Architecture, testing, performance and release 
 - [Documentation index](docs/index.md)
 - [Current project status](docs/STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Android integration](docs/ANDROID.md)
+- [Android integration](docs/ANDROID.md) — includes Android startup and RDP client connection instructions.
 - [Testing and CI](docs/TESTING.md)
 - [Debugging](docs/DEBUGGING.md)
 - [Threat model](docs/THREAT_MODEL.md)

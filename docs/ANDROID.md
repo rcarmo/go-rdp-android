@@ -29,6 +29,20 @@ make gomobile-init   # first time, installs/initializes gomobile
 make android-build-go
 ```
 
+## Connecting from an RDP client
+
+1. Open the app, configure a strong username/password, select `nla-required` where possible, and start **Grant Screen Capture** or **Start Test Pattern Server**.
+2. Note the reachable device address from the foreground notification or app health/debug panel. The server listens on TCP/3390.
+3. For FreeRDP, prefer NLA:
+
+```bash
+xfreerdp /v:<android-ip>:3390 /u:<user> /p:<password> /sec:nla /cert:tofu
+```
+
+Use `/sec:tls` only for clients that cannot complete NLA, and reserve `/sec:rdp` for isolated compatibility testing. If FreeRDP or another client shows a certificate warning, tap **Copy TLS Fingerprint** in the app while the server is running and compare the copied SHA-256 value with the client-side certificate details before trusting it.
+
+Microsoft Remote Desktop should be configured with the same host, port, username, and password, with NLA enabled when the client exposes that option. Microsoft-client active-streaming validation is still a release blocker, so record platform/client version, selected security mode, screenshots/logs, and disconnect behavior in the client matrix when testing it.
+
 Current Go mobile-facing API scaffold lives in `mobile/bridge.go`:
 
 ```go

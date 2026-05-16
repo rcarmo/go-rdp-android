@@ -258,7 +258,13 @@ If the service is started without credentials, it logs a refusal, stops any exis
 
 If native startup fails after credentials are present, look for `Native RDP policy configuration failed` or `Native RDP server failed to start` in logcat and a `startServer failed(...)` line from `GoRdpAndroid`. The service now treats invalid/unsupported security or failed-auth policy configuration as a startup failure before binding. The mobile bridge binds the listener synchronously before reporting success, so occupied ports or other listen errors should leave health as `running=false`, remove the foreground notification, reset the persisted last mode to `none`, and avoid starting MediaProjection/test-pattern capture.
 
-For release-style security testing, select `nla-required` first. Use `tls-only` only when validating clients that cannot complete NLA, and use `rdp-only` only on an isolated test network for compatibility debugging.
+For release-style security testing, select `nla-required` first. FreeRDP command template:
+
+```bash
+xfreerdp /v:<android-ip>:3390 /u:<user> /p:<password> /sec:nla /cert:tofu
+```
+
+Use `tls-only` (`/sec:tls`) only when validating clients that cannot complete NLA, and use `rdp-only` (`/sec:rdp`) only on an isolated test network for compatibility debugging. For Microsoft Remote Desktop, record the exact platform/client version, chosen security mode, certificate warning behavior, screenshots/logs, and disconnect behavior because Microsoft-client validation is still pending.
 
 If TLS/certificate warnings are confusing, start the server, tap **Copy TLS Fingerprint**, and compare the copied SHA-256 value with the client-side certificate fingerprint/warning details. An unavailable fingerprint means the native server is not currently running.
 
