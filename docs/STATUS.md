@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `43ac313` (`Document RDPGFX round-trip test coverage`)
-Latest referenced CI run: `25984999851` (`main` CI, success)
+Current evidence commit: `d147aa4` (`Fix release preflight gosec finding`)
+Latest referenced CI run: `25985859082` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
