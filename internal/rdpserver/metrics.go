@@ -7,6 +7,8 @@ type serverMetrics struct {
 	bitmapBytes  *atomic.Int64
 	rdpgfxFrames *atomic.Int64
 	rdpgfxBytes  *atomic.Int64
+	h264Frames   *atomic.Int64
+	h264Bytes    *atomic.Int64
 	dvcFragments *atomic.Int64
 }
 
@@ -34,6 +36,18 @@ func (m serverMetrics) recordRDPGFXFrame(pdus [][]byte) {
 	}
 	if m.rdpgfxBytes != nil {
 		m.rdpgfxBytes.Add(totalPayloadBytes(pdus))
+	}
+}
+
+func (m serverMetrics) recordH264Frame(payloads [][]byte) {
+	if m.framesSent != nil {
+		m.framesSent.Add(1)
+	}
+	if m.h264Frames != nil {
+		m.h264Frames.Add(1)
+	}
+	if m.h264Bytes != nil {
+		m.h264Bytes.Add(totalPayloadBytes(payloads))
 	}
 }
 

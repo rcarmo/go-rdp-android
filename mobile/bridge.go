@@ -323,6 +323,26 @@ func (s *Server) RDPGFXBytes() int64 {
 	return s.server.RDPGFXBytes()
 }
 
+// H264Frames returns the total number of H.264/AVC frame batches sent by the running server.
+func (s *Server) H264Frames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.H264Frames()
+}
+
+// H264Bytes returns the total number of H.264/AVC payload bytes sent by the running server.
+func (s *Server) H264Bytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.H264Bytes()
+}
+
 // GraphicsPath returns the active/last observed graphics transport path.
 func (s *Server) GraphicsPath() string {
 	s.mu.Lock()
@@ -412,6 +432,12 @@ func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }
 
 // RDPGFXBytes returns the RDPGFX dynamic-channel payload bytes for the default server.
 func RDPGFXBytes() int64 { return defaultServer.RDPGFXBytes() }
+
+// H264Frames returns the H.264/AVC frame count for the default server.
+func H264Frames() int64 { return defaultServer.H264Frames() }
+
+// H264Bytes returns the H.264/AVC payload bytes for the default server.
+func H264Bytes() int64 { return defaultServer.H264Bytes() }
 
 // GraphicsPath returns the active/last observed graphics transport path for the default server.
 func GraphicsPath() string { return defaultServer.GraphicsPath() }

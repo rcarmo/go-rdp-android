@@ -45,6 +45,8 @@ type Server struct {
 	bitmapBytes       atomic.Int64
 	rdpgfxFrames      atomic.Int64
 	rdpgfxBytes       atomic.Int64
+	h264Frames        atomic.Int64
+	h264Bytes         atomic.Int64
 	dvcFragments      atomic.Int64
 
 	mu sync.Mutex
@@ -164,8 +166,17 @@ func (s *Server) RDPGFXFrames() int64 { return s.rdpgfxFrames.Load() }
 // RDPGFXBytes returns the total number of RDPGFX dynamic-channel payload bytes sent to clients.
 func (s *Server) RDPGFXBytes() int64 { return s.rdpgfxBytes.Load() }
 
+// H264Frames returns the total number of H.264/AVC frame update batches sent to clients.
+func (s *Server) H264Frames() int64 { return s.h264Frames.Load() }
+
+// H264Bytes returns the total number of H.264/AVC payload bytes sent to clients.
+func (s *Server) H264Bytes() int64 { return s.h264Bytes.Load() }
+
 // GraphicsPath returns the active/last observed graphics transport path.
 func (s *Server) GraphicsPath() string {
+	if s.h264Frames.Load() > 0 {
+		return "h264-avc"
+	}
 	if s.rdpgfxFrames.Load() > 0 {
 		return "rdpgfx-planar"
 	}
@@ -252,7 +263,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, dvcFragments: &s.dvcFragments}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments}
 	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)
