@@ -99,7 +99,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, width, height 
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			pdus, ok := buildRDPGFXUncompressedFramePDUs(0, 1, fr, width, height)
+			pdus, ok := buildRDPGFXPlanarFramePDUs(0, 1, fr, width, height)
 			if ok {
 				for _, pdu := range pdus {
 					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {

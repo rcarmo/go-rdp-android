@@ -179,7 +179,7 @@ func buildRDPGFXWireToSurface1PDU(surfaceID uint16, codecID uint16, pixelFormat 
 	return buildRDPGFXPDU(rdpgfxCmdWireToSurface1, 0, payload)
 }
 
-func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src frame.Frame, width, height int) ([][]byte, bool) {
+func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Frame, width, height int) ([][]byte, bool) {
 	normalized := normalizeFrameForDesktop(src, width, height)
 	stride, ok := normalizedFrameStride(normalized)
 	if !ok || normalized.Format != frame.PixelFormatRGBA8888 && normalized.Format != frame.PixelFormatBGRA8888 {
@@ -189,30 +189,110 @@ func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src fram
 	if normalized.Width > maxInt/4 || normalized.Height > maxInt/(normalized.Width*4) {
 		return nil, false
 	}
-	pixels := make([]byte, normalized.Width*normalized.Height*4)
-	for y := 0; y < normalized.Height; y++ {
-		for x := 0; x < normalized.Width; x++ {
-			si := y*stride + x*4
-			di := (y*normalized.Width + x) * 4
-			switch normalized.Format {
-			case frame.PixelFormatBGRA8888:
-				pixels[di+0] = normalized.Data[si+0]
-				pixels[di+1] = normalized.Data[si+1]
-				pixels[di+2] = normalized.Data[si+2]
-				pixels[di+3] = 0x00
-			case frame.PixelFormatRGBA8888:
-				pixels[di+0] = normalized.Data[si+2]
-				pixels[di+1] = normalized.Data[si+1]
-				pixels[di+2] = normalized.Data[si+0]
-				pixels[di+3] = 0x00
-			}
-		}
+	planar, ok := buildPlanarRLEPayload(normalized, stride)
+	if !ok {
+		return nil, false
 	}
 	return [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
-		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecUncompressed, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width-1), uint16(normalized.Height-1), pixels), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width-1), uint16(normalized.Height-1), planar), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
 		buildRDPGFXEndFramePDU(frameID),
 	}, true
+}
+
+func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
+	maxInt := int(^uint(0) >> 1)
+	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
+		return nil, false
+	}
+	planeSize := src.Width * src.Height
+	red := make([]byte, planeSize)
+	green := make([]byte, planeSize)
+	blue := make([]byte, planeSize)
+	for y := 0; y < src.Height; y++ {
+		for x := 0; x < src.Width; x++ {
+			si := y*stride + x*4
+			di := y*src.Width + x
+			switch src.Format {
+			case frame.PixelFormatBGRA8888:
+				blue[di] = src.Data[si+0]
+				green[di] = src.Data[si+1]
+				red[di] = src.Data[si+2]
+			case frame.PixelFormatRGBA8888:
+				red[di] = src.Data[si+0]
+				green[di] = src.Data[si+1]
+				blue[di] = src.Data[si+2]
+			default:
+				return nil, false
+			}
+		}
+	}
+	out := []byte{0x30} // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
+	out = append(out, encodePlanarDeltaRLEPlane(red, src.Width, src.Height)...)
+	out = append(out, encodePlanarDeltaRLEPlane(green, src.Width, src.Height)...)
+	out = append(out, encodePlanarDeltaRLEPlane(blue, src.Width, src.Height)...)
+	return out, true
+}
+
+func encodePlanarDeltaRLEPlane(plane []byte, width, height int) []byte {
+	out := make([]byte, 0, len(plane)/2)
+	for y := 0; y < height; y++ {
+		row := make([]byte, width)
+		copy(row, plane[y*width:y*width+width])
+		if y > 0 {
+			prev := plane[(y-1)*width : (y-1)*width+width]
+			for x := 0; x < width; x++ {
+				row[x] = planarDeltaByte(int(row[x]) - int(prev[x]))
+			}
+		}
+		out = appendPlanarRLELine(out, row)
+	}
+	return out
+}
+
+func planarDeltaByte(delta int) byte {
+	if delta >= 0 {
+		return byte(delta << 1)
+	}
+	return byte(((-delta) << 1) - 1)
+}
+
+func appendPlanarRLELine(out []byte, row []byte) []byte {
+	for x := 0; x < len(row); {
+		if row[x] == 0 {
+			run := 1
+			for x+run < len(row) && row[x+run] == 0 && run < 47 {
+				run++
+			}
+			if run >= 16 {
+				if run < 32 {
+					out = append(out, byte(((run-16)&0x0f)<<4|0x01))
+				} else {
+					out = append(out, byte(((run-32)&0x0f)<<4|0x02))
+				}
+				x += run
+				continue
+			}
+		}
+		rawStart := x
+		rawLen := 0
+		for x < len(row) && rawLen < 15 {
+			if row[x] == 0 {
+				run := 1
+				for x+run < len(row) && row[x+run] == 0 && run < 16 {
+					run++
+				}
+				if run >= 16 {
+					break
+				}
+			}
+			x++
+			rawLen++
+		}
+		out = append(out, byte(rawLen<<4))
+		out = append(out, row[rawStart:rawStart+rawLen]...)
+	}
+	return out
 }
 
 func buildRDPGFXPDU(cmdID, flags uint16, payload []byte) []byte {

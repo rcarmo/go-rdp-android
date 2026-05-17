@@ -83,14 +83,14 @@ func TestBuildRDPGFXSurfaceAndFramePDUs(t *testing.T) {
 	}
 
 	src := frame.Frame{
-		Width:     2,
+		Width:     16,
 		Height:    1,
-		Stride:    8,
+		Stride:    64,
 		Format:    frame.PixelFormatRGBA8888,
 		Timestamp: time.Now(),
-		Data:      []byte{0x11, 0x22, 0x33, 0xff, 0x44, 0x55, 0x66, 0xff},
+		Data:      repeatRGBAForTest(16, 0x11, 0x22, 0x33, 0xff),
 	}
-	pdus, ok := buildRDPGFXUncompressedFramePDUs(1, 42, src, 2, 1)
+	pdus, ok := buildRDPGFXPlanarFramePDUs(1, 42, src, 16, 1)
 	if !ok || len(pdus) != 3 {
 		t.Fatalf("expected three frame PDUs, ok=%t len=%d", ok, len(pdus))
 	}
@@ -104,14 +104,24 @@ func TestBuildRDPGFXSurfaceAndFramePDUs(t *testing.T) {
 		}
 	}
 	wire := pdus[1]
-	if codec := binary.LittleEndian.Uint16(wire[10:12]); codec != rdpgfxCodecUncompressed {
+	if codec := binary.LittleEndian.Uint16(wire[10:12]); codec != rdpgfxCodecPlanar {
 		t.Fatalf("codec=0x%x", codec)
 	}
 	payload := wire[25:]
-	want := []byte{0x33, 0x22, 0x11, 0x00, 0x66, 0x55, 0x44, 0x00}
-	if string(payload) != string(want) {
-		t.Fatalf("unexpected xrgb payload: got=%x want=%x", payload, want)
+	if len(payload) == 0 || payload[0] != 0x30 {
+		t.Fatalf("expected no-alpha RLE planar payload, got=%x", payload)
 	}
+	if len(payload) >= 64 {
+		t.Fatalf("expected compact planar payload smaller than raw XRGB, got %d bytes", len(payload))
+	}
+}
+
+func repeatRGBAForTest(count int, r, g, b, a byte) []byte {
+	out := make([]byte, 0, count*4)
+	for i := 0; i < count; i++ {
+		out = append(out, r, g, b, a)
+	}
+	return out
 }
 
 func FuzzParseRDPGFXPDU(f *testing.F) {
