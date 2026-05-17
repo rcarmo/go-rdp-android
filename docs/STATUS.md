@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `f365c07` (`Update architecture and spec for RDPGFX path`)
-Latest referenced CI run: `25983335795` (`main` CI, success)
+Current evidence commit: `245360a` (`Refresh status after architecture docs`)
+Latest referenced CI run: `25983502508` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 

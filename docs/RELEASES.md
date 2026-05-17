@@ -29,6 +29,16 @@ Release tags (`vX.X.X`) run a `release-cleanup` gate before artifact-producing j
 
 This cleanup only runs for release tags. Non-release CI keeps its normal artifacts for debugging.
 
+## Release readiness gates
+
+Before pushing a `v*` release tag, the latest `main` CI evidence should show:
+
+- Go checks, race/fuzz smoke, Android debug build, gomobile/AAR/API, and release cleanup all green.
+- FreeRDP `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates green with active streaming, screenshot capture, Fast-Path input, and non-timeout client shutdown.
+- FreeRDP `/sec:nla /gfx` RDPGFX gate green with `rdpgfx_seen=true`, active streaming, screenshot capture, and non-timeout client shutdown.
+- `docs/STATUS.md` refreshed to the current evidence commit/run.
+- Release signing secrets confirmed by the repository owner.
+
 ## Release files and notes
 
 Release tags (`vX.X.X`) produce a consolidated `go-rdp-android-release-files` artifact (retention: 180 days) containing:
@@ -61,7 +71,7 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 - Android package/application ID: `io.carmo.go.rdp.android`
 - Android versionCode: `2`
 
-Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`.
+Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations were refreshed on 2026-05-17 after CI added the `/sec:nla /gfx` proof gate.
 
 ## Notes
 
