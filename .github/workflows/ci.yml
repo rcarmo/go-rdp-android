@@ -348,6 +348,8 @@ jobs:
             mode="$2"
             extra_args="${3:-}"
             require_rdpgfx="${4:-0}"
+            client_width="${5:-320}"
+            client_height="${6:-240}"
             pass=0
             best_attempt=0
             mkdir -p "freerdp-artifacts/${label}"
@@ -358,7 +360,7 @@ jobs:
               set +e
               xvfb-run -a bash -c "
                 set +e
-                xfreerdp /v:127.0.0.1:3390 /w:320 /h:240 /sec:${mode} ${extra_args} /cert:ignore /u:runner /p:secret /log-level:DEBUG >'$dir/xfreerdp.log' 2>&1 &
+                xfreerdp /v:127.0.0.1:3390 /w:${client_width} /h:${client_height} /sec:${mode} ${extra_args} /cert:ignore /u:runner /p:secret /log-level:DEBUG >'$dir/xfreerdp.log' 2>&1 &
                 rdp_pid=\$!
                 sleep 8
                 xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
@@ -414,7 +416,7 @@ jobs:
 
           kill $server_pid 2>/dev/null || true
           wait $server_pid 2>/dev/null || true
-          GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_ENABLE_RDPGFX=1 ./freerdp-artifacts/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_ENABLE_RDPGFX=1 ./freerdp-artifacts/mock-server -test-pattern -width 64 -height 64 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           for _ in $(seq 1 50); do
             if grep -q 'listening on' freerdp-artifacts/mock-server.log; then
@@ -423,7 +425,7 @@ jobs:
             sleep 0.2
           done
           grep -q 'listening on' freerdp-artifacts/mock-server.log
-          run_freerdp_mode nla-gfx nla "/gfx" 1
+          run_freerdp_mode nla-gfx nla "/gfx" 1 64 64
           test -s freerdp-artifacts/rdp-summary.md
           test -s freerdp-artifacts/tls-summary.md
           test -s freerdp-artifacts/nla-summary.md
