@@ -358,7 +358,7 @@ jobs:
               set +e
               xvfb-run -a bash -c "
                 set +e
-                xfreerdp /v:127.0.0.1:3390 /sec:${mode} ${extra_args} /cert:ignore /u:runner /p:secret /log-level:TRACE >'$dir/xfreerdp.log' 2>&1 &
+                xfreerdp /v:127.0.0.1:3390 /w:320 /h:240 /sec:${mode} ${extra_args} /cert:ignore /u:runner /p:secret /log-level:DEBUG >'$dir/xfreerdp.log' 2>&1 &
                 rdp_pid=\$!
                 sleep 8
                 xwd -root -silent -out '$dir/xfreerdp-root.xwd' 2>'$dir/xwd.log'
