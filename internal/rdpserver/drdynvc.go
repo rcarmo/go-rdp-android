@@ -362,7 +362,7 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")
 	}
-	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, append([]byte{0x00}, payload...)))
+	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, append([]byte{0xe0, 0x00}, payload...)))
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
