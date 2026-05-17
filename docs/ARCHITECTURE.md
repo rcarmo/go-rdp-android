@@ -78,13 +78,16 @@ func InputEvents() int64
 func RDPEIContacts() int64
 func FramesSent() int64
 func BitmapBytes() int64
+func RDPGFXFrames() int64
+func RDPGFXBytes() int64
+func GraphicsPath() string
 func DVCFragments() int64
 func SubmittedFrames() int64
 func QueuedFrames() int64
 func DroppedFrames() int64
 ```
 
-Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding, and exposes submitted/queued/dropped counters for health reporting. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state. Frame ingress validates dimensions, stride, data length, and integer-overflow cases before accepting buffers; the bitmap tiler and desktop scaler repeat those geometry checks before reading or allocating derived frames. The queue is reusable across Android service restarts: restart paths drain stale frames, closed queues do not hang drain calls, and mobile server startup now reports immediate listen failures before the UI treats the server as running. Listener lifecycle cleanup is bounded as well: `Server.Serve` clears its active address and stops its context-watcher goroutine on any exit path, not only on context cancellation. The bridge also exposes lightweight runtime health values (`Addr`, `TLSFingerprintSHA256`, active/accepted connection counts, auth/handshake failure counts, decoded input events, RDPEI contact totals, DVC fragment counts, sent frame batches, and bitmap payload byte totals) that the Android UI combines with local mode/auth/input/frame state.
+Frames are copied into a bounded `FrameQueue`. The queue drops old frames when full, keeping the newest frame available for RDP encoding, and exposes submitted/queued/dropped counters for health reporting. This is preferable for remote desktop UX because stale frames are less useful than the latest screen state. Frame ingress validates dimensions, stride, data length, and integer-overflow cases before accepting buffers; the bitmap tiler and desktop scaler repeat those geometry checks before reading or allocating derived frames. The queue is reusable across Android service restarts: restart paths drain stale frames, closed queues do not hang drain calls, and mobile server startup now reports immediate listen failures before the UI treats the server as running. Listener lifecycle cleanup is bounded as well: `Server.Serve` clears its active address and stops its context-watcher goroutine on any exit path, not only on context cancellation. The bridge also exposes lightweight runtime health values (`Addr`, `TLSFingerprintSHA256`, active/accepted connection counts, auth/handshake failure counts, decoded input events, RDPEI contact totals, DVC fragment counts, sent frame batches, selected graphics path, bitmap payload byte totals, and RDPGFX frame/byte totals) that the Android UI combines with local mode/auth/input/frame state.
 
 `SetCredentials` configures the current username/password authenticator for future sessions. `SetSecurityMode` and `SetFailedAuthPolicy` expose the core access-policy controls to Android; the UI persists these non-secret values, normalizes failed-auth max-backoff so it is never below the initial backoff, and treats backend policy-configuration failure as startup failure before binding a listener. The server has two encrypted authentication paths: TLS-only (`PROTOCOL_SSL`) with classic Client Info credential validation, and Hybrid/NLA (`PROTOCOL_HYBRID`) with a CredSSP/NTLMv2 handshake, TLS public-key binding, encrypted `TSCredentials`, and the same credential gate. The NLA primitives are consumed from `github.com/rcarmo/go-rdp/pkg/auth` rather than duplicated locally. Access policy controls (security mode + allowed users/CIDRs) are normalized at startup and enforced at connection/auth boundaries, including optional failed-auth lockout/backoff controls. TLS settings support persisted self-signed cert/key paths, optional startup rotation, and SHA-256 fingerprint exposure for client trust guidance.
 
@@ -115,21 +118,20 @@ TCP
 → Synchronize
 → Control
 → FontList / FontMap
-→ slow-path bitmap updates
+→ RDPGFX Planar updates when negotiated, otherwise slow-path bitmap updates
 → slow-path and Fast-Path input decoding
 ```
 
-Current protocol path for true touch input:
+Current protocol path for dynamic virtual channels:
 
 ```text
 Client static channel request for drdynvc
 → Dynamic virtual channel negotiation
-→ RDPEI input channel
-→ touch contact frames
-→ Android gesture dispatch
+→ RDPGFX graphics channel and/or RDPEI input channel
+→ Planar graphics frames and/or touch contact frames
 ```
 
-Graphics currently use classic slow-path bitmap updates. Frames are split into 80x80 tiles to stay within safe packet/length envelopes. After the first frame, a per-session tile cache skips unchanged tiles. The server now selects session desktop dimensions from client core settings (and Confirm Active bitmap caps when present) and scales captured frames to negotiated desktop size before tile encoding.
+Graphics prefer RDPGFX over `drdynvc` when the client supports `Microsoft::Windows::RDS::Graphics`. The server initiates the RDPGFX dynamic channel after activation, confirms client capabilities, creates/maps a surface, and sends Planar-codec no-alpha RLE frame data. Classic slow-path bitmap updates remain the compatibility fallback and regression oracle; frames are split into 80x80 tiles to stay within safe packet/length envelopes, and a per-session tile cache skips unchanged tiles after the first frame. The server selects session desktop dimensions from client core settings (and Confirm Active bitmap caps when present) and scales captured frames to negotiated desktop size before either RDPGFX or bitmap encoding.
 
 ## Capture and graphics pipeline
 
@@ -139,8 +141,8 @@ The default real-capture path is:
 MediaProjection → VirtualDisplay → ImageReader RGBA_8888
   → Kotlin byte array
   → Go FrameQueue
-  → RGBA to 24-bit BGR tile conversion
-  → slow-path RDP bitmap update PDUs
+  → RDPGFX Planar no-alpha RLE over drdynvc when negotiated
+  → slow-path 24-bit BGR bitmap update PDUs as fallback
 ```
 
 Performance controls currently include:
@@ -150,7 +152,7 @@ Performance controls currently include:
 - Adaptive capture pacing/backpressure: Kotlin throttles MediaProjection copies based on bridge submission time, the bounded Go queue drops old frames when full, and the RDP stream loop coalesces queued backlog to the latest frame before encoding so slow clients do not force stale-frame catch-up work.
 - Optional capture downscale (`capture_scale`, `emulator_capture_scale`).
 
-Planned graphics paths include compressed bitmap/RDPGFX and H.264/AVC. Those are separate workstreams because they require different protocol negotiation and, in the H.264 case, likely a MediaCodec/encoder-surface capture path.
+RDPGFX Planar is the current compressed graphics path and is covered by a FreeRDP `/sec:nla /gfx` CI proof gate. Future graphics workstreams can still add legacy bitmap RLE, H.264/AVC, or hardware encoder paths; H.264/AVC likely requires a MediaCodec/encoder-surface capture path and additional protocol negotiation.
 
 ## Input architecture
 

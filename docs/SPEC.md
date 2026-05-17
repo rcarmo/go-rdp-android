@@ -93,7 +93,7 @@ Start with the smallest RDP profile that Microsoft Remote Desktop clients will a
 - Go code listens on configurable TCP port, e.g. `3389` or `3390`.
 - Accept exactly one session at a time.
 - Implement enough RDP handshake for TLS-only clients and an experimental Hybrid/NLA path.
-- Send bitmap framebuffer updates.
+- Send RDPGFX Planar framebuffer updates when negotiated, with bitmap framebuffer updates as fallback.
 - Decode pointer/key input and forward to Android service.
 
 Deliberately skip initially:
@@ -103,7 +103,7 @@ Deliberately skip initially:
 - clipboard
 - printer/device redirection
 - multi-monitor
-- dynamic virtual channels except the RDPEI touch-input subset when touch support becomes a target
+- dynamic virtual channels beyond RDPGFX and the RDPEI touch-input subset
 - RemoteFX/H.264 advanced graphics
 
 ### Phase 2: Security and compatibility
@@ -116,31 +116,33 @@ Deliberately skip initially:
 
 ### Phase 3: Performance
 
-- Start with raw/RLE bitmap updates.
-- Add dirty-region detection.
-- Add NSCodec/RemoteFX if clients negotiate it and `go-rdp` encoders are mature enough.
-- Consider H.264/RDPGFX only later; that is a significantly larger implementation.
+- Start with raw bitmap updates. ✅ (slow-path fallback and benchmark oracle)
+- Add dirty-region detection. ✅
+- Add RDPGFX Planar over `drdynvc`. ✅ (FreeRDP `/sec:nla /gfx` CI proof)
+- Add NSCodec/RemoteFX or legacy bitmap RLE only if clients need it and encoders are mature enough.
+- Consider H.264/AVC later; that remains a significantly larger implementation, especially if tied to Android `MediaCodec` surfaces.
 
 ## Screen pipeline choices
 
-### Option A: ImageReader frames → Go bitmap updates
+### Option A: ImageReader frames → Go graphics updates
 
-Simpler RDP integration:
+Simpler RDP integration and the current implementation:
 
 ```text
 MediaProjection → VirtualDisplay → ImageReader RGBA/YUV
   → Kotlin frame callback
   → Go buffer
-  → RDP bitmap update / RLE / NSCodec
+  → RDPGFX Planar when negotiated
+  → RDP bitmap update fallback / RLE / NSCodec
 ```
 
 Pros:
-- easier to map to classic RDP bitmap updates
-- avoids RDP H.264/GFX complexity
+- works with classic RDP bitmap updates and RDPGFX Planar without requiring Android hardware encoder surfaces
+- avoids RDP H.264 complexity
 
 Cons:
-- more CPU/memory bandwidth
-- may be slower than scrcpy
+- more CPU/memory bandwidth than a hardware H.264 path
+- may still be slower than scrcpy, although RDPGFX Planar reduces the raw-bitmap ceiling
 
 ### Option B: MediaCodec H.264 → RDP graphics pipeline
 
@@ -157,7 +159,7 @@ Cons:
 - RDP H.264/GFX server-side implementation is substantially harder
 - `go-rdp` currently has H.264 GUID awareness but not a full server-side graphics pipeline
 
-Recommendation: start with Option A.
+Recommendation: keep Option A as the first public APK path. It now includes default RDPGFX Planar plus bitmap fallback; H.264/AVC remains future work.
 
 ## Input pipeline
 
