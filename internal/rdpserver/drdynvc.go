@@ -366,6 +366,21 @@ func (m *drdynvcManager) rdpgfxH264Ready() bool {
 	return m.rdpgfxReady() && rdpgfxCapabilitySupportsH264(m.rdpgfxCapability)
 }
 
+func (m *drdynvcManager) rdpgfxH264Status() (ready bool, version uint32, flags uint32, reason string) {
+	if !m.rdpgfxReady() {
+		return false, 0, 0, "rdpgfx-not-ready"
+	}
+	version = m.rdpgfxCapability.Version
+	flags = m.rdpgfxCapability.Flags
+	if !h264EnabledFromEnv() {
+		return false, version, flags, "disabled-by-env"
+	}
+	if rdpgfxCapabilitySupportsH264(m.rdpgfxCapability) {
+		return true, version, flags, "ready"
+	}
+	return false, version, flags, "client-avc420-not-advertised"
+}
+
 func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error {
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")

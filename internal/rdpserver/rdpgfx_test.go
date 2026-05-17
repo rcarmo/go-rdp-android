@@ -77,6 +77,33 @@ func TestRDPGFXCapabilitySupportsH264(t *testing.T) {
 	}
 }
 
+func TestDRDYNVCRDPGFXH264Status(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
+	m := &drdynvcManager{}
+	ready, _, _, reason := m.rdpgfxH264Status()
+	if ready || reason != "rdpgfx-not-ready" {
+		t.Fatalf("status ready=%t reason=%q, want not-ready", ready, reason)
+	}
+	m.hasRDPGFXChannel = true
+	m.rdpgfxCapsConfirmed = true
+	m.rdpgfxChannelID = 1
+	m.rdpgfxCapability = rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: rdpgfxCapsFlagAVCDisabled}
+	ready, _, _, reason = m.rdpgfxH264Status()
+	if ready || reason != "client-avc420-not-advertised" {
+		t.Fatalf("status ready=%t reason=%q, want no-avc", ready, reason)
+	}
+	m.rdpgfxCapability = rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10}
+	ready, _, _, reason = m.rdpgfxH264Status()
+	if !ready || reason != "ready" {
+		t.Fatalf("status ready=%t reason=%q, want ready", ready, reason)
+	}
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "1")
+	ready, _, _, reason = m.rdpgfxH264Status()
+	if ready || reason != "disabled-by-env" {
+		t.Fatalf("status ready=%t reason=%q, want disabled", ready, reason)
+	}
+}
+
 func TestBuildRDPGFXCapsConfirmPDU(t *testing.T) {
 	pdu := buildRDPGFXCapsConfirmPDU(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: 7})
 	parsed, err := parseRDPGFXPDU(pdu)
