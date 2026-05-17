@@ -76,6 +76,14 @@ object NativeRdpBridge : RdpInputCallbacks {
         backend.submitFrame(width, height, pixelStride, rowStride, data)
     }
 
+    fun submitH264Frame(data: ByteArray, presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean) {
+        val count = frameCount.incrementAndGet()
+        if (count == 1L || keyFrame || count % 120L == 0L) {
+            Log.i(TAG, "h264Frame#$count pts=$presentationTimeUs keyFrame=$keyFrame codecConfig=$codecConfig bytes=${data.size} backend=${backend.name}")
+        }
+        backend.submitH264Frame(presentationTimeUs, keyFrame, codecConfig, data)
+    }
+
     override fun onPointerMove(x: Int, y: Int) {
         val scale = inputCoordinateScale.get()
         RdpAccessibilityService.handlePointerMove(x * scale, y * scale)

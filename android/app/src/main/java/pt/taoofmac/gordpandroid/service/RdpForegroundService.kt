@@ -66,6 +66,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
+        val h264Capture = intent?.getBooleanExtra(EXTRA_H264_CAPTURE, false) == true
         val hasProjection = data != null && resultCode != 0
         val savedSettings = settingsStore.load()
         val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, savedSettings.captureScale)
@@ -141,8 +142,12 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                     val captureWidth = (metrics.widthPixels / captureScale).coerceAtLeast(1)
                     val captureHeight = (metrics.heightPixels / captureScale).coerceAtLeast(1)
                     val captureDensity = (metrics.densityDpi / captureScale).coerceAtLeast(1)
-                    Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity")
-                    captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
+                    Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity h264=$h264Capture")
+                    if (h264Capture) {
+                        captureManager?.startH264(resultCode, data, captureWidth, captureHeight, captureDensity)
+                    } else {
+                        captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
+                    }
                 }
                 testPattern -> {
                     Log.i(TAG, "Starting test-pattern frame source")
@@ -170,6 +175,14 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
 
     override fun onFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray) {
         NativeRdpBridge.submitFrame(width, height, pixelStride, rowStride, data)
+    }
+
+    override fun onEncodedFrame(data: ByteArray, presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean) {
+        NativeRdpBridge.submitH264Frame(data, presentationTimeUs, keyFrame, codecConfig)
+    }
+
+    override fun onEncoderError(error: Throwable) {
+        Log.w(TAG, "H.264 encoder failed", error)
     }
 
     override fun onStopped() {
@@ -318,6 +331,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_RESULT_CODE = "result_code"
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_TEST_PATTERN = "test_pattern"
+        const val EXTRA_H264_CAPTURE = "h264_capture"
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
         const val EXTRA_SECURITY_MODE = "security_mode"
         const val EXTRA_FAILED_AUTH_LIMIT = "failed_auth_limit"

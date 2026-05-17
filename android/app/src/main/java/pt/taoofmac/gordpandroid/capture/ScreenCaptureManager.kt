@@ -29,11 +29,14 @@ class ScreenCaptureManager(
 ) {
     interface Listener {
         fun onFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray)
+        fun onEncodedFrame(data: ByteArray, presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean) {}
+        fun onEncoderError(error: Throwable) {}
         fun onStopped()
     }
 
     private var projection: MediaProjection? = null
     private var imageReader: ImageReader? = null
+    private var h264Encoder: H264Encoder? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
@@ -53,13 +56,7 @@ class ScreenCaptureManager(
         stopping = false
         targetFrameIntervalMs = if (maxFps <= 0) 0 else (1000L / maxFps.coerceAtLeast(1))
         adaptiveFrameIntervalMs = targetFrameIntervalMs
-        lastFrameCompletedAtMs = 0
-        submittedFrames = 0
-        throttledFrames = 0
-        copiedBytes = 0
-        totalSubmitMs = 0
-        maxSubmitMs = 0
-        lastStatsLogMs = SystemClock.elapsedRealtime()
+        resetStats()
 
         val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         val mediaProjection = manager.getMediaProjection(resultCode, data).also { mp ->
@@ -97,11 +94,68 @@ class ScreenCaptureManager(
         Log.i(TAG, "Screen capture started ${width}x$height density=$densityDpi maxFps=$maxFps targetIntervalMs=$targetFrameIntervalMs")
     }
 
+    fun startH264(resultCode: Int, data: Intent, width: Int, height: Int, densityDpi: Int, config: H264Encoder.Config = H264Encoder.Config(width, height)) {
+        stop()
+        stopping = false
+        targetFrameIntervalMs = 1000L / config.frameRate.coerceAtLeast(1)
+        adaptiveFrameIntervalMs = targetFrameIntervalMs
+        resetStats()
+
+        val manager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val mediaProjection = manager.getMediaProjection(resultCode, data).also { mp ->
+            mp.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    if (!stopping) {
+                        stop()
+                        listener.onStopped()
+                    }
+                }
+            }, null)
+        }
+        projection = mediaProjection
+
+        val captureThread = HandlerThread("rdp-capture-h264").also { it.start() }
+        val captureHandler = Handler(captureThread.looper)
+        thread = captureThread
+        handler = captureHandler
+
+        val encoder = H264Encoder(object : H264Encoder.Listener {
+            override fun onEncodedFrame(data: ByteArray, presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean) {
+                submittedFrames += 1
+                copiedBytes += data.size.toLong()
+                if (keyFrame) Log.i(TAG, "H.264 keyframe bytes=${data.size} pts=$presentationTimeUs")
+                logStats(force = false)
+                listener.onEncodedFrame(data, presentationTimeUs, keyFrame, codecConfig)
+            }
+
+            override fun onEncoderError(error: Throwable) {
+                Log.w(TAG, "H.264 encoder error", error)
+                listener.onEncoderError(error)
+            }
+        })
+        h264Encoder = encoder
+        val surface = encoder.start(config)
+
+        virtualDisplay = mediaProjection.createVirtualDisplay(
+            "go-rdp-android-h264",
+            width,
+            height,
+            densityDpi,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            surface,
+            null,
+            captureHandler,
+        )
+        Log.i(TAG, "H.264 screen capture started ${width}x$height density=$densityDpi bitrate=${config.bitRate} fps=${config.frameRate}")
+    }
+
     fun stop() {
         stopping = true
         logStats(force = true)
         virtualDisplay?.release()
         virtualDisplay = null
+        h264Encoder?.stop()
+        h264Encoder = null
         imageReader?.close()
         imageReader = null
         val oldProjection = projection
@@ -110,6 +164,16 @@ class ScreenCaptureManager(
         thread?.quitSafely()
         thread = null
         handler = null
+    }
+
+    private fun resetStats() {
+        lastFrameCompletedAtMs = 0
+        submittedFrames = 0
+        throttledFrames = 0
+        copiedBytes = 0
+        totalSubmitMs = 0
+        maxSubmitMs = 0
+        lastStatsLogMs = SystemClock.elapsedRealtime()
     }
 
     private fun onImageAvailable(reader: ImageReader) {
