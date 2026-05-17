@@ -1,6 +1,10 @@
 package rdpserver
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"strings"
+)
 
 const (
 	h264GraphicsPathName = "h264-avc"
@@ -13,6 +17,15 @@ type h264AccessUnit struct {
 	KeyFrame           bool
 	CodecConfig        bool
 	Data               []byte
+}
+
+func h264EnabledFromEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_DISABLE_H264"))) {
+	case "1", "true", "yes", "on":
+		return false
+	default:
+		return true
+	}
 }
 
 func validateH264AccessUnit(unit h264AccessUnit) error {
