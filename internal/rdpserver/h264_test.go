@@ -60,6 +60,18 @@ func TestH264StreamStatePrepareForWire(t *testing.T) {
 	}
 }
 
+func TestH264StreamStateRejectsOversizedConfigKeyframeCombination(t *testing.T) {
+	var state h264StreamState
+	config := append([]byte{0, 0, 0, 1}, make([]byte, h264MaxAccessUnitLen-8)...)
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, CodecConfig: true, Data: config}); ok {
+		t.Fatal("codec config only should not be ready")
+	}
+	keyframe := []byte{0, 0, 0, 1, 0x65, 0x01, 0x02, 0x03, 0x04}
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 2, KeyFrame: true, Data: keyframe}); ok {
+		t.Fatal("oversized config+keyframe combination should not be ready")
+	}
+}
+
 func TestValidateH264AccessUnit(t *testing.T) {
 	valid := h264AccessUnit{PresentationTimeUS: 1, KeyFrame: true, Data: []byte{0, 0, 1, 0x65}}
 	if err := validateH264AccessUnit(valid); err != nil {

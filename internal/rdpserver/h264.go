@@ -73,6 +73,9 @@ func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, b
 	if unit.KeyFrame {
 		s.seenKey = true
 		if len(s.codecConfig) > 0 && !unit.CodecConfig {
+			if len(s.codecConfig) > h264MaxAccessUnitLen-len(unit.Data) {
+				return h264AccessUnit{}, false
+			}
 			combined := make([]byte, 0, len(s.codecConfig)+len(unit.Data))
 			combined = append(combined, s.codecConfig...)
 			combined = append(combined, unit.Data...)
