@@ -60,6 +60,11 @@ class GomobileRdpBackend : RdpBackend {
         invoke(method, width, height, pixelStride, rowStride, data)
     }
 
+    override fun submitH264Frame(presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean, data: ByteArray) {
+        val method = findMethod(mobileClass ?: return, "submitH264Frame", 4) ?: return
+        invoke(method, presentationTimeUs, keyFrame, codecConfig, data)
+    }
+
     override fun stopServer() {
         val method = findMethod(mobileClass ?: return, "stopServer", 0) ?: return
         invoke(method)

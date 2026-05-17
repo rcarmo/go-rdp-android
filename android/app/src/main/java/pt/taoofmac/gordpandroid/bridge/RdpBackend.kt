@@ -21,6 +21,7 @@ interface RdpBackend {
     fun setFailedAuthPolicy(limit: Int, backoffMs: Int, backoffMaxMs: Int): Boolean
     fun startServer(port: Int): Boolean
     fun submitFrame(width: Int, height: Int, pixelStride: Int, rowStride: Int, data: ByteArray)
+    fun submitH264Frame(presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean, data: ByteArray)
     fun stopServer()
     fun listenAddress(): String
     fun tlsFingerprintSha256(): String

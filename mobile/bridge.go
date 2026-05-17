@@ -26,6 +26,7 @@ type Server struct {
 	server               *rdpserver.Server
 	addr                 string
 	frames               *FrameQueue
+	encodedFrames        *EncodedFrameQueue
 	input                *mobileInputSink
 	username             string
 	password             string
@@ -38,8 +39,9 @@ type Server struct {
 // NewServer creates a mobile bridge server instance.
 func NewServer() *Server {
 	return &Server{
-		frames: NewFrameQueue(2),
-		input:  &mobileInputSink{},
+		frames:        NewFrameQueue(2),
+		encodedFrames: NewEncodedFrameQueue(2),
+		input:         &mobileInputSink{},
 	}
 }
 
@@ -59,6 +61,7 @@ func (s *Server) Start(port int) error {
 		auth = rdpserver.StaticCredentials{Username: s.username, Password: s.password}
 	}
 	s.frames.Drain()
+	s.encodedFrames.Drain()
 	srv, err := rdpserver.New(rdpserver.Config{
 		Addr:          addr,
 		Width:         1280,
@@ -77,6 +80,7 @@ func (s *Server) Start(port int) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		s.frames.Drain()
+		s.encodedFrames.Drain()
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -113,6 +117,7 @@ func (s *Server) Stop() error {
 	select {
 	case err := <-done:
 		s.frames.Drain()
+		s.encodedFrames.Drain()
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -120,6 +125,7 @@ func (s *Server) Stop() error {
 		// Android lifecycle shutdown must not hang the UI/service teardown path.
 		// The listener has been canceled/closed above; let the goroutine drain asynchronously.
 		s.frames.Drain()
+		s.encodedFrames.Drain()
 	}
 	return nil
 }
@@ -157,6 +163,16 @@ func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []b
 		Format:    frame.PixelFormatRGBA8888,
 		Timestamp: time.Now(),
 		Data:      append([]byte(nil), data...),
+	})
+}
+
+// SubmitH264Frame queues an encoded H.264/AVC access unit for future transport wiring.
+func (s *Server) SubmitH264Frame(presentationTimeUs int64, keyFrame bool, codecConfig bool, data []byte) error {
+	return s.encodedFrames.Submit(EncodedFrame{
+		PresentationTimeUs: presentationTimeUs,
+		KeyFrame:           keyFrame,
+		CodecConfig:        codecConfig,
+		Data:               data,
 	})
 }
 
@@ -381,6 +397,11 @@ func StopServer() error { return defaultServer.Stop() }
 // SubmitFrame queues a frame on the default singleton server.
 func SubmitFrame(width, height, pixelStride, rowStride int, data []byte) error {
 	return defaultServer.SubmitFrame(width, height, pixelStride, rowStride, data)
+}
+
+// SubmitH264Frame queues an encoded H.264/AVC access unit on the default singleton server.
+func SubmitH264Frame(presentationTimeUs int64, keyFrame bool, codecConfig bool, data []byte) error {
+	return defaultServer.SubmitH264Frame(presentationTimeUs, keyFrame, codecConfig, data)
 }
 
 // SetCredentials configures simple username/password authentication for future sessions.

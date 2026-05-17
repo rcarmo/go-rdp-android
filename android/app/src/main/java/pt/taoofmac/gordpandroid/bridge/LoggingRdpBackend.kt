@@ -50,6 +50,11 @@ class LoggingRdpBackend : RdpBackend {
         }
     }
 
+    override fun submitH264Frame(presentationTimeUs: Long, keyFrame: Boolean, codecConfig: Boolean, data: ByteArray) {
+        if (!running.get()) return
+        Log.i(TAG, "h264Frame pts=$presentationTimeUs keyFrame=$keyFrame codecConfig=$codecConfig bytes=${data.size} [$name]")
+    }
+
     override fun stopServer() {
         if (running.compareAndSet(true, false)) {
             Log.i(TAG, "stopServer(frames=${frameCount.get()}) [$name]")
