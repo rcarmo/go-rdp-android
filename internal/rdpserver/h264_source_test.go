@@ -29,9 +29,10 @@ func TestBuildRDPGFXH264FramePDUs(t *testing.T) {
 	}
 }
 
-func TestBuildRDPGFXH264FramePDUsRejectsConfigOnly(t *testing.T) {
-	_, ok := buildRDPGFXH264FramePDUs(0, 1, h264AccessUnit{CodecConfig: true, Data: []byte{1}}, 64, 48)
+func TestH264StreamStateQueuesConfigOnly(t *testing.T) {
+	var state h264StreamState
+	_, ok := state.prepareForWire(h264AccessUnit{CodecConfig: true, Data: []byte{1}})
 	if ok {
-		t.Fatal("buildRDPGFXH264FramePDUs() ok = true for config-only unit, want false")
+		t.Fatal("prepareForWire() ok = true for config-only unit, want false")
 	}
 }

@@ -203,10 +203,6 @@ func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessU
 	if err := validateH264AccessUnit(unit); err != nil {
 		return nil, false
 	}
-	if unit.CodecConfig && !unit.KeyFrame {
-		// Codec configuration by itself is queued until a decodable access unit is available.
-		return nil, false
-	}
 	pdus := [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
 		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), unit.Data), // #nosec G115 -- dimensions bounded above.

@@ -149,25 +149,29 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 		return err
 	}
 	nextFrameID := uint32(1)
+	var h264State h264StreamState
 	if h264 != nil && dvc.rdpgfxH264Ready() {
 		select {
 		case unit := <-h264.H264Frames():
-			unit = latestAvailableH264Unit(h264.H264Frames(), unit)
-			pdus, ok := buildRDPGFXH264FramePDUs(0, nextFrameID, unit, width, height)
-			if ok {
-				for _, pdu := range pdus {
-					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
-						return err
+			unit = latestAvailableH264Unit(h264.H264Frames(), unit, &h264State)
+			wireUnit, ready := h264State.prepareForWire(unit)
+			if ready {
+				pdus, ok := buildRDPGFXH264FramePDUs(0, nextFrameID, wireUnit, width, height)
+				if ok {
+					for _, pdu := range pdus {
+						if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
+							return err
+						}
 					}
+					metrics.recordH264Frame(pdus)
+					tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
+					go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID+1, h264State)
+					return nil
 				}
-				metrics.recordH264Frame(pdus)
-				tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, unit.PresentationTimeUS, unit.KeyFrame, unit.CodecConfig, len(unit.Data))
-				go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID+1)
-				return nil
 			}
 		default:
 		}
-		go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID)
+		go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID, h264State)
 	}
 	if frames != nil {
 		select {
@@ -188,14 +192,18 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	return nil
 }
 
-func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager, width, height int, metrics serverMetrics, nextFrameID uint32) {
+func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager, width, height int, metrics serverMetrics, nextFrameID uint32, state h264StreamState) {
 	if h264 == nil || dvc == nil || !dvc.rdpgfxH264Ready() {
 		return
 	}
 	frameCh := h264.H264Frames()
 	for unit := range frameCh {
-		unit = latestAvailableH264Unit(frameCh, unit)
-		pdus, ok := buildRDPGFXH264FramePDUs(0, nextFrameID, unit, width, height)
+		unit = latestAvailableH264Unit(frameCh, unit, &state)
+		wireUnit, ready := state.prepareForWire(unit)
+		if !ready {
+			continue
+		}
+		pdus, ok := buildRDPGFXH264FramePDUs(0, nextFrameID, wireUnit, width, height)
 		if !ok || len(pdus) == 0 {
 			continue
 		}
@@ -206,7 +214,7 @@ func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager
 			}
 		}
 		metrics.recordH264Frame(pdus)
-		tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, unit.PresentationTimeUS, unit.KeyFrame, unit.CodecConfig, len(unit.Data))
+		tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
 		nextFrameID++
 	}
 }
@@ -230,13 +238,17 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 	}
 }
 
-func latestAvailableH264Unit(frameCh <-chan H264Frame, current H264Frame) H264Frame {
+func latestAvailableH264Unit(frameCh <-chan H264Frame, current H264Frame, state *h264StreamState) H264Frame {
 	latest := current
 	for {
 		select {
 		case unit, ok := <-frameCh:
 			if !ok {
 				return latest
+			}
+			if state != nil && unit.CodecConfig && !unit.KeyFrame {
+				_, _ = state.prepareForWire(unit)
+				continue
 			}
 			latest = unit
 		default:

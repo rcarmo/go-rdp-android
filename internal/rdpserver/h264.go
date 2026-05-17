@@ -49,6 +49,37 @@ func validateH264AccessUnit(unit h264AccessUnit) error {
 	return nil
 }
 
+type h264StreamState struct {
+	codecConfig []byte
+	seenKey     bool
+}
+
+func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, bool) {
+	if err := validateH264AccessUnit(unit); err != nil {
+		return h264AccessUnit{}, false
+	}
+	if unit.CodecConfig {
+		s.codecConfig = append(s.codecConfig[:0], unit.Data...)
+		if !unit.KeyFrame {
+			return h264AccessUnit{}, false
+		}
+	}
+	if unit.KeyFrame {
+		s.seenKey = true
+		if len(s.codecConfig) > 0 && !unit.CodecConfig {
+			combined := make([]byte, 0, len(s.codecConfig)+len(unit.Data))
+			combined = append(combined, s.codecConfig...)
+			combined = append(combined, unit.Data...)
+			unit.Data = combined
+		}
+		return unit, true
+	}
+	if !s.seenKey {
+		return h264AccessUnit{}, false
+	}
+	return unit, true
+}
+
 func validateH264AccessUnitBatch(units []h264AccessUnit) error {
 	if len(units) == 0 {
 		return fmt.Errorf("empty H.264 access-unit batch")
