@@ -133,3 +133,126 @@ func FuzzParseRDPGFXPDU(f *testing.F) {
 		_, _ = parseRDPGFXPDU(data)
 	})
 }
+
+func TestBuildPlanarRLEPayloadRoundTrip(t *testing.T) {
+	const width, height = 48, 4
+	data := make([]byte, width*height*4)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			i := (y*width + x) * 4
+			// Mix repeated spans, zero deltas across rows, and positive/negative deltas.
+			if x < 18 {
+				data[i+0] = 0x20
+				data[i+1] = 0x40
+				data[i+2] = 0x60
+			} else if x < 34 {
+				data[i+0] = byte(0x70 + y)
+				data[i+1] = byte(0x50 - y)
+				data[i+2] = byte(0x30 + x - 18)
+			} else {
+				data[i+0] = byte((x*7 + y*3) & 0xff)
+				data[i+1] = byte((x*5 - y*2) & 0xff)
+				data[i+2] = byte((x*3 + y*11) & 0xff)
+			}
+			data[i+3] = 0xff
+		}
+	}
+	fr := frame.Frame{Width: width, Height: height, Stride: width * 4, Format: frame.PixelFormatRGBA8888, Data: data}
+	payload, ok := buildPlanarRLEPayload(fr, fr.Stride)
+	if !ok {
+		t.Fatal("expected planar payload")
+	}
+	got, err := decodePlanarRLEPayloadForTest(payload, width, height)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			si := (y*width + x) * 4
+			gi := (y*width + x) * 3
+			want := data[si : si+3]
+			if string(got[gi:gi+3]) != string(want) {
+				t.Fatalf("pixel %d,%d got RGB=%x want=%x", x, y, got[gi:gi+3], want)
+			}
+		}
+	}
+}
+
+func decodePlanarRLEPayloadForTest(payload []byte, width, height int) ([]byte, error) {
+	if len(payload) == 0 || payload[0] != 0x30 {
+		return nil, errTestPlanar("unexpected planar header")
+	}
+	offset := 1
+	planes := make([][]byte, 3)
+	for i := range planes {
+		plane, used, err := decodePlanarRLEPlaneForTest(payload[offset:], width, height)
+		if err != nil {
+			return nil, err
+		}
+		offset += used
+		planes[i] = plane
+	}
+	if offset != len(payload) {
+		return nil, errTestPlanar("trailing planar bytes")
+	}
+	out := make([]byte, width*height*3)
+	for i := 0; i < width*height; i++ {
+		out[i*3+0] = planes[0][i]
+		out[i*3+1] = planes[1][i]
+		out[i*3+2] = planes[2][i]
+	}
+	return out, nil
+}
+
+func decodePlanarRLEPlaneForTest(data []byte, width, height int) ([]byte, int, error) {
+	out := make([]byte, width*height)
+	offset := 0
+	for y := 0; y < height; y++ {
+		pixel := byte(0)
+		for x := 0; x < width; {
+			if offset >= len(data) {
+				return nil, 0, errTestPlanar("short RLE plane")
+			}
+			control := data[offset]
+			offset++
+			runLen := int(control & 0x0f)
+			rawLen := int((control >> 4) & 0x0f)
+			if runLen == 1 {
+				runLen = rawLen + 16
+				rawLen = 0
+			} else if runLen == 2 {
+				runLen = rawLen + 32
+				rawLen = 0
+			}
+			if x+rawLen+runLen > width || offset+rawLen > len(data) {
+				return nil, 0, errTestPlanar("invalid RLE scanline")
+			}
+			for ; rawLen > 0; rawLen-- {
+				pixel = data[offset]
+				offset++
+				out[y*width+x] = decodePlanarRLEValueForTest(pixel, out, width, x, y)
+				x++
+			}
+			for ; runLen > 0; runLen-- {
+				out[y*width+x] = decodePlanarRLEValueForTest(pixel, out, width, x, y)
+				x++
+			}
+		}
+	}
+	return out, offset, nil
+}
+
+func decodePlanarRLEValueForTest(encoded byte, plane []byte, width, x, y int) byte {
+	if y == 0 {
+		return encoded
+	}
+	delta := int(encoded >> 1)
+	if encoded&1 != 0 {
+		delta = -(delta + 1)
+	}
+	return byte(int(plane[(y-1)*width+x]) + delta)
+}
+
+type errTestPlanar string
+
+func (e errTestPlanar) Error() string { return string(e) }

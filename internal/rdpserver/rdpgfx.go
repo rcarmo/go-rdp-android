@@ -263,6 +263,11 @@ func encodePlanarDeltaRLEPlane(plane []byte, width, height int) []byte {
 }
 
 func planarDeltaByte(delta int) byte {
+	if delta > 127 {
+		delta -= 256
+	} else if delta < -128 {
+		delta += 256
+	}
 	if delta >= 0 {
 		return byte(delta << 1)
 	}
