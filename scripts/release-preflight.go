@@ -48,7 +48,7 @@ func main() {
 }
 
 func checkGitClean() error {
-	out, err := run("git", "status", "--porcelain")
+	out, err := runGit("status", "--porcelain")
 	if err != nil {
 		return err
 	}
@@ -59,10 +59,10 @@ func checkGitClean() error {
 }
 
 func checkGitSynced() error {
-	if _, err := run("git", "fetch", "--quiet"); err != nil {
+	if _, err := runGit("fetch", "--quiet"); err != nil {
 		return err
 	}
-	out, err := run("git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}")
+	out, err := runGit("rev-list", "--left-right", "--count", "HEAD...@{upstream}")
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func checkVersionAlignment() error {
 }
 
 func checkLatestCI(repo string) error {
-	out, err := run("gh", "run", "list", "--repo", repo, "--branch", "main", "--limit", "1", "--json", "status,conclusion,databaseId,headSha,displayTitle", "--jq", `.[0] | [.databaseId, .status, (.conclusion // ""), .headSha, .displayTitle] | @tsv`)
+	out, err := runGh("run", "list", "--repo", repo, "--branch", "main", "--limit", "1", "--json", "status,conclusion,databaseId,headSha,displayTitle", "--jq", `.[0] | [.databaseId, .status, (.conclusion // ""), .headSha, .displayTitle] | @tsv`)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func checkLatestCI(repo string) error {
 }
 
 func checkSigningSecrets(repo string, require bool) error {
-	out, err := run("gh", "secret", "list", "--repo", repo)
+	out, err := runGh("secret", "list", "--repo", repo)
 	if err != nil {
 		return err
 	}
@@ -153,8 +153,17 @@ func firstSubmatch(s, pattern string) string {
 	return match[1]
 }
 
-func run(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+func runGit(args ...string) (string, error) {
+	cmd := exec.Command("git", args...) // #nosec G204 -- release preflight invokes a fixed git binary with fixed call sites.
+	return runCommand(cmd)
+}
+
+func runGh(args ...string) (string, error) {
+	cmd := exec.Command("gh", args...) // #nosec G204 -- release preflight invokes a fixed gh binary with fixed call sites.
+	return runCommand(cmd)
+}
+
+func runCommand(cmd *exec.Cmd) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -163,10 +172,11 @@ func run(name string, args ...string) (string, error) {
 		if msg == "" {
 			msg = strings.TrimSpace(stdout.String())
 		}
+		cmdline := strings.Join(cmd.Args, " ")
 		if msg != "" {
-			return stdout.String(), fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, msg)
+			return stdout.String(), fmt.Errorf("%s: %w: %s", cmdline, err, msg)
 		}
-		return stdout.String(), fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
+		return stdout.String(), fmt.Errorf("%s: %w", cmdline, err)
 	}
 	return stdout.String(), nil
 }
