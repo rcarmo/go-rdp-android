@@ -116,11 +116,14 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		if pdu.Version < drdynvcCapsVersion1 {
 			return fmt.Errorf("unsupported drdynvc capability version %d", pdu.Version)
 		}
+		firstCaps := !m.capsReceived
 		m.capsReceived = true
 		m.negotiatedCapsVersion = drdynvcCapsVersion1
-		tracef("drdynvc_caps", "version=%d negotiated=%d", pdu.Version, m.negotiatedCapsVersion)
-		if err := m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion)); err != nil {
-			return err
+		tracef("drdynvc_caps", "version=%d negotiated=%d first=%t", pdu.Version, m.negotiatedCapsVersion, firstCaps)
+		if firstCaps {
+			if err := m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion)); err != nil {
+				return err
+			}
 		}
 		return m.openRDPGFXChannel(conn)
 	case drdynvcCmdCreate:
