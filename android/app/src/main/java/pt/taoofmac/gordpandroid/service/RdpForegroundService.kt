@@ -16,6 +16,7 @@ import android.util.Log
 import android.view.WindowManager
 import java.net.NetworkInterface
 import io.carmo.go.rdp.android.bridge.NativeRdpBridge
+import io.carmo.go.rdp.android.capture.H264Encoder
 import io.carmo.go.rdp.android.capture.ScreenCaptureManager
 import io.carmo.go.rdp.android.settings.RdpSecurityMode
 import io.carmo.go.rdp.android.settings.RdpServerMode
@@ -67,6 +68,12 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val data = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
         val testPattern = intent?.getBooleanExtra(EXTRA_TEST_PATTERN, false) == true
         val h264Capture = intent?.getBooleanExtra(EXTRA_H264_CAPTURE, false) == true
+        val h264Bitrate = (intent?.getIntExtra(EXTRA_H264_BITRATE, DEFAULT_H264_BITRATE) ?: DEFAULT_H264_BITRATE)
+            .coerceIn(MIN_H264_BITRATE, MAX_H264_BITRATE)
+        val h264Fps = (intent?.getIntExtra(EXTRA_H264_FPS, DEFAULT_H264_FPS) ?: DEFAULT_H264_FPS)
+            .coerceIn(MIN_H264_FPS, MAX_H264_FPS)
+        val h264KeyInterval = (intent?.getIntExtra(EXTRA_H264_KEY_INTERVAL_SECONDS, DEFAULT_H264_KEY_INTERVAL_SECONDS) ?: DEFAULT_H264_KEY_INTERVAL_SECONDS)
+            .coerceIn(MIN_H264_KEY_INTERVAL_SECONDS, MAX_H264_KEY_INTERVAL_SECONDS)
         val hasProjection = data != null && resultCode != 0
         val savedSettings = settingsStore.load()
         val captureScale = intent?.getIntExtra(EXTRA_CAPTURE_SCALE, savedSettings.captureScale)
@@ -144,7 +151,20 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
                     val captureDensity = (metrics.densityDpi / captureScale).coerceAtLeast(1)
                     Log.i(TAG, "Starting MediaProjection capture scale=$captureScale ${captureWidth}x$captureHeight density=$captureDensity h264=$h264Capture")
                     if (h264Capture) {
-                        captureManager?.startH264(resultCode, data, captureWidth, captureHeight, captureDensity)
+                        captureManager?.startH264(
+                            resultCode,
+                            data,
+                            captureWidth,
+                            captureHeight,
+                            captureDensity,
+                            config = H264Encoder.Config(
+                                width = captureWidth,
+                                height = captureHeight,
+                                bitRate = h264Bitrate,
+                                frameRate = h264Fps,
+                                keyFrameIntervalSeconds = h264KeyInterval,
+                            ),
+                        )
                     } else {
                         captureManager?.start(resultCode, data, captureWidth, captureHeight, captureDensity, maxFps = 15)
                     }
@@ -333,6 +353,9 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val EXTRA_RESULT_DATA = "result_data"
         const val EXTRA_TEST_PATTERN = "test_pattern"
         const val EXTRA_H264_CAPTURE = "h264_capture"
+        const val EXTRA_H264_BITRATE = "h264_bitrate"
+        const val EXTRA_H264_FPS = "h264_fps"
+        const val EXTRA_H264_KEY_INTERVAL_SECONDS = "h264_key_interval_seconds"
         const val EXTRA_CAPTURE_SCALE = "capture_scale"
         const val EXTRA_SECURITY_MODE = "security_mode"
         const val EXTRA_FAILED_AUTH_LIMIT = "failed_auth_limit"
@@ -343,6 +366,15 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         const val ACTION_STOP = "io.carmo.go.rdp.android.service.STOP"
         private const val CHANNEL_ID = "rdp-server"
         private const val NOTIFICATION_ID = 1
+        private const val DEFAULT_H264_BITRATE = 4_000_000
+        private const val MIN_H264_BITRATE = 250_000
+        private const val MAX_H264_BITRATE = 20_000_000
+        private const val DEFAULT_H264_FPS = 30
+        private const val MIN_H264_FPS = 1
+        private const val MAX_H264_FPS = 60
+        private const val DEFAULT_H264_KEY_INTERVAL_SECONDS = 1
+        private const val MIN_H264_KEY_INTERVAL_SECONDS = 0
+        private const val MAX_H264_KEY_INTERVAL_SECONDS = 10
         private const val TAG = "GoRdpAndroidService"
     }
 }
