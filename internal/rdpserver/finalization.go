@@ -2,8 +2,10 @@ package rdpserver
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 	"github.com/rcarmo/go-rdp-android/internal/input"
@@ -47,6 +49,14 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
 			return err
 		}
+		if dvc != nil && dvc.enabled() {
+			if err := dvc.startServerInitiatedChannels(conn); err != nil {
+				return err
+			}
+			if err := waitForRDPGFXReady(conn, dvc, 750*time.Millisecond); err != nil {
+				tracef("rdpgfx_wait", "ready=false err=%v", err)
+			}
+		}
 		if dvc != nil && dvc.rdpgfxReady() {
 			return writeInitialRDPGFXUpdate(conn, frames, width, height, metrics, dvc)
 		}
@@ -78,6 +88,37 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		return err
 	}
 	metrics.recordBitmapFrame([][]byte{update})
+	return nil
+}
+
+func waitForRDPGFXReady(conn net.Conn, dvc *drdynvcManager, timeout time.Duration) error {
+	if dvc == nil || !dvc.enabled() || dvc.rdpgfxReady() {
+		return nil
+	}
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) && !dvc.rdpgfxReady() {
+		_ = conn.SetReadDeadline(deadline)
+		pdu, err := readMCSDomainPDUOrFastPath(conn, nil)
+		if err != nil {
+			if errors.Is(err, errFastPathPDU) {
+				continue
+			}
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				return err
+			}
+			return err
+		}
+		if pdu.Application == mcsSendDataRequestApp && pdu.ChannelID == dvc.staticChannelID {
+			if err := dvc.handleStaticPDU(conn, pdu.Data); err != nil {
+				return err
+			}
+		}
+	}
+	_ = conn.SetReadDeadline(time.Time{})
+	if !dvc.rdpgfxReady() {
+		return fmt.Errorf("RDPGFX channel not ready")
+	}
 	return nil
 }
 
