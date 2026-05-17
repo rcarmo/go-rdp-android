@@ -285,6 +285,22 @@ Use the app's bounded selectable debug panel for current-session health/settings
 | Cannot reach IP/port | Confirm the foreground notification/app health address, TCP/3390 reachability, same LAN/VPN routing, no hotspot isolation, and that the service is still running. |
 | Microsoft client fails but FreeRDP works | Record platform/client version, security mode, cert warning, screenshot/logs, and disconnect behavior; Microsoft-client active-streaming validation remains a release blocker. |
 
+## Release preflight debugging
+
+Before pushing a release tag, run:
+
+```bash
+make release-preflight
+```
+
+The target runs `scripts/release-preflight.go` and fails if the working tree is dirty, the branch is not synced with upstream, version identifiers are misaligned, the latest `main` CI run is not green, or required release signing secrets are not visible through `gh secret list --repo rcarmo/go-rdp-android`. If you need to inspect everything except signing-secret visibility while the owner is still provisioning secrets, run:
+
+```bash
+GOTMPDIR="$PWD/.gotmp" go run ./scripts/release-preflight.go -require-secrets=false
+```
+
+A missing-secret warning is expected with the current automation token until the repository owner confirms `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. Do not push a `v*` release tag until `make release-preflight` passes without that override.
+
 ## Authentication debugging
 
 The current authentication hook is a username/password check used by both the classic Client Info path and the Hybrid/NLA CredSSP path:
