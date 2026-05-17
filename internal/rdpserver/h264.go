@@ -12,12 +12,20 @@ const (
 	h264MaxAccessUnits   = 4
 )
 
-type h264AccessUnit struct {
+// H264Frame is one encoded H.264/AVC access unit submitted by the Android encoder.
+type H264Frame struct {
 	PresentationTimeUS int64
 	KeyFrame           bool
 	CodecConfig        bool
 	Data               []byte
 }
+
+// H264Source exposes encoded H.264/AVC access units to the RDPGFX transport.
+type H264Source interface {
+	H264Frames() <-chan H264Frame
+}
+
+type h264AccessUnit = H264Frame
 
 func h264EnabledFromEnv() bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_DISABLE_H264"))) {

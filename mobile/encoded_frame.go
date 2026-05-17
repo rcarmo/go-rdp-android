@@ -4,17 +4,14 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+
+	"github.com/rcarmo/go-rdp-android/internal/rdpserver"
 )
 
 const maxEncodedFrameBytes = 1024 * 1024
 
 // EncodedFrame is a bounded copy of one encoded H.264/AVC access unit.
-type EncodedFrame struct {
-	PresentationTimeUs int64
-	KeyFrame           bool
-	CodecConfig        bool
-	Data               []byte
-}
+type EncodedFrame = rdpserver.H264Frame
 
 // EncodedFrameQueue keeps the latest encoded access units for future transport wiring.
 type EncodedFrameQueue struct {
@@ -75,6 +72,7 @@ func (q *EncodedFrameQueue) Drain() {
 	}
 }
 
-func (q *EncodedFrameQueue) Depth() int64     { return int64(len(q.frames)) }
-func (q *EncodedFrameQueue) Submitted() int64 { return q.submitted.Load() }
-func (q *EncodedFrameQueue) Dropped() int64   { return q.dropped.Load() }
+func (q *EncodedFrameQueue) H264Frames() <-chan rdpserver.H264Frame { return q.frames }
+func (q *EncodedFrameQueue) Depth() int64                           { return int64(len(q.frames)) }
+func (q *EncodedFrameQueue) Submitted() int64                       { return q.submitted.Load() }
+func (q *EncodedFrameQueue) Dropped() int64                         { return q.dropped.Load() }

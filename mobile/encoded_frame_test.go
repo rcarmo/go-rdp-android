@@ -5,11 +5,11 @@ import "testing"
 func TestEncodedFrameQueueSubmitCopiesAndDropsOldest(t *testing.T) {
 	q := NewEncodedFrameQueue(1)
 	data := []byte{1, 2, 3}
-	if err := q.Submit(EncodedFrame{PresentationTimeUs: 1, KeyFrame: true, Data: data}); err != nil {
+	if err := q.Submit(EncodedFrame{PresentationTimeUS: 1, KeyFrame: true, Data: data}); err != nil {
 		t.Fatalf("Submit first: %v", err)
 	}
 	data[0] = 9
-	if err := q.Submit(EncodedFrame{PresentationTimeUs: 2, Data: []byte{4}}); err != nil {
+	if err := q.Submit(EncodedFrame{PresentationTimeUS: 2, Data: []byte{4}}); err != nil {
 		t.Fatalf("Submit second: %v", err)
 	}
 	if got := q.Submitted(); got != 2 {

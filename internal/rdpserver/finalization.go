@@ -27,7 +27,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, sink input.Sink, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, h264 H264Source, sink input.Sink, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 			}
 		}
 		if dvc != nil && dvc.rdpgfxReady() {
-			return writeInitialRDPGFXUpdate(conn, frames, width, height, metrics, dvc)
+			return writeInitialRDPGFXUpdate(conn, frames, h264, width, height, metrics, dvc)
 		}
 		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
 	case pduType2Input:
@@ -133,7 +133,7 @@ func waitForRDPGFXReady(conn net.Conn, dvc *drdynvcManager, timeout time.Duratio
 	return nil
 }
 
-func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
+func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Source, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
 	create, ok := buildRDPGFXCreateSurfacePDU(0, width, height)
 	if !ok {
 		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
@@ -147,6 +147,23 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, width, height 
 	}
 	if err := dvc.writeRDPGFXPayload(conn, mapped); err != nil {
 		return err
+	}
+	if h264 != nil && h264EnabledFromEnv() {
+		select {
+		case unit := <-h264.H264Frames():
+			pdus, ok := buildRDPGFXH264FramePDUs(0, 1, unit, width, height)
+			if ok {
+				for _, pdu := range pdus {
+					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
+						return err
+					}
+				}
+				metrics.recordH264Frame(pdus)
+				tracef("rdpgfx_h264_write", "pts=%d key=%t config=%t bytes=%d", unit.PresentationTimeUS, unit.KeyFrame, unit.CodecConfig, len(unit.Data))
+				return nil
+			}
+		default:
+		}
 	}
 	if frames != nil {
 		select {

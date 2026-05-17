@@ -24,6 +24,7 @@ type Config struct {
 	Authenticator Authenticator
 	Policy        AccessPolicy
 	TLS           TLSSettings
+	H264          H264Source
 }
 
 // Server is the native Android RDP server core.
@@ -264,7 +265,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
 	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments}
-	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
+	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)
 		} else {

@@ -33,7 +33,7 @@ type domainPDU struct {
 	Data        []byte
 }
 
-func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, limiter *authBackoffLimiter, selectedProtocol uint32, channels []clientChannel, metrics serverMetrics) error {
+func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source, sink input.Sink, width, height int, auth Authenticator, policy AccessPolicy, limiter *authBackoffLimiter, selectedProtocol uint32, channels []clientChannel, metrics serverMetrics) error {
 	userID := uint16(defaultMCSUserID)
 	dvc := newDRDYNVCManager(channels, sink, metrics)
 	sessionWidth := clampDesktopDimension(width, width)
@@ -115,7 +115,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
 					return nil
 				case pduTypeData:
-					if err := handleShareDataPDU(conn, share, frames, sink, sessionWidth, sessionHeight, metrics, dvc); err != nil {
+					if err := handleShareDataPDU(conn, share, frames, h264, sink, sessionWidth, sessionHeight, metrics, dvc); err != nil {
 						return err
 					}
 					continue

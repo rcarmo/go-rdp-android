@@ -73,6 +73,7 @@ func (s *Server) Start(port int) error {
 			FailedAuthBackoff:    s.failedAuthBackoff,
 			FailedAuthBackoffMax: s.failedAuthBackoffMax,
 		},
+		H264: s.encodedFrames,
 	}, s.frames, s.input)
 	if err != nil {
 		return err
@@ -169,7 +170,7 @@ func (s *Server) SubmitFrame(width, height, pixelStride, rowStride int, data []b
 // SubmitH264Frame queues an encoded H.264/AVC access unit for future transport wiring.
 func (s *Server) SubmitH264Frame(presentationTimeUs int64, keyFrame bool, codecConfig bool, data []byte) error {
 	return s.encodedFrames.Submit(EncodedFrame{
-		PresentationTimeUs: presentationTimeUs,
+		PresentationTimeUS: presentationTimeUs,
 		KeyFrame:           keyFrame,
 		CodecConfig:        codecConfig,
 		Data:               data,

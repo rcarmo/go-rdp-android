@@ -22,6 +22,7 @@ const (
 	rdpgfxCodecUncompressed uint16 = 0x0000
 	rdpgfxCodecClearCodec   uint16 = 0x0008
 	rdpgfxCodecPlanar       uint16 = 0x000a
+	rdpgfxCodecAVC420       uint16 = 0x000b
 
 	rdpgfxPixelFormatXRGB8888 byte = 0x20
 
@@ -189,6 +190,25 @@ func buildRDPGFXWireToSurface1PDU(surfaceID uint16, codecID uint16, pixelFormat 
 	payload = appendLE32Bytes(payload, uint32(len(bitmapData))) // #nosec G115 -- payload length is bounded by allocation.
 	payload = append(payload, bitmapData...)
 	return buildRDPGFXPDU(rdpgfxCmdWireToSurface1, 0, payload)
+}
+
+func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessUnit, width, height int) ([][]byte, bool) {
+	if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
+		return nil, false
+	}
+	if err := validateH264AccessUnit(unit); err != nil {
+		return nil, false
+	}
+	if unit.CodecConfig && !unit.KeyFrame {
+		// Codec configuration by itself is queued until a decodable access unit is available.
+		return nil, false
+	}
+	pdus := [][]byte{
+		buildRDPGFXStartFramePDU(frameID),
+		buildRDPGFXWireToSurface1PDU(0, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), unit.Data), // #nosec G115 -- dimensions bounded above.
+		buildRDPGFXEndFramePDU(frameID),
+	}
+	return pdus, true
 }
 
 func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Frame, width, height int) ([][]byte, bool) {
