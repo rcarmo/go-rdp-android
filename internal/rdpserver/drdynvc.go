@@ -362,6 +362,10 @@ func (m *drdynvcManager) rdpgfxReady() bool {
 	return m != nil && m.hasRDPGFXChannel && m.rdpgfxCapsConfirmed && m.rdpgfxChannelID != 0
 }
 
+func (m *drdynvcManager) rdpgfxH264Ready() bool {
+	return m.rdpgfxReady() && rdpgfxCapabilitySupportsH264(m.rdpgfxCapability)
+}
+
 func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error {
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")

@@ -149,7 +149,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 		return err
 	}
 	nextFrameID := uint32(1)
-	if h264 != nil && h264EnabledFromEnv() {
+	if h264 != nil && dvc.rdpgfxH264Ready() {
 		select {
 		case unit := <-h264.H264Frames():
 			unit = latestAvailableH264Unit(h264.H264Frames(), unit)
@@ -189,7 +189,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 }
 
 func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager, width, height int, metrics serverMetrics, nextFrameID uint32) {
-	if h264 == nil || dvc == nil || !h264EnabledFromEnv() {
+	if h264 == nil || dvc == nil || !dvc.rdpgfxH264Ready() {
 		return
 	}
 	frameCh := h264.H264Frames()

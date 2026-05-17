@@ -54,6 +54,20 @@ func TestParseRDPGFXRejectsMalformedPDUs(t *testing.T) {
 	}
 }
 
+func TestRDPGFXCapabilitySupportsH264(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
+	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion8}) {
+		t.Fatal("version 8 should not advertise H.264 support")
+	}
+	if !rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10}) {
+		t.Fatal("version 10 should advertise H.264 support")
+	}
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "1")
+	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion106}) {
+		t.Fatal("H.264 should be disabled by env override")
+	}
+}
+
 func TestBuildRDPGFXCapsConfirmPDU(t *testing.T) {
 	pdu := buildRDPGFXCapsConfirmPDU(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: 7})
 	parsed, err := parseRDPGFXPDU(pdu)

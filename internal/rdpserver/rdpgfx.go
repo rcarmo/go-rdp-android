@@ -124,6 +124,10 @@ func negotiateRDPGFXCapability(caps []rdpgfxCapabilitySet) (rdpgfxCapabilitySet,
 	return best, best.Version != 0
 }
 
+func rdpgfxCapabilitySupportsH264(cap rdpgfxCapabilitySet) bool {
+	return h264EnabledFromEnv() && cap.Version >= rdpgfxCapsVersion10
+}
+
 func supportedRDPGFXVersion(version uint32) bool {
 	switch version {
 	case rdpgfxCapsVersion8, rdpgfxCapsVersion81, rdpgfxCapsVersion10, rdpgfxCapsVersion102, rdpgfxCapsVersion103, rdpgfxCapsVersion104, rdpgfxCapsVersion105, rdpgfxCapsVersion106:
