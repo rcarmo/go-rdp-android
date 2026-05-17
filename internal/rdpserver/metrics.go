@@ -39,7 +39,7 @@ func (m serverMetrics) recordRDPGFXFrame(pdus [][]byte) {
 	}
 }
 
-func (m serverMetrics) recordH264Frame(payloads [][]byte) {
+func (m serverMetrics) recordH264Frame(accessUnits [][]byte) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
@@ -47,7 +47,7 @@ func (m serverMetrics) recordH264Frame(payloads [][]byte) {
 		m.h264Frames.Add(1)
 	}
 	if m.h264Bytes != nil {
-		m.h264Bytes.Add(totalPayloadBytes(payloads))
+		m.h264Bytes.Add(totalPayloadBytes(accessUnits))
 	}
 }
 

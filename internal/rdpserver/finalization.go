@@ -165,7 +165,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 							return err
 						}
 					}
-					metrics.recordH264Frame(pdus)
+					metrics.recordH264Frame([][]byte{wireUnit.Data})
 					tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
 					go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID+1, h264State)
 					return nil
@@ -215,7 +215,7 @@ func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager
 				return
 			}
 		}
-		metrics.recordH264Frame(pdus)
+		metrics.recordH264Frame([][]byte{wireUnit.Data})
 		tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
 		nextFrameID++
 	}
