@@ -38,7 +38,10 @@ func TestServerSubmitH264FrameQueuesEncodedFrame(t *testing.T) {
 	if err := s.SubmitH264Frame(123, true, false, []byte{1, 2}); err != nil {
 		t.Fatalf("SubmitH264Frame() error = %v", err)
 	}
-	if got := s.encodedFrames.Submitted(); got != 1 {
-		t.Fatalf("Submitted() = %d, want 1", got)
+	if got := s.H264SubmittedFrames(); got != 1 {
+		t.Fatalf("H264SubmittedFrames() = %d, want 1", got)
+	}
+	if got := s.H264QueuedFrames(); got != 1 {
+		t.Fatalf("H264QueuedFrames() = %d, want 1", got)
 	}
 }

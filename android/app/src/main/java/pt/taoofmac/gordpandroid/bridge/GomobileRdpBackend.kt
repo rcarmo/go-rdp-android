@@ -108,6 +108,12 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun queuedFrames(): Long = callLong("queuedFrames")
 
+    override fun h264SubmittedFrames(): Long = callLong("h264SubmittedFrames")
+
+    override fun h264DroppedFrames(): Long = callLong("h264DroppedFrames")
+
+    override fun h264QueuedFrames(): Long = callLong("h264QueuedFrames")
+
     private fun callString(methodName: String): String {
         val method = findMethod(mobileClass ?: return "", methodName, 0) ?: return ""
         return runCatching { method.invoke(null) as? String ?: "" }

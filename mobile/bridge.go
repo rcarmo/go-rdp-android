@@ -379,14 +379,23 @@ func (s *Server) DVCFragments() int64 {
 	return s.server.DVCFragments()
 }
 
-// SubmittedFrames returns the number of frames accepted by the bounded queue.
+// SubmittedFrames returns the number of frames accepted by the bounded RGBA queue.
 func (s *Server) SubmittedFrames() int64 { return s.frames.Submitted() }
 
-// DroppedFrames returns the number of queued frames dropped in favor of newer frames.
+// DroppedFrames returns the number of queued RGBA frames dropped in favor of newer frames.
 func (s *Server) DroppedFrames() int64 { return s.frames.Dropped() }
 
-// QueuedFrames returns the current bounded queue depth.
+// QueuedFrames returns the current bounded RGBA queue depth.
 func (s *Server) QueuedFrames() int64 { return s.frames.Depth() }
+
+// H264SubmittedFrames returns the number of encoded H.264 access units accepted by the bounded queue.
+func (s *Server) H264SubmittedFrames() int64 { return s.encodedFrames.Submitted() }
+
+// H264DroppedFrames returns the number of encoded H.264 access units dropped in favor of newer frames.
+func (s *Server) H264DroppedFrames() int64 { return s.encodedFrames.Dropped() }
+
+// H264QueuedFrames returns the current bounded H.264 access-unit queue depth.
+func (s *Server) H264QueuedFrames() int64 { return s.encodedFrames.Depth() }
 
 // StartServer starts the default singleton server. It mirrors the current Kotlin stub shape.
 func StartServer(port int) error { return defaultServer.Start(port) }
@@ -472,8 +481,17 @@ func SubmittedFrames() int64 { return defaultServer.SubmittedFrames() }
 // DroppedFrames returns the number of queued frames dropped by the default server queue.
 func DroppedFrames() int64 { return defaultServer.DroppedFrames() }
 
-// QueuedFrames returns the current default server queue depth.
+// QueuedFrames returns the current default server RGBA queue depth.
 func QueuedFrames() int64 { return defaultServer.QueuedFrames() }
+
+// H264SubmittedFrames returns the number of encoded H.264 access units accepted by the default server queue.
+func H264SubmittedFrames() int64 { return defaultServer.H264SubmittedFrames() }
+
+// H264DroppedFrames returns the number of encoded H.264 access units dropped by the default server queue.
+func H264DroppedFrames() int64 { return defaultServer.H264DroppedFrames() }
+
+// H264QueuedFrames returns the current default server H.264 access-unit queue depth.
+func H264QueuedFrames() int64 { return defaultServer.H264QueuedFrames() }
 
 // FrameQueue is a bounded latest-frame queue implementing frame.Source.
 type FrameQueue struct {

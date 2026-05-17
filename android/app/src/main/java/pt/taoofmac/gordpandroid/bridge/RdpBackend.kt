@@ -42,4 +42,7 @@ interface RdpBackend {
     fun submittedFrames(): Long
     fun droppedFrames(): Long
     fun queuedFrames(): Long
+    fun h264SubmittedFrames(): Long
+    fun h264DroppedFrames(): Long
+    fun h264QueuedFrames(): Long
 }

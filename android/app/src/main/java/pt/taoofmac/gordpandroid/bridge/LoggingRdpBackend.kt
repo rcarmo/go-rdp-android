@@ -100,6 +100,12 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun queuedFrames(): Long = 0
 
+    override fun h264SubmittedFrames(): Long = 0
+
+    override fun h264DroppedFrames(): Long = 0
+
+    override fun h264QueuedFrames(): Long = 0
+
     companion object {
         private const val TAG = "GoRdpAndroid"
     }
