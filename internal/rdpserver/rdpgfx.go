@@ -205,7 +205,7 @@ func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessU
 	}
 	pdus := [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
-		buildRDPGFXWireToSurface1PDU(0, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), unit.Data), // #nosec G115 -- dimensions bounded above.
+		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), unit.Data), // #nosec G115 -- dimensions bounded above.
 		buildRDPGFXEndFramePDU(frameID),
 	}
 	return pdus, true
