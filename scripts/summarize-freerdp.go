@@ -16,6 +16,7 @@ type summary struct {
 	X224Seen       bool     `json:"x224_seen"`
 	MCSSeen        bool     `json:"mcs_seen"`
 	BitmapSeen     bool     `json:"bitmap_seen"`
+	RDPGFXSeen     bool     `json:"rdpgfx_seen"`
 	ActiveSeen     bool     `json:"active_seen"`
 	FastPathSeen   bool     `json:"fastpath_seen"`
 	ErrorLines     []string `json:"error_lines"`
@@ -40,6 +41,7 @@ func main() {
 	s.X224Seen = strings.Contains(sv, "x224") || strings.Contains(sv, "initial handshake")
 	s.MCSSeen = strings.Contains(sv, "MCS") || strings.Contains(sv, "mcs_")
 	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
+	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.ActiveSeen = strings.Contains(xf, "CONNECTION_STATE_ACTIVE")
 	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore") || strings.Contains(sv, "fastpath_input")
 	s.ScreenshotPNG = exists(filepath.Join(dir, "xfreerdp-root.png"))
@@ -64,6 +66,7 @@ func main() {
 		"- X.224 seen: `%v`\n"+
 		"- MCS seen: `%v`\n"+
 		"- Bitmap/update trace seen: `%v`\n"+
+		"- RDPGFX trace seen: `%v`\n"+
 		"- FreeRDP active state seen: `%v`\n"+
 		"- Fast-path packet handling seen: `%v`\n"+
 		"- FreeRDP log bytes: `%d`\n"+
@@ -72,7 +75,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }
