@@ -182,6 +182,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
     }
 
     override fun onEncoderError(error: Throwable) {
+        NativeRdpBridge.recordH264EncoderError()
         Log.w(TAG, "H.264 encoder failed", error)
     }
 
