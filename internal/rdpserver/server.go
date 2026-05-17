@@ -175,7 +175,7 @@ func (s *Server) H264Bytes() int64 { return s.h264Bytes.Load() }
 // GraphicsPath returns the active/last observed graphics transport path.
 func (s *Server) GraphicsPath() string {
 	if s.h264Frames.Load() > 0 {
-		return "h264-avc"
+		return h264GraphicsPathName
 	}
 	if s.rdpgfxFrames.Load() > 0 {
 		return "rdpgfx-planar"
