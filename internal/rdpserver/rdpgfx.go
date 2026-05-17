@@ -26,6 +26,9 @@ const (
 
 	rdpgfxPixelFormatXRGB8888 byte = 0x20
 
+	rdpgfxCapsFlagAVC420Enabled uint32 = 0x00000010
+	rdpgfxCapsFlagAVCDisabled   uint32 = 0x00000020
+
 	rdpgfxCapsVersion8   uint32 = 0x00080004
 	rdpgfxCapsVersion81  uint32 = 0x00080105
 	rdpgfxCapsVersion10  uint32 = 0x000A0002
@@ -125,7 +128,16 @@ func negotiateRDPGFXCapability(caps []rdpgfxCapabilitySet) (rdpgfxCapabilitySet,
 }
 
 func rdpgfxCapabilitySupportsH264(cap rdpgfxCapabilitySet) bool {
-	return h264EnabledFromEnv() && cap.Version >= rdpgfxCapsVersion10
+	if !h264EnabledFromEnv() {
+		return false
+	}
+	if cap.Version == rdpgfxCapsVersion81 {
+		return cap.Flags&rdpgfxCapsFlagAVC420Enabled != 0
+	}
+	if cap.Version >= rdpgfxCapsVersion10 {
+		return cap.Flags&rdpgfxCapsFlagAVCDisabled == 0
+	}
+	return false
 }
 
 func supportedRDPGFXVersion(version uint32) bool {

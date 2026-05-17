@@ -59,8 +59,17 @@ func TestRDPGFXCapabilitySupportsH264(t *testing.T) {
 	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion8}) {
 		t.Fatal("version 8 should not advertise H.264 support")
 	}
+	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion81}) {
+		t.Fatal("version 8.1 without AVC420 flag should not advertise H.264 support")
+	}
+	if !rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion81, Flags: rdpgfxCapsFlagAVC420Enabled}) {
+		t.Fatal("version 8.1 with AVC420 flag should advertise H.264 support")
+	}
 	if !rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10}) {
-		t.Fatal("version 10 should advertise H.264 support")
+		t.Fatal("version 10 without AVC_DISABLED should advertise H.264 support")
+	}
+	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: rdpgfxCapsFlagAVCDisabled}) {
+		t.Fatal("version 10 with AVC_DISABLED should not advertise H.264 support")
 	}
 	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "1")
 	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion106}) {
