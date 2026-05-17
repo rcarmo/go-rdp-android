@@ -37,20 +37,22 @@ const (
 )
 
 type drdynvcManager struct {
-	staticChannelID       uint16
-	capsReceived          bool
-	negotiatedCapsVersion uint16
-	rdpeiChannelID        uint32
-	hasRDPEIChannel       bool
-	rdpgfxChannelID       uint32
-	hasRDPGFXChannel      bool
-	rdpgfxCapsConfirmed   bool
-	rdpgfxCapability      rdpgfxCapabilitySet
-	channels              map[uint32]string
-	fragments             map[uint32]*drdynvcFragment
-	touchLifecycle        *input.TouchLifecycleCoalescer
-	sink                  input.Sink
-	metrics               serverMetrics
+	staticChannelID        uint16
+	capsReceived           bool
+	negotiatedCapsVersion  uint16
+	rdpeiChannelID         uint32
+	hasRDPEIChannel        bool
+	rdpgfxChannelID        uint32
+	hasRDPGFXChannel       bool
+	pendingRDPGFXChannel   bool
+	rdpgfxCapsConfirmed    bool
+	rdpgfxCapability       rdpgfxCapabilitySet
+	nextServerDVCChannelID uint32
+	channels               map[uint32]string
+	fragments              map[uint32]*drdynvcFragment
+	touchLifecycle         *input.TouchLifecycleCoalescer
+	sink                   input.Sink
+	metrics                serverMetrics
 }
 
 type drdynvcFragment struct {
@@ -66,12 +68,13 @@ type staticVirtualChannelPDU struct {
 }
 
 type drdynvcPDU struct {
-	Header    drdynvcHeader
-	ChannelID uint32
-	Name      string
-	Data      []byte
-	Length    uint32
-	Version   uint16
+	Header       drdynvcHeader
+	ChannelID    uint32
+	Name         string
+	Data         []byte
+	Length       uint32
+	Version      uint16
+	CreationCode uint32
 }
 
 type drdynvcHeader struct {
@@ -81,7 +84,7 @@ type drdynvcHeader struct {
 }
 
 func newDRDYNVCManager(channels []clientChannel, sink input.Sink, metrics serverMetrics) *drdynvcManager {
-	m := &drdynvcManager{channels: make(map[uint32]string), fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink, metrics: metrics}
+	m := &drdynvcManager{channels: make(map[uint32]string), fragments: make(map[uint32]*drdynvcFragment), touchLifecycle: input.NewTouchLifecycleCoalescer(), sink: sink, metrics: metrics, nextServerDVCChannelID: 100}
 	for _, ch := range channels {
 		if strings.EqualFold(ch.Name, drdynvcStaticChannelName) {
 			m.staticChannelID = ch.ID
@@ -115,10 +118,26 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		m.capsReceived = true
 		m.negotiatedCapsVersion = drdynvcCapsVersion1
 		tracef("drdynvc_caps", "version=%d negotiated=%d", pdu.Version, m.negotiatedCapsVersion)
-		return m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion))
+		if err := m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion)); err != nil {
+			return err
+		}
+		return m.openRDPGFXChannel(conn)
 	case drdynvcCmdCreate:
 		if err := m.requireCaps(pdu.Header.Cmd); err != nil {
 			return err
+		}
+		if m.pendingRDPGFXChannel && pdu.ChannelID == m.rdpgfxChannelID && pdu.Name == "" {
+			if pdu.CreationCode != drdynvcCreateOK {
+				m.pendingRDPGFXChannel = false
+				m.hasRDPGFXChannel = false
+				tracef("drdynvc_create_response", "channel=%d name=%q accepted=false code=0x%08x", pdu.ChannelID, rdpgfxDynamicChannelName, pdu.CreationCode)
+				return nil
+			}
+			m.pendingRDPGFXChannel = false
+			m.hasRDPGFXChannel = true
+			m.channels[pdu.ChannelID] = rdpgfxDynamicChannelName
+			tracef("drdynvc_create_response", "channel=%d name=%q accepted=true", pdu.ChannelID, rdpgfxDynamicChannelName)
+			return nil
 		}
 		code := drdynvcCreateNoListener
 		if existing := m.channels[pdu.ChannelID]; existing != "" {
@@ -183,6 +202,7 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 		}
 		if pdu.ChannelID == m.rdpgfxChannelID {
 			m.hasRDPGFXChannel = false
+			m.pendingRDPGFXChannel = false
 			m.rdpgfxChannelID = 0
 			m.rdpgfxCapsConfirmed = false
 			m.rdpgfxCapability = rdpgfxCapabilitySet{}
@@ -303,6 +323,20 @@ func (m *drdynvcManager) cleanupFragments(now time.Time) {
 			tracef("drdynvc_fragment_expired", "channel=%d expected=%d buffered=%d", channelID, frag.expected, len(frag.data))
 		}
 	}
+}
+
+func (m *drdynvcManager) openRDPGFXChannel(conn net.Conn) error {
+	if m.hasRDPGFXChannel || m.pendingRDPGFXChannel || !m.enabled() {
+		return nil
+	}
+	channelID := m.nextServerDVCChannelID
+	m.nextServerDVCChannelID++
+	m.rdpgfxChannelID = channelID
+	m.pendingRDPGFXChannel = true
+	m.rdpgfxCapsConfirmed = false
+	m.rdpgfxCapability = rdpgfxCapabilitySet{}
+	tracef("drdynvc_create_request", "channel=%d name=%q", channelID, rdpgfxDynamicChannelName)
+	return m.writeStaticPayload(conn, buildDRDYNVCCreateRequestPDU(channelID, rdpgfxDynamicChannelName))
 }
 
 func (m *drdynvcManager) rdpgfxReady() bool {
@@ -461,7 +495,13 @@ func parseDRDYNVCPDU(data []byte) (*drdynvcPDU, error) {
 		if err != nil {
 			return nil, err
 		}
-		pdu.Name, err = cur.readNullTerminatedString()
+		pdu.Data = cur.rest()
+		if len(pdu.Data) == 4 {
+			pdu.CreationCode = binary.LittleEndian.Uint32(pdu.Data[0:4])
+		} else {
+			nameCur := &bytesCursor{data: pdu.Data}
+			pdu.Name, err = nameCur.readNullTerminatedString()
+		}
 	case drdynvcCmdData:
 		pdu.ChannelID, err = cur.readDVCChannelID(header.CbChID)
 		if err == nil {
@@ -498,6 +538,15 @@ func buildDRDYNVCCreateResponsePDU(channelID uint32, creationCode uint32) []byte
 	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()}
 	out = appendDVCChannelID(out, cb, channelID)
 	out = appendLE32Bytes(out, creationCode)
+	return out
+}
+
+func buildDRDYNVCCreateRequestPDU(channelID uint32, name string) []byte {
+	cb := drdynvcCbChID(channelID)
+	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()}
+	out = appendDVCChannelID(out, cb, channelID)
+	out = append(out, []byte(name)...)
+	out = append(out, 0)
 	return out
 }
 

@@ -116,6 +116,18 @@ func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
 	if capsDVC.Header.Cmd != drdynvcCmdCapability || capsDVC.Version != drdynvcCapsVersion1 || !m.capsReceived {
 		t.Fatalf("unexpected caps state response=%#v manager=%#v", capsDVC, m)
 	}
+	gfxCreate := readTestDomainPDUFromPipe(t, capsClient)
+	gfxCreateStatic, err := parseStaticVirtualChannelPDU(gfxCreate.Data)
+	if err != nil {
+		t.Fatalf("parse RDPGFX create static response: %v", err)
+	}
+	gfxCreateDVC, err := parseDRDYNVCPDU(gfxCreateStatic.Data)
+	if err != nil {
+		t.Fatalf("parse RDPGFX create request: %v", err)
+	}
+	if gfxCreateDVC.Header.Cmd != drdynvcCmdCreate || gfxCreateDVC.Name != rdpgfxDynamicChannelName || !m.pendingRDPGFXChannel {
+		t.Fatalf("unexpected RDPGFX create request/state: pdu=%#v manager=%#v", gfxCreateDVC, m)
+	}
 	waitForDRDYNVCTestHandler(t, capsDone, "caps")
 
 	createServer, createClient := net.Pipe()
@@ -182,6 +194,22 @@ func TestDRDYNVCRDPEITouchClientSequenceIntegration(t *testing.T) {
 	}
 	if len(sink.frames) != 2 || sink.frames[0][0].Flags&input.TouchDown == 0 || sink.frames[1][0].Flags&input.TouchUp == 0 {
 		t.Fatalf("expected down/up touch frames, got %#v", sink.frames)
+	}
+}
+
+func TestDRDYNVCManagerServerInitiatedRDPGFXCreateResponse(t *testing.T) {
+	m := newDRDYNVCManager([]clientChannel{{Name: "drdynvc", ID: 1004}}, nil, serverMetrics{})
+	m.capsReceived = true
+	m.negotiatedCapsVersion = drdynvcCapsVersion1
+	m.rdpgfxChannelID = 100
+	m.pendingRDPGFXChannel = true
+
+	response := buildDRDYNVCCreateResponsePDU(100, drdynvcCreateOK)
+	if err := m.handleStaticPDU(discardConn{}, buildStaticVirtualChannelPDU(response)); err != nil {
+		t.Fatal(err)
+	}
+	if m.pendingRDPGFXChannel || !m.hasRDPGFXChannel || m.channels[100] != rdpgfxDynamicChannelName {
+		t.Fatalf("unexpected RDPGFX channel state after create response: %#v", m)
 	}
 }
 
