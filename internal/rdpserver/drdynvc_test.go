@@ -259,7 +259,10 @@ func TestDRDYNVCManagerRDPGFXCapsNegotiation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse caps response DVC: %v", err)
 	}
-	confirm, err := parseRDPGFXPDU(capsDVC.Data)
+	if len(capsDVC.Data) < 2 || capsDVC.Data[0] != 0xe0 || capsDVC.Data[1] != 0x00 {
+		t.Fatalf("caps confirm missing ZGFX uncompressed wrapper: %x", capsDVC.Data)
+	}
+	confirm, err := parseRDPGFXPDU(capsDVC.Data[2:])
 	if err != nil {
 		t.Fatalf("parse caps confirm: %v", err)
 	}

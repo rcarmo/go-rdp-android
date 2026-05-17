@@ -310,7 +310,7 @@ func (m *drdynvcManager) handleRDPGFXData(conn net.Conn, data []byte) error {
 	m.rdpgfxCapsConfirmed = true
 	m.rdpgfxCapability = capability
 	tracef("rdpgfx_caps_confirm", "channel=%d version=0x%08x flags=0x%08x", m.rdpgfxChannelID, capability.Version, capability.Flags)
-	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, buildRDPGFXCapsConfirmPDU(capability)))
+	return m.writeRDPGFXPayload(conn, buildRDPGFXCapsConfirmPDU(capability))
 }
 
 func (m *drdynvcManager) cleanupFragments(now time.Time) {
