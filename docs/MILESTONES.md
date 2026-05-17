@@ -48,15 +48,16 @@ Tasks:
 - move ImageReader buffers into Go frame source ✅
 - add frame throttling/downscaling/backpressure ✅ (Android adaptive pacing, bounded queue drops, server-side queued-frame coalescing)
 
-## M3 — Bitmap updates
+## M3 — Graphics updates
 
-Goal: send visible Android frames to an RDP client.
+Goal: send visible Android frames to an RDP client with both compatibility fallback and compressed transport.
 
 Tasks:
 - raw bitmap update sender ✅
 - dirty tile suppression ✅
-- optional RLE encoding
 - negotiated/session desktop sizing ✅
+- RDPGFX dynamic-channel negotiation and Planar compressed frames ✅ (FreeRDP `/sec:nla /gfx` CI proof; physical-device/Microsoft-client performance evidence pending)
+- optional legacy bitmap RLE encoding
 
 ## M4 — Input
 

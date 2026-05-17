@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `dbcdea8` (`Refresh RDPGFX release evidence docs`)
-Latest referenced CI run: `25982605373` (`main` CI, success)
+Current evidence commit: `d656781` (`Refresh status after RDPGFX docs`)
+Latest referenced CI run: `25982781939` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
