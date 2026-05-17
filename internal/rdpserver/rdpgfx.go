@@ -207,7 +207,7 @@ func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Fram
 	}
 	return [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
-		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width-1), uint16(normalized.Height-1), planar), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width), uint16(normalized.Height), planar), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
 		buildRDPGFXEndFramePDU(frameID),
 	}, true
 }
