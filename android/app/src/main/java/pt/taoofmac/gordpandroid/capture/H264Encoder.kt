@@ -69,6 +69,9 @@ class H264Encoder(
 
             override fun onOutputFormatChanged(codec: MediaCodec, format: MediaFormat) {
                 Log.i(TAG, "H.264 encoder output format changed: $format")
+                codecConfigFromFormat(format)?.let { csd ->
+                    listener.onEncodedFrame(csd, 0L, keyFrame = false, codecConfig = true)
+                }
             }
         }, encoderHandler)
 
@@ -113,6 +116,28 @@ class H264Encoder(
         started = false
         thread?.quitSafely()
         thread = null
+    }
+
+    private fun codecConfigFromFormat(format: MediaFormat): ByteArray? {
+        val parts = listOf("csd-0", "csd-1", "csd-2").mapNotNull { key ->
+            if (!format.containsKey(key)) return@mapNotNull null
+            runCatching {
+                val buffer = format.getByteBuffer(key) ?: return@mapNotNull null
+                val dup = buffer.duplicate()
+                val bytes = ByteArray(dup.remaining())
+                dup.get(bytes)
+                bytes.takeIf { it.isNotEmpty() }
+            }.getOrNull()
+        }
+        if (parts.isEmpty()) return null
+        val total = parts.sumOf { it.size }
+        val out = ByteArray(total)
+        var offset = 0
+        for (part in parts) {
+            part.copyInto(out, offset)
+            offset += part.size
+        }
+        return out
     }
 
     private fun drainOutput(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
