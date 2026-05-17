@@ -165,11 +165,12 @@ Use this matrix for manual client evidence before a public APK. Keep screenshots
 
 | Date | Android device/build | Client platform/version | Security mode | Result | Evidence | Known limitations |
 | --- | --- | --- | --- | --- | --- | --- |
-| pending | pending | FreeRDP CI `/sec:rdp`, `/sec:tls`, `/sec:nla` | rdp/tls/nla | automated active-streaming gate passes | `freerdp-compat-probe` artifact | Mock/test-pattern evidence, not physical Android hardware. |
+| 2026-05-17 | mock server/test pattern | FreeRDP CI `/sec:rdp`, `/sec:tls`, `/sec:nla` | rdp/tls/nla | automated bitmap fallback active-streaming gates pass | `freerdp-compat-probe` artifact from CI `25984233701` | Mock/test-pattern evidence, not physical Android hardware. |
+| 2026-05-17 | mock server/test pattern | FreeRDP CI `/sec:nla /gfx` | nla/gfx | automated RDPGFX active-streaming proof gate passes | `freerdp-compat-probe` artifact from CI `25984233701`; `rdpgfx_seen=true` | Mock/test-pattern evidence, not physical Android hardware; small geometry for proof stability. |
 | pending | pending | Microsoft Remote Desktop | nla-required | pending | screenshot, client log, app diagnostics | Release blocker until active streaming and disconnect behavior are recorded. |
 | pending | pending | Microsoft Remote Desktop | tls-only | pending | screenshot, client log, app diagnostics | Compatibility fallback only for non-NLA behavior. |
 
-For each manual row, record the app diagnostics text, TLS fingerprint/certificate warning behavior, client screenshot or log, security mode, whether bitmap streaming became active, input behavior, and logoff/disconnect cleanup.
+For each manual row, record the app diagnostics text, TLS fingerprint/certificate warning behavior, client screenshot or log, security mode, selected graphics path (`rdpgfx-planar` or `bitmap-fallback`), whether streaming became active, input behavior, and logoff/disconnect cleanup.
 
 ## Blocked on physical devices
 
