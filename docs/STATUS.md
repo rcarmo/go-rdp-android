@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `94ec649` (`Enable RDPGFX by default with CI fallback opt-out`)
-Latest referenced CI run: `25982405425` (`main` CI, success)
+Current evidence commit: `dbcdea8` (`Refresh RDPGFX release evidence docs`)
+Latest referenced CI run: `25982605373` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
