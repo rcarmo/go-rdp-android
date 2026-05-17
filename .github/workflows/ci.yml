@@ -411,6 +411,18 @@ jobs:
           run_freerdp_mode rdp rdp "" 0
           run_freerdp_mode tls tls "" 0
           run_freerdp_mode nla nla "" 0
+
+          kill $server_pid 2>/dev/null || true
+          wait $server_pid 2>/dev/null || true
+          GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_ENABLE_RDPGFX=1 ./freerdp-artifacts/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          server_pid=$!
+          for _ in $(seq 1 50); do
+            if grep -q 'listening on' freerdp-artifacts/mock-server.log; then
+              break
+            fi
+            sleep 0.2
+          done
+          grep -q 'listening on' freerdp-artifacts/mock-server.log
           run_freerdp_mode nla-gfx nla "/gfx" 1
           test -s freerdp-artifacts/rdp-summary.md
           test -s freerdp-artifacts/tls-summary.md

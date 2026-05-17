@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -49,7 +51,7 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 		if err := writeShareDataPDU(conn, pduType2FontMap, buildFontMapPayload()); err != nil {
 			return err
 		}
-		if dvc != nil && dvc.enabled() {
+		if dvc != nil && dvc.enabled() && rdpgfxEnabledFromEnv() {
 			if err := dvc.startServerInitiatedChannels(conn); err != nil {
 				return err
 			}
@@ -89,6 +91,15 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 	}
 	metrics.recordBitmapFrame([][]byte{update})
 	return nil
+}
+
+func rdpgfxEnabledFromEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_ENABLE_RDPGFX"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func waitForRDPGFXReady(conn net.Conn, dvc *drdynvcManager, timeout time.Duration) error {
