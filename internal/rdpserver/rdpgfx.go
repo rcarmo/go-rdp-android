@@ -215,12 +215,26 @@ func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessU
 	if err := validateH264AccessUnit(unit); err != nil {
 		return nil, false
 	}
+	avc420Payload := buildRDPGFXAVC420BitmapStream(unit.Data, uint16(width), uint16(height)) // #nosec G115 -- dimensions bounded above.
 	pdus := [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
-		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), unit.Data), // #nosec G115 -- dimensions bounded above.
+		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), avc420Payload), // #nosec G115 -- dimensions bounded above.
 		buildRDPGFXEndFramePDU(frameID),
 	}
 	return pdus, true
+}
+
+func buildRDPGFXAVC420BitmapStream(accessUnit []byte, width, height uint16) []byte {
+	payload := make([]byte, 0, 4+8+2+len(accessUnit))
+	payload = appendLE32Bytes(payload, 1) // numRegionRects
+	payload = appendLE16Bytes(payload, 0) // left
+	payload = appendLE16Bytes(payload, 0) // top
+	payload = appendLE16Bytes(payload, width)
+	payload = appendLE16Bytes(payload, height)
+	payload = append(payload, 0) // qpVal
+	payload = append(payload, 0) // qualityVal
+	payload = append(payload, accessUnit...)
+	return payload
 }
 
 func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Frame, width, height int) ([][]byte, bool) {

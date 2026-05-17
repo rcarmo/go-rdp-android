@@ -27,6 +27,17 @@ func TestBuildRDPGFXH264FramePDUs(t *testing.T) {
 	if codecID != rdpgfxCodecAVC420 {
 		t.Fatalf("codecID = 0x%04x, want AVC420", codecID)
 	}
+	bitmapLen := uint32(payload[13]) | uint32(payload[14])<<8 | uint32(payload[15])<<16 | uint32(payload[16])<<24
+	if bitmapLen != uint32(4+8+2+len(unit.Data)) {
+		t.Fatalf("bitmapLen = %d, want AVC420 metadata + access unit", bitmapLen)
+	}
+	bitmap := payload[17:]
+	if got := uint32(bitmap[0]) | uint32(bitmap[1])<<8 | uint32(bitmap[2])<<16 | uint32(bitmap[3])<<24; got != 1 {
+		t.Fatalf("numRegionRects = %d, want 1", got)
+	}
+	if got := bitmap[14:]; string(got) != string(unit.Data) {
+		t.Fatalf("access unit = %x, want %x", got, unit.Data)
+	}
 }
 
 func TestH264StreamStateQueuesConfigOnly(t *testing.T) {
