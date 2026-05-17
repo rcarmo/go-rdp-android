@@ -40,6 +40,27 @@ func TestH264NormalizeAnnexB(t *testing.T) {
 	}
 }
 
+func TestH264AnnexBContainsNALType(t *testing.T) {
+	data := []byte{0, 0, 0, 1, 0x67, 0, 0, 1, 0x65}
+	if !h264AnnexBContainsNALType(data, 5) {
+		t.Fatal("expected IDR NAL type 5")
+	}
+	if h264AnnexBContainsNALType(data, 1) {
+		t.Fatal("did not expect non-IDR NAL type 1")
+	}
+}
+
+func TestH264StreamStateInfersKeyFrameFromIDR(t *testing.T) {
+	var state h264StreamState
+	unit, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, Data: []byte{0, 0, 0, 1, 0x65}})
+	if !ok {
+		t.Fatal("IDR access unit should be ready even without explicit keyframe flag")
+	}
+	if !unit.KeyFrame {
+		t.Fatal("IDR access unit did not set KeyFrame")
+	}
+}
+
 func TestH264StreamStatePrepareForWire(t *testing.T) {
 	var state h264StreamState
 	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, Data: []byte{0, 0, 0, 1, 0x41}}); ok {

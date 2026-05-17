@@ -64,6 +64,9 @@ func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, b
 		return h264AccessUnit{}, false
 	}
 	unit.Data = annexB
+	if !unit.KeyFrame && h264AnnexBContainsNALType(unit.Data, 5) {
+		unit.KeyFrame = true
+	}
 	if unit.CodecConfig {
 		s.codecConfig = append(s.codecConfig[:0], unit.Data...)
 		if !unit.KeyFrame {
@@ -119,6 +122,35 @@ func h264LengthPrefixedToAnnexB(data []byte) ([]byte, bool) {
 		offset += nalLen
 	}
 	return out, len(out) > 0
+}
+
+func h264AnnexBContainsNALType(data []byte, nalType byte) bool {
+	for offset := 0; offset < len(data); {
+		start, prefixLen, ok := h264FindStartCode(data, offset)
+		if !ok {
+			return false
+		}
+		nalStart := start + prefixLen
+		if nalStart < len(data) && data[nalStart]&0x1f == nalType {
+			return true
+		}
+		offset = nalStart + 1
+	}
+	return false
+}
+
+func h264FindStartCode(data []byte, offset int) (start int, prefixLen int, ok bool) {
+	for i := offset; i+3 <= len(data); i++ {
+		if data[i] == 0 && data[i+1] == 0 {
+			if data[i+2] == 1 {
+				return i, 3, true
+			}
+			if i+4 <= len(data) && data[i+2] == 0 && data[i+3] == 1 {
+				return i, 4, true
+			}
+		}
+	}
+	return 0, 0, false
 }
 
 func validateH264AccessUnitBatch(units []h264AccessUnit) error {
