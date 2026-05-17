@@ -11,8 +11,10 @@ import (
 func TestParseRDPGFXCapsAdvertise(t *testing.T) {
 	payload := []byte{0x02, 0x00}
 	payload = appendLE32Bytes(payload, rdpgfxCapsVersion8)
+	payload = appendLE32Bytes(payload, 4)
 	payload = appendLE32Bytes(payload, 0)
 	payload = appendLE32Bytes(payload, rdpgfxCapsVersion106)
+	payload = appendLE32Bytes(payload, 4)
 	payload = appendLE32Bytes(payload, 0x00000003)
 	pduBytes := buildRDPGFXPDU(rdpgfxCmdCapsAdvertise, 0, payload)
 
@@ -61,7 +63,7 @@ func TestBuildRDPGFXCapsConfirmPDU(t *testing.T) {
 	if parsed.CmdID != rdpgfxCmdCapsConfirm {
 		t.Fatalf("unexpected cmd 0x%x", parsed.CmdID)
 	}
-	if binary.LittleEndian.Uint32(pdu[8:12]) != rdpgfxCapsVersion10 || binary.LittleEndian.Uint32(pdu[12:16]) != 7 {
+	if binary.LittleEndian.Uint32(pdu[8:12]) != rdpgfxCapsVersion10 || binary.LittleEndian.Uint32(pdu[12:16]) != 4 || binary.LittleEndian.Uint32(pdu[16:20]) != 7 {
 		t.Fatalf("unexpected caps confirm payload: %x", pdu[8:])
 	}
 }

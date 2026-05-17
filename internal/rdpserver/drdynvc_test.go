@@ -241,8 +241,10 @@ func TestDRDYNVCManagerRDPGFXCapsNegotiation(t *testing.T) {
 
 	capsPayload := []byte{0x02, 0x00}
 	capsPayload = appendLE32Bytes(capsPayload, rdpgfxCapsVersion8)
+	capsPayload = appendLE32Bytes(capsPayload, 4)
 	capsPayload = appendLE32Bytes(capsPayload, 0)
 	capsPayload = appendLE32Bytes(capsPayload, rdpgfxCapsVersion106)
+	capsPayload = appendLE32Bytes(capsPayload, 4)
 	capsPayload = appendLE32Bytes(capsPayload, 0x05)
 	capsData := buildDRDYNVCDataPDU(9, buildRDPGFXPDU(rdpgfxCmdCapsAdvertise, 0, capsPayload))
 

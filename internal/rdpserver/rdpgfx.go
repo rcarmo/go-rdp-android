@@ -45,8 +45,9 @@ type rdpgfxPDU struct {
 }
 
 type rdpgfxCapabilitySet struct {
-	Version uint32
-	Flags   uint32
+	Version        uint32
+	CapsDataLength uint32
+	Flags          uint32
 }
 
 func parseRDPGFXPDU(data []byte) (*rdpgfxPDU, error) {
@@ -87,15 +88,24 @@ func parseRDPGFXCapsAdvertise(data []byte) ([]rdpgfxCapabilitySet, error) {
 	if count > 64 {
 		return nil, fmt.Errorf("RDPGFX caps count %d exceeds maximum 64", count)
 	}
-	if len(data) < count*8 {
-		return nil, fmt.Errorf("short RDPGFX capability sets: got %d need %d", len(data), count*8)
-	}
 	caps := make([]rdpgfxCapabilitySet, 0, count)
+	offset := 0
 	for i := 0; i < count; i++ {
-		caps = append(caps, rdpgfxCapabilitySet{
-			Version: binary.LittleEndian.Uint32(data[i*8 : i*8+4]),
-			Flags:   binary.LittleEndian.Uint32(data[i*8+4 : i*8+8]),
-		})
+		if len(data)-offset < 8 {
+			return nil, fmt.Errorf("short RDPGFX capability set header %d", i)
+		}
+		version := binary.LittleEndian.Uint32(data[offset : offset+4])
+		capsDataLength := binary.LittleEndian.Uint32(data[offset+4 : offset+8])
+		offset += 8
+		if capsDataLength > 64 || int(capsDataLength) > len(data)-offset {
+			return nil, fmt.Errorf("invalid RDPGFX capability set %d data length %d", i, capsDataLength)
+		}
+		var flags uint32
+		if capsDataLength >= 4 {
+			flags = binary.LittleEndian.Uint32(data[offset : offset+4])
+		}
+		offset += int(capsDataLength)
+		caps = append(caps, rdpgfxCapabilitySet{Version: version, CapsDataLength: capsDataLength, Flags: flags})
 	}
 	return caps, nil
 }
@@ -123,9 +133,10 @@ func supportedRDPGFXVersion(version uint32) bool {
 }
 
 func buildRDPGFXCapsConfirmPDU(cap rdpgfxCapabilitySet) []byte {
-	payload := make([]byte, 8)
+	payload := make([]byte, 12)
 	binary.LittleEndian.PutUint32(payload[0:4], cap.Version)
-	binary.LittleEndian.PutUint32(payload[4:8], cap.Flags)
+	binary.LittleEndian.PutUint32(payload[4:8], 4)
+	binary.LittleEndian.PutUint32(payload[8:12], cap.Flags)
 	return buildRDPGFXPDU(rdpgfxCmdCapsConfirm, 0, payload)
 }
 
@@ -312,7 +323,7 @@ func traceRDPGFXPDU(pdu *rdpgfxPDU) {
 	case rdpgfxCmdCapsAdvertise:
 		tracef("rdpgfx_caps_advertise", "caps=%d", len(pdu.Caps))
 		for i, cap := range pdu.Caps {
-			tracef("rdpgfx_cap", "index=%d version=0x%08x flags=0x%08x supported=%t", i, cap.Version, cap.Flags, supportedRDPGFXVersion(cap.Version))
+			tracef("rdpgfx_cap", "index=%d version=0x%08x caps_data_len=%d flags=0x%08x supported=%t", i, cap.Version, cap.CapsDataLength, cap.Flags, supportedRDPGFXVersion(cap.Version))
 		}
 	default:
 		tracef("rdpgfx_pdu", "cmd=0x%04x flags=0x%04x length=%d", pdu.CmdID, pdu.Flags, pdu.Length)
