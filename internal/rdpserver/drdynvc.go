@@ -325,6 +325,21 @@ func (m *drdynvcManager) cleanupFragments(now time.Time) {
 	}
 }
 
+func (m *drdynvcManager) startServerInitiatedChannels(conn net.Conn) error {
+	if !m.enabled() {
+		return nil
+	}
+	if !m.capsReceived {
+		m.capsReceived = true
+		m.negotiatedCapsVersion = drdynvcCapsVersion1
+		tracef("drdynvc_caps", "version=%d negotiated=%d source=server", m.negotiatedCapsVersion, m.negotiatedCapsVersion)
+		if err := m.writeStaticPayload(conn, buildDRDYNVCCapsPDU(m.negotiatedCapsVersion)); err != nil {
+			return err
+		}
+	}
+	return m.openRDPGFXChannel(conn)
+}
+
 func (m *drdynvcManager) openRDPGFXChannel(conn net.Conn) error {
 	if m.hasRDPGFXChannel || m.pendingRDPGFXChannel || !m.enabled() {
 		return nil

@@ -72,6 +72,11 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, sink input.Sink
 			if err := writeMCSChannelJoinConfirm(conn, pdu.Initiator, pdu.ChannelID); err != nil {
 				return err
 			}
+			if dvc.enabled() && pdu.ChannelID == dvc.staticChannelID {
+				if err := dvc.startServerInitiatedChannels(conn); err != nil {
+					return err
+				}
+			}
 		case mcsSendDataRequestApp:
 			if dvc.enabled() && pdu.ChannelID == dvc.staticChannelID {
 				if err := dvc.handleStaticPDU(conn, pdu.Data); err != nil {

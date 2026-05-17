@@ -231,12 +231,13 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	sessionWidth, sessionHeight := chooseSessionDesktopSize(s.cfg.Width, s.cfg.Height, mcsInfo.ClientDisplay.DesktopWidth, mcsInfo.ClientDisplay.DesktopHeight)
 	log.Printf(
-		"rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d channels=%d clientDesktop=%dx%d monitorLayout=%t monitorCount=%d sessionDesktop=%dx%d",
+		"rdp MCS Connect-Initial from %s: appTag=%d payload=%d userData=%d channels=%d channelNames=%q clientDesktop=%dx%d monitorLayout=%t monitorCount=%d sessionDesktop=%dx%d",
 		conn.RemoteAddr(),
 		mcsInfo.ApplicationTag,
 		mcsInfo.PayloadLength,
 		mcsInfo.UserDataLength,
 		len(mcsInfo.ClientChannels),
+		clientChannelNames(mcsInfo.ClientChannels),
 		mcsInfo.ClientDisplay.DesktopWidth,
 		mcsInfo.ClientDisplay.DesktopHeight,
 		mcsInfo.ClientDisplay.MonitorLayoutPresent,
@@ -263,6 +264,14 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS domain sequence finished for %s", conn.RemoteAddr())
 	// The next phase is Security Exchange / Client Info handling.
+}
+
+func clientChannelNames(channels []clientChannel) []string {
+	names := make([]string, 0, len(channels))
+	for _, ch := range channels {
+		names = append(names, ch.Name)
+	}
+	return names
 }
 
 func (s *Server) checkAndRecordAuthPolicy(remote, username string, userAllowed bool) error {
