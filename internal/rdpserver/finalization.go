@@ -106,7 +106,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, width, height 
 						return err
 					}
 				}
-				metrics.recordBitmapFrame(pdus)
+				metrics.recordRDPGFXFrame(pdus)
 				return nil
 			}
 		default:

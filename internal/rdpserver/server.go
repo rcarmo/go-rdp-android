@@ -43,6 +43,8 @@ type Server struct {
 	rdpeiContacts     atomic.Int64
 	framesSent        atomic.Int64
 	bitmapBytes       atomic.Int64
+	rdpgfxFrames      atomic.Int64
+	rdpgfxBytes       atomic.Int64
 	dvcFragments      atomic.Int64
 
 	mu sync.Mutex
@@ -156,6 +158,23 @@ func (s *Server) FramesSent() int64 { return s.framesSent.Load() }
 // BitmapBytes returns the total number of bitmap update payload bytes sent to clients.
 func (s *Server) BitmapBytes() int64 { return s.bitmapBytes.Load() }
 
+// RDPGFXFrames returns the total number of RDPGFX frame update batches sent to clients.
+func (s *Server) RDPGFXFrames() int64 { return s.rdpgfxFrames.Load() }
+
+// RDPGFXBytes returns the total number of RDPGFX dynamic-channel payload bytes sent to clients.
+func (s *Server) RDPGFXBytes() int64 { return s.rdpgfxBytes.Load() }
+
+// GraphicsPath returns the active/last observed graphics transport path.
+func (s *Server) GraphicsPath() string {
+	if s.rdpgfxFrames.Load() > 0 {
+		return "rdpgfx-planar"
+	}
+	if s.bitmapBytes.Load() > 0 || s.framesSent.Load() > 0 {
+		return "bitmap-fallback"
+	}
+	return "pending"
+}
+
 // DVCFragments returns the total number of dynamic virtual channel fragment PDUs observed.
 func (s *Server) DVCFragments() int64 { return s.dvcFragments.Load() }
 
@@ -232,7 +251,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, dvcFragments: &s.dvcFragments}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, dvcFragments: &s.dvcFragments}
 	if err := handleMCSDomainSequence(conn, s.frames, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)

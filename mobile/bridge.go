@@ -303,6 +303,36 @@ func (s *Server) BitmapBytes() int64 {
 	return s.server.BitmapBytes()
 }
 
+// RDPGFXFrames returns the total number of RDPGFX frame batches sent by the running server.
+func (s *Server) RDPGFXFrames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RDPGFXFrames()
+}
+
+// RDPGFXBytes returns the total number of RDPGFX dynamic-channel payload bytes sent by the running server.
+func (s *Server) RDPGFXBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RDPGFXBytes()
+}
+
+// GraphicsPath returns the active/last observed graphics transport path.
+func (s *Server) GraphicsPath() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return "stopped"
+	}
+	return s.server.GraphicsPath()
+}
+
 // DVCFragments returns the dynamic virtual channel fragment PDU count for the running server.
 func (s *Server) DVCFragments() int64 {
 	s.mu.Lock()
@@ -376,6 +406,15 @@ func FramesSent() int64 { return defaultServer.FramesSent() }
 
 // BitmapBytes returns the bitmap update payload bytes sent by the default server.
 func BitmapBytes() int64 { return defaultServer.BitmapBytes() }
+
+// RDPGFXFrames returns the RDPGFX frame count for the default server.
+func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }
+
+// RDPGFXBytes returns the RDPGFX dynamic-channel payload bytes for the default server.
+func RDPGFXBytes() int64 { return defaultServer.RDPGFXBytes() }
+
+// GraphicsPath returns the active/last observed graphics transport path for the default server.
+func GraphicsPath() string { return defaultServer.GraphicsPath() }
 
 // DVCFragments returns the dynamic virtual channel fragment PDU count for the default server.
 func DVCFragments() int64 { return defaultServer.DVCFragments() }
