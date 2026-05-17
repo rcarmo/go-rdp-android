@@ -94,11 +94,11 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 }
 
 func rdpgfxEnabledFromEnv() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_ENABLE_RDPGFX"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_DISABLE_RDPGFX"))) {
 	case "1", "true", "yes", "on":
-		return true
-	default:
 		return false
+	default:
+		return true
 	}
 }
 

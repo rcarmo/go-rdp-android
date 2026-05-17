@@ -332,7 +332,7 @@ jobs:
           mkdir -p freerdp-artifacts .gotmp
           GOTMPDIR="$PWD/.gotmp" go mod download
           GOTMPDIR="$PWD/.gotmp" go build -o freerdp-artifacts/mock-server ./cmd/mock-server
-          GO_RDP_ANDROID_TRACE=1 ./freerdp-artifacts/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_DISABLE_RDPGFX=1 ./freerdp-artifacts/mock-server -test-pattern -width 320 -height 240 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           for _ in $(seq 1 50); do
@@ -416,7 +416,7 @@ jobs:
 
           kill $server_pid 2>/dev/null || true
           wait $server_pid 2>/dev/null || true
-          GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_ENABLE_RDPGFX=1 ./freerdp-artifacts/mock-server -test-pattern -width 64 -height 64 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          GO_RDP_ANDROID_TRACE=1 ./freerdp-artifacts/mock-server -test-pattern -width 64 -height 64 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           for _ in $(seq 1 50); do
             if grep -q 'listening on' freerdp-artifacts/mock-server.log; then
