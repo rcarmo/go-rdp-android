@@ -56,8 +56,8 @@ The first public APK includes a negotiated compressed graphics path rather than 
 
 Current evidence and remaining work:
 
-- CI run `25982405425` proves `/sec:nla /gfx` reaches active RDPGFX streaming (`rdpgfx_seen=true`, screenshot present, `exit_code=131`).
-- The same CI run keeps `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates passing with RDPGFX explicitly disabled for those fallback checks.
+- CI run `25984999851` proves `/sec:nla /gfx` reaches active RDPGFX streaming (`rdpgfx_seen=true`, screenshot present, `exit_code=131`) and keeps `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates passing with RDPGFX explicitly disabled for those fallback checks.
+- Go unit coverage includes bitmap fallback conversion/tiling safety plus RDPGFX Planar round-trip encoding for repeated spans, signed deltas, and wrap cases.
 - Android health/diagnostics expose `graphics=rdpgfx-planar` or `graphics=bitmap-fallback` plus RDPGFX frame/byte counters.
 - Physical-device measurement still needs to compare bandwidth, latency feel, CPU/battery, and memory stability for RDPGFX versus bitmap fallback before final release performance claims.
 

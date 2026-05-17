@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `06af00b` (`Add RDPGFX Planar round-trip coverage`)
-Latest referenced CI run: `25984810577` (`main` CI, success)
+Current evidence commit: `43ac313` (`Document RDPGFX round-trip test coverage`)
+Latest referenced CI run: `25984999851` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
