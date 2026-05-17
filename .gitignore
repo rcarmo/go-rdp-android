@@ -4,6 +4,7 @@
 coverage.out
 coverage.func.txt
 coverage.html
+.gotmp/
 
 # Node / Playwright
 node_modules/

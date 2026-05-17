@@ -31,7 +31,13 @@ This cleanup only runs for release tags. Non-release CI keeps its normal artifac
 
 ## Release readiness gates
 
-Before pushing a `v*` release tag, the latest `main` CI evidence should show:
+Before pushing a `v*` release tag, run:
+
+```sh
+make release-preflight
+```
+
+The preflight checks that the working tree is clean, the local branch is synced with upstream, release version identifiers are aligned, the latest `main` CI run is green, and the GitHub Actions release-signing secrets are visible. The latest `main` CI evidence should show:
 
 - Go checks, race/fuzz smoke, Android debug build, gomobile/AAR/API, and release cleanup all green.
 - FreeRDP `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates green with active streaming, screenshot capture, Fast-Path input, and non-timeout client shutdown.

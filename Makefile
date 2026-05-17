@@ -153,6 +153,12 @@ ci-log-all: ## Show all logs for the latest GitHub Actions run
 ci-rerun: ## Rerun the latest failed GitHub Actions jobs
 	$(GH) run rerun --failed
 
+.PHONY: release-preflight
+release-preflight: ## Check clean/synced repo, green latest CI, version alignment, and release signing secrets
+	mkdir -p .gotmp
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/release-preflight.go
+	rm -rf .gotmp
+
 .PHONY: clean
 clean: ## Clean generated outputs
 	$(GO) clean
