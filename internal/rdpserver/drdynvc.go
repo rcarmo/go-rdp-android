@@ -32,6 +32,7 @@ const (
 	drdynvcMaxStaticPayload = 1024 * 1024
 	drdynvcMaxPDUSize       = 1024 * 1024
 	drdynvcMaxFragmentSize  = 1024 * 1024
+	drdynvcWriteChunkSize   = 1200
 	drdynvcMaxFragments     = 8
 	drdynvcFragmentTTL      = 30 * time.Second
 )
@@ -362,7 +363,21 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")
 	}
-	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, append([]byte{0xe0, 0x00}, payload...)))
+	wrapped := append([]byte{0xe0, 0x00}, payload...)
+	if len(wrapped) <= drdynvcWriteChunkSize {
+		return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, wrapped))
+	}
+	first := minInt(len(wrapped), drdynvcWriteChunkSize)
+	if err := m.writeStaticPayload(conn, buildDRDYNVCDataFirstPDU(m.rdpgfxChannelID, uint32(len(wrapped)), wrapped[:first])); err != nil { // #nosec G115 -- wrapped length is bounded by allocation.
+		return err
+	}
+	for offset := first; offset < len(wrapped); offset += drdynvcWriteChunkSize {
+		end := minInt(len(wrapped), offset+drdynvcWriteChunkSize)
+		if err := m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, wrapped[offset:end])); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
@@ -573,6 +588,16 @@ func buildDRDYNVCDataPDU(channelID uint32, data []byte) []byte {
 	return out
 }
 
+func buildDRDYNVCDataFirstPDU(channelID uint32, length uint32, data []byte) []byte {
+	cb := drdynvcCbChID(channelID)
+	sp := drdynvcSpLength(length)
+	out := []byte{(drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()}
+	out = appendDVCChannelID(out, cb, channelID)
+	out = appendDVCLength(out, sp, length)
+	out = append(out, data...)
+	return out
+}
+
 func drdynvcCbChID(channelID uint32) uint8 {
 	switch {
 	case channelID <= 0xff:
@@ -596,6 +621,29 @@ func appendDVCChannelID(out []byte, cb uint8, channelID uint32) []byte {
 		out = appendLE16Bytes(out, uint16(channelID)) // #nosec G115 -- cb selected from channelID range.
 	default:
 		out = appendLE32Bytes(out, channelID)
+	}
+	return out
+}
+
+func drdynvcSpLength(length uint32) uint8 {
+	switch {
+	case length <= 0xff:
+		return 0
+	case length <= 0xffff:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func appendDVCLength(out []byte, sp uint8, length uint32) []byte {
+	switch sp {
+	case 0:
+		out = append(out, byte(length))
+	case 1:
+		out = appendLE16Bytes(out, uint16(length)) // #nosec G115 -- sp selected from length range.
+	default:
+		out = appendLE32Bytes(out, length)
 	}
 	return out
 }
