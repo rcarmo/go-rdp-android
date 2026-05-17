@@ -156,10 +156,11 @@ func buildRDPGFXMapSurfaceToOutputPDU(surfaceID uint16, originX, originY int) ([
 	if originX < 0 || originY < 0 || originX > 32767 || originY > 32767 {
 		return nil, false
 	}
-	payload := make([]byte, 6)
+	payload := make([]byte, 12)
 	binary.LittleEndian.PutUint16(payload[0:2], surfaceID)
-	binary.LittleEndian.PutUint16(payload[2:4], uint16(originX)) // #nosec G115 -- bounded above.
-	binary.LittleEndian.PutUint16(payload[4:6], uint16(originY)) // #nosec G115 -- bounded above.
+	binary.LittleEndian.PutUint16(payload[2:4], 0)                // reserved
+	binary.LittleEndian.PutUint32(payload[4:8], uint32(originX))  // #nosec G115 -- bounded above.
+	binary.LittleEndian.PutUint32(payload[8:12], uint32(originY)) // #nosec G115 -- bounded above.
 	return buildRDPGFXPDU(rdpgfxCmdMapSurfaceToOutput, 0, payload), true
 }
 
