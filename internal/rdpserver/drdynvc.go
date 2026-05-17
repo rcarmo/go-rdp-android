@@ -14,13 +14,11 @@ import (
 const (
 	drdynvcStaticChannelName = "drdynvc"
 
-	drdynvcCmdCreate         uint8 = 0x01
-	drdynvcCmdDataFirst      uint8 = 0x02
-	drdynvcCmdData           uint8 = 0x03
-	drdynvcCmdClose          uint8 = 0x04
-	drdynvcCmdCapability     uint8 = 0x05
-	drdynvcCmdDataFirstCmp   uint8 = 0x06
-	drdynvcCmdDataCompressed uint8 = 0x07
+	drdynvcCmdCreate     uint8 = 0x01
+	drdynvcCmdDataFirst  uint8 = 0x02
+	drdynvcCmdData       uint8 = 0x03
+	drdynvcCmdClose      uint8 = 0x04
+	drdynvcCmdCapability uint8 = 0x05
 
 	drdynvcCapsVersion1 uint16 = 0x0001
 
@@ -364,7 +362,7 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")
 	}
-	return m.writeStaticPayload(conn, buildDRDYNVCDataCompressedPDU(m.rdpgfxChannelID, append([]byte{0x00}, payload...)))
+	return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, append([]byte{0x00}, payload...)))
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
@@ -570,14 +568,6 @@ func buildDRDYNVCCreateRequestPDU(channelID uint32, name string) []byte {
 func buildDRDYNVCDataPDU(channelID uint32, data []byte) []byte {
 	cb := drdynvcCbChID(channelID)
 	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()}
-	out = appendDVCChannelID(out, cb, channelID)
-	out = append(out, data...)
-	return out
-}
-
-func buildDRDYNVCDataCompressedPDU(channelID uint32, data []byte) []byte {
-	cb := drdynvcCbChID(channelID)
-	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdDataCompressed}).serialize()}
 	out = appendDVCChannelID(out, cb, channelID)
 	out = append(out, data...)
 	return out
