@@ -29,16 +29,16 @@ Implemented or validated today:
 
 Partially implemented / experimental:
 
-- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp`, `/sec:tls`, and `/sec:nla` to reach active state, receive bitmap updates, handle Fast-Path input, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
+- Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback plus `/sec:nla /gfx` RDPGFX to reach active state, handle Fast-Path input, capture a screenshot, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
 - Accessibility input injection. Pointer taps/drags and frame-aware RDPEI touch contacts now reach bounded Accessibility gesture paths with continuation/multi-stroke fallback; richer keyboard/text, secondary-button behavior, gesture failure handling, and physical-device validation still need hardening.
-- Performance. Slow-path 24-bit bitmap transport works and is measured, but it is now fallback-only for release planning; a negotiated compressed graphics path, preferably RDPGFX over `drdynvc`, is required before the first public APK.
+- Performance. RDPGFX over `drdynvc` is implemented as the default compressed graphics path using Planar no-alpha RLE, while slow-path 24-bit bitmap transport remains the measured fallback. Physical-device performance comparison is still pending.
 
 ## Known limitations
 
 - Physical Android-device validation is still pending; current automated evidence comes from CI, emulator, Go tests, and FreeRDP probes.
 - Microsoft Remote Desktop active-streaming validation is still pending, especially NLA behavior and certificate-warning UX.
 - Accessibility input depends on Android service availability and user consent; richer keyboard/text, secondary-button, and gesture-failure handling remain limited.
-- Graphics currently use raw 24-bit bitmap updates with dirty-tile suppression/downscale/backpressure; this is now a compatibility fallback, and RDPGFX/compressed graphics is a release blocker.
+- Graphics default to RDPGFX Planar when the client supports it, with raw 24-bit bitmap updates retained as compatibility fallback; physical-device and Microsoft-client performance/compatibility evidence is still pending.
 - Public release defaults should prefer `nla-required`; `tls-only` is for non-NLA clients, and plain RDP is only for isolated compatibility testing.
 
 ## Package and version

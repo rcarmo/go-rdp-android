@@ -14,7 +14,7 @@
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth; emits JSON/Markdown probe summaries, logs/traces, and an RDP screenshot | `mock-probe-artifacts` |
 | Android build | Build and inspect normal debug APK | `android-build-artifacts` |
 | gomobile build | Build `mobile.aar`, verify API, build Go-backed APK + AAB | `gomobile-build-artifacts` |
-| FreeRDP probe | Blocking real-client compatibility gate; retries and requires bitmap/update streaming | `freerdp-compat-probe` |
+| FreeRDP probe | Blocking real-client compatibility gate; retries and requires bitmap fallback streaming plus an RDPGFX `/gfx` proof gate | `freerdp-compat-probe` |
 | Emulator capture | Validate app startup, MediaProjection, RDP screenshots | `android-emulator-artifacts` |
 | UX report | Validate Gherkin stories and produce PDF | `ux-report/ux-report.pdf` |
 
@@ -37,7 +37,7 @@ Default push/PR CI runs without a physical Android device:
 - Go-backed APK and AAB builds against `mobile.aar`, with native library/content inspection plus AAB signature report.
 - FreeRDP compatibility probe log, summary, and screenshot capture against a mock server with animated test-pattern frames.
 
-The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, and `/sec:nla`. Each mode retries up to three isolated Xvfb/FreeRDP attempts, preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`, and requires at least one attempt per mode to reach FreeRDP active state, stream bitmap updates (`active_seen=true`, `bitmap_seen=true`), handle Fast-Path input traffic, and stop via a non-timeout client shutdown (`exit_code != 124`) after screenshot capture. The NLA mode uses static credentials (`runner` / `secret`) and exercises CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client. The current human-readable status matrix for these gates lives in [STATUS](STATUS.md) and should be refreshed whenever gate semantics or evidence changes.
+The FreeRDP job is now a blocking compatibility gate for `/sec:rdp`, `/sec:tls`, `/sec:nla`, and `/sec:nla /gfx`. Each mode retries up to three isolated Xvfb/FreeRDP attempts and preserves per-attempt logs under `freerdp-artifacts/<mode>/attempt-*`. The first three modes explicitly disable RDPGFX to keep the slow-path bitmap fallback honest and require active state, bitmap updates (`active_seen=true`, `bitmap_seen=true`), Fast-Path input traffic, screenshot capture, and non-timeout client shutdown (`exit_code != 124`). The `nla-gfx` mode runs a small-geometry mock server with default RDPGFX enabled and requires active RDPGFX negotiation/streaming (`rdpgfx_seen=true`) plus screenshot capture and non-timeout shutdown. The NLA modes use static credentials (`runner` / `secret`) and exercise CredSSP/NTLMv2 plus TLS public-key binding with a real FreeRDP client. The current human-readable status matrix for these gates lives in [STATUS](STATUS.md) and should be refreshed whenever gate semantics or evidence changes.
 
 Workflows now set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to run JavaScript-based actions on Node 24 ahead of GitHub’s Node 20 deprecation timeline.
 

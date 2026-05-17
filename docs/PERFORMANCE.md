@@ -50,16 +50,16 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 | 1280x720 | 10.02 ms | 368 MB/s | 5.91 MB | 1053 |
 | 1920x1080 | 25.11 ms | 330 MB/s | 13.28 MB | 2537 |
 
-## Compressed graphics release requirement
+## Compressed graphics path
 
-The first public APK must include a negotiated compressed graphics path. The current slow-path 24-bit BGR bitmap transport remains useful as a fallback, compatibility gate, and benchmark oracle, but it is no longer acceptable as the only release graphics path.
+The first public APK includes a negotiated compressed graphics path rather than relying only on raw slow-path bitmap updates. RDPGFX (`Microsoft::Windows::RDS::Graphics`) over `drdynvc` is enabled by default and currently uses the Planar codec with no-alpha RLE planes. The existing slow-path 24-bit BGR bitmap transport remains as a fallback, compatibility gate, and benchmark oracle.
 
-Release requirement:
+Current evidence and remaining work:
 
-- Prefer RDPGFX (`Microsoft::Windows::RDS::Graphics`) over `drdynvc`, reusing the existing dynamic virtual channel foundation.
-- Keep slow-path 24-bit BGR bitmap updates as fallback for clients that cannot negotiate RDPGFX.
-- Expose artifacts/diagnostics that show whether a session used RDPGFX or fallback bitmap transport.
-- Re-measure bandwidth, latency feel, CPU/battery, and memory stability on a physical device before claiming release performance.
+- CI run `25982405425` proves `/sec:nla /gfx` reaches active RDPGFX streaming (`rdpgfx_seen=true`, screenshot present, `exit_code=131`).
+- The same CI run keeps `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates passing with RDPGFX explicitly disabled for those fallback checks.
+- Android health/diagnostics expose `graphics=rdpgfx-planar` or `graphics=bitmap-fallback` plus RDPGFX frame/byte counters.
+- Physical-device measurement still needs to compare bandwidth, latency feel, CPU/battery, and memory stability for RDPGFX versus bitmap fallback before final release performance claims.
 
 Current raw-bitmap baseline limitations that RDPGFX/compression must address:
 
