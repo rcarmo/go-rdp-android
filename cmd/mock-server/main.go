@@ -33,20 +33,30 @@ func main() {
 	tlsKey := flag.String("tls-key", "", "optional TLS private key PEM path (persisted/loaded when paired with -tls-cert)")
 	tlsRotate := flag.Bool("tls-rotate", false, "rotate/regenerate TLS certificate at startup when using -tls-cert/-tls-key")
 	tlsCN := flag.String("tls-cn", "go-rdp-android", "TLS certificate common name when generating a self-signed cert")
+	h264File := flag.String("h264-file", "", "optional Annex B or length-prefixed H.264 access-unit file to feed the experimental RDPGFX AVC420 path")
+	h264FPS := flag.Int("h264-fps", 5, "frame rate for replaying -h264-file access units")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), *failedAuthLimit, *failedAuthBackoff, *failedAuthBackoffMax, rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
+	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *h264File, *h264FPS, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), *failedAuthLimit, *failedAuthBackoff, *failedAuthBackoffMax, rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, failedAuthLimit int, failedAuthBackoff, failedAuthBackoffMax time.Duration, tlsSettings rdpserver.TLSSettings) error {
+func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, h264File string, h264FPS int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, failedAuthLimit int, failedAuthBackoff, failedAuthBackoffMax time.Duration, tlsSettings rdpserver.TLSSettings) error {
 	var frames frame.Source
 	if testPattern {
 		frames = frame.NewTestPatternSource(width, height, fps)
 		defer frames.Close()
+	}
+	var h264 rdpserver.H264Source
+	if strings.TrimSpace(h264File) != "" {
+		source, err := newFileH264Source(ctx, h264File, h264FPS)
+		if err != nil {
+			return err
+		}
+		h264 = source
 	}
 	var auth rdpserver.Authenticator
 	if password != "" && passwordHash != "" {
@@ -74,12 +84,13 @@ func run(ctx context.Context, addr string, width, height int, testPattern bool, 
 			FailedAuthBackoff:    failedAuthBackoff,
 			FailedAuthBackoffMax: failedAuthBackoffMax,
 		},
-		TLS: tlsSettings,
+		TLS:  tlsSettings,
+		H264: h264,
 	}, frames, nil)
 	if err != nil {
 		return err
 	}
-	log.Printf("listening on %s (protocol stub, testPattern=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d failed_auth_limit=%d tls_fp=%s)", addr, testPattern, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), failedAuthLimit, srv.TLSFingerprintSHA256())
+	log.Printf("listening on %s (protocol stub, testPattern=%v h264File=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d failed_auth_limit=%d tls_fp=%s)", addr, testPattern, h264 != nil, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), failedAuthLimit, srv.TLSFingerprintSHA256())
 	if err := srv.Listen(ctx); err != nil && ctx.Err() == nil {
 		return err
 	}
