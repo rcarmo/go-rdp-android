@@ -25,22 +25,37 @@ func TestH264EnabledFromEnv(t *testing.T) {
 	}
 }
 
+func TestH264NormalizeAnnexB(t *testing.T) {
+	annexB, ok := h264NormalizeAnnexB([]byte{0, 0, 0, 1, 0x65})
+	if !ok || string(annexB) != string([]byte{0, 0, 0, 1, 0x65}) {
+		t.Fatalf("annexB normalize = %x ok=%t", annexB, ok)
+	}
+	lengthPrefixed, ok := h264NormalizeAnnexB([]byte{0, 0, 0, 2, 0x67, 0x01, 0, 0, 0, 1, 0x68})
+	want := []byte{0, 0, 0, 1, 0x67, 0x01, 0, 0, 0, 1, 0x68}
+	if !ok || string(lengthPrefixed) != string(want) {
+		t.Fatalf("length-prefixed normalize = %x ok=%t, want %x", lengthPrefixed, ok, want)
+	}
+	if _, ok := h264NormalizeAnnexB([]byte{0, 0, 0, 4, 0x65}); ok {
+		t.Fatal("invalid length-prefixed access unit normalized successfully")
+	}
+}
+
 func TestH264StreamStatePrepareForWire(t *testing.T) {
 	var state h264StreamState
-	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, Data: []byte{0x41}}); ok {
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, Data: []byte{0, 0, 0, 1, 0x41}}); ok {
 		t.Fatal("non-keyframe before keyframe should not be ready")
 	}
-	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 2, CodecConfig: true, Data: []byte{0x67, 0x68}}); ok {
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 2, CodecConfig: true, Data: []byte{0, 0, 0, 1, 0x67, 0, 0, 0, 1, 0x68}}); ok {
 		t.Fatal("codec config only should not be ready")
 	}
-	unit, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 3, KeyFrame: true, Data: []byte{0x65}})
+	unit, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 3, KeyFrame: true, Data: []byte{0, 0, 0, 1, 0x65}})
 	if !ok {
 		t.Fatal("keyframe after config should be ready")
 	}
-	if got := string(unit.Data); got != string([]byte{0x67, 0x68, 0x65}) {
+	if got := string(unit.Data); got != string([]byte{0, 0, 0, 1, 0x67, 0, 0, 0, 1, 0x68, 0, 0, 0, 1, 0x65}) {
 		t.Fatalf("combined data = %x, want config+keyframe", unit.Data)
 	}
-	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 4, Data: []byte{0x41}}); !ok {
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 4, Data: []byte{0, 0, 0, 1, 0x41}}); !ok {
 		t.Fatal("non-keyframe after keyframe should be ready")
 	}
 }

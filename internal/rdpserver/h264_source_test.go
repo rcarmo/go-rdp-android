@@ -42,7 +42,7 @@ func TestBuildRDPGFXH264FramePDUs(t *testing.T) {
 
 func TestH264StreamStateQueuesConfigOnly(t *testing.T) {
 	var state h264StreamState
-	_, ok := state.prepareForWire(h264AccessUnit{CodecConfig: true, Data: []byte{1}})
+	_, ok := state.prepareForWire(h264AccessUnit{CodecConfig: true, Data: []byte{0, 0, 0, 1, 1}})
 	if ok {
 		t.Fatal("prepareForWire() ok = true for config-only unit, want false")
 	}

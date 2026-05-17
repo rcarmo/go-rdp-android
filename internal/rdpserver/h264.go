@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"strings"
@@ -58,6 +59,11 @@ func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, b
 	if err := validateH264AccessUnit(unit); err != nil {
 		return h264AccessUnit{}, false
 	}
+	annexB, ok := h264NormalizeAnnexB(unit.Data)
+	if !ok {
+		return h264AccessUnit{}, false
+	}
+	unit.Data = annexB
 	if unit.CodecConfig {
 		s.codecConfig = append(s.codecConfig[:0], unit.Data...)
 		if !unit.KeyFrame {
@@ -78,6 +84,38 @@ func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, b
 		return h264AccessUnit{}, false
 	}
 	return unit, true
+}
+
+func h264NormalizeAnnexB(data []byte) ([]byte, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+	if h264HasStartCode(data) {
+		return append([]byte(nil), data...), true
+	}
+	return h264LengthPrefixedToAnnexB(data)
+}
+
+func h264HasStartCode(data []byte) bool {
+	return len(data) >= 4 && data[0] == 0 && data[1] == 0 && (data[2] == 1 || data[2] == 0 && data[3] == 1)
+}
+
+func h264LengthPrefixedToAnnexB(data []byte) ([]byte, bool) {
+	out := make([]byte, 0, len(data)+16)
+	for offset := 0; offset < len(data); {
+		if len(data)-offset < 4 {
+			return nil, false
+		}
+		nalLen := int(binary.BigEndian.Uint32(data[offset : offset+4]))
+		offset += 4
+		if nalLen <= 0 || nalLen > len(data)-offset {
+			return nil, false
+		}
+		out = append(out, 0, 0, 0, 1)
+		out = append(out, data[offset:offset+nalLen]...)
+		offset += nalLen
+	}
+	return out, len(out) > 0
 }
 
 func validateH264AccessUnitBatch(units []h264AccessUnit) error {
