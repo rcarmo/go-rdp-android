@@ -14,7 +14,7 @@ type fileH264Source struct {
 }
 
 func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Source, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- explicit operator-provided mock-server fixture path for H.264 protocol experiments.
 	if err != nil {
 		return nil, err
 	}
