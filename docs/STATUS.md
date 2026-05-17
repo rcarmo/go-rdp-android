@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `5059a9f` (`Refresh status after H264 RDPGFX emission`)
-Latest referenced CI run: `25995950083` (`main` CI, success)
+Current evidence commit: `122355c` (`Infer H264 keyframes from IDR NALs`)
+Latest referenced CI run: `26000570115` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `25995950083`:
+Latest checked artifact from CI run `26000570115`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
