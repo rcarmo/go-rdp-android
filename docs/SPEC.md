@@ -120,7 +120,7 @@ Deliberately skip initially:
 - Add dirty-region detection. ✅
 - Add RDPGFX Planar over `drdynvc`. ✅ (FreeRDP `/sec:nla /gfx` CI proof)
 - Add NSCodec/RemoteFX or legacy bitmap RLE only if clients need it and encoders are mature enough.
-- Consider H.264/AVC later; that remains a significantly larger implementation, especially if tied to Android `MediaCodec` surfaces.
+- Add full-spectrum H.264/AVC using Android `MediaCodec` as the next top-priority graphics workstream, layered ahead of RDPGFX only when protocol/client support is negotiated.
 
 ## Screen pipeline choices
 
@@ -159,7 +159,7 @@ Cons:
 - RDP H.264/GFX server-side implementation is substantially harder
 - `go-rdp` currently has H.264 GUID awareness but not a full server-side graphics pipeline
 
-Recommendation: keep Option A as the first public APK path. It now includes default RDPGFX Planar plus bitmap fallback; H.264/AVC remains future work.
+Recommendation: keep Option A as the current proven public-APK baseline while adding Option B as the top-priority graphics workstream. The negotiated graphics order should be H.264/AVC when the exact RDPGFX codec/capability path and client support are proven, RDPGFX Planar as compressed fallback, and slow-path bitmap as compatibility/benchmark fallback. H.264 bring-up must include Android `MediaCodec` lifecycle handling, bitrate/frame-rate/keyframe controls, resize/orientation recovery, strict encoded-payload bounds, diagnostics, and explicit opt-out while compatibility is being proven.
 
 ## Input pipeline
 
