@@ -56,9 +56,28 @@ func TestSplitAnnexBH264AccessUnits(t *testing.T) {
 	}
 }
 
+func TestCoalesceH264FixtureConfigUnits(t *testing.T) {
+	units := [][]byte{
+		{0, 0, 0, 1, 0x67, 1},
+		{0, 0, 0, 1, 0x68, 2},
+		{0, 0, 0, 1, 0x65, 3},
+	}
+	coalesced := coalesceH264FixtureConfigUnits(units)
+	if len(coalesced) != 2 {
+		t.Fatalf("len(coalesced) = %d, want 2", len(coalesced))
+	}
+	wantConfig := append(append([]byte(nil), units[0]...), units[1]...)
+	if string(coalesced[0]) != string(wantConfig) {
+		t.Fatalf("coalesced config = %x, want %x", coalesced[0], wantConfig)
+	}
+	if string(coalesced[1]) != string(units[2]) {
+		t.Fatalf("coalesced keyframe = %x, want %x", coalesced[1], units[2])
+	}
+}
+
 func TestNewFileH264SourceMarksCodecConfigUnits(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "frames.h264")
-	data := []byte{0, 0, 0, 1, 0x67, 1, 0, 0, 0, 1, 0x65, 2}
+	data := []byte{0, 0, 0, 1, 0x67, 1, 0, 0, 0, 1, 0x68, 2, 0, 0, 0, 1, 0x65, 3}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -72,6 +91,9 @@ func TestNewFileH264SourceMarksCodecConfigUnits(t *testing.T) {
 	second := <-source.H264Frames()
 	if !first.CodecConfig || first.KeyFrame {
 		t.Fatalf("first frame CodecConfig=%t KeyFrame=%t, want config-only", first.CodecConfig, first.KeyFrame)
+	}
+	if !h264FixtureContainsNALType(first.Data, 7) || !h264FixtureContainsNALType(first.Data, 8) {
+		t.Fatalf("first frame data = %x, want SPS+PPS", first.Data)
 	}
 	if !second.KeyFrame || second.CodecConfig {
 		t.Fatalf("second frame CodecConfig=%t KeyFrame=%t, want keyframe", second.CodecConfig, second.KeyFrame)

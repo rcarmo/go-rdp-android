@@ -24,6 +24,8 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 	units := splitAnnexBH264AccessUnits(data)
 	if len(units) == 0 {
 		units = [][]byte{data}
+	} else {
+		units = coalesceH264FixtureConfigUnits(units)
 	}
 	if fps <= 0 {
 		fps = 1
@@ -81,6 +83,30 @@ func splitAnnexBH264AccessUnits(data []byte) [][]byte {
 		}
 	}
 	return units
+}
+
+func coalesceH264FixtureConfigUnits(units [][]byte) [][]byte {
+	out := make([][]byte, 0, len(units))
+	var config []byte
+	flushConfig := func() {
+		if len(config) == 0 {
+			return
+		}
+		out = append(out, append([]byte(nil), config...))
+		config = nil
+	}
+	for _, unit := range units {
+		isConfig := h264FixtureContainsNALType(unit, 7) || h264FixtureContainsNALType(unit, 8)
+		isKeyFrame := h264FixtureContainsNALType(unit, 5)
+		if isConfig && !isKeyFrame {
+			config = append(config, unit...)
+			continue
+		}
+		flushConfig()
+		out = append(out, unit)
+	}
+	flushConfig()
+	return out
 }
 
 func h264FixtureStartCodeOffsets(data []byte) []int {
