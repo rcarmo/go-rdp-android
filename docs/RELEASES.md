@@ -42,6 +42,7 @@ The preflight checks that the working tree is clean, the local branch is synced 
 - Go checks, race/fuzz smoke, Android debug build, gomobile/AAR/API, and release cleanup all green.
 - FreeRDP `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates green with active streaming, screenshot capture, Fast-Path input, and non-timeout client shutdown.
 - FreeRDP `/sec:nla /gfx` RDPGFX gate green with `rdpgfx_seen=true`, active streaming, screenshot capture, and non-timeout client shutdown.
+- H.264/AVC remains experimental until a real client advertises AVC420 and reaches active streaming without `GO_RDP_ANDROID_FORCE_H264=1`; the non-blocking `h264-gfx` CI artifact may show server-side forced AVC420 emission, but it is not a release compatibility gate.
 - `docs/STATUS.md` refreshed to the current evidence commit/run.
 - Release signing secrets confirmed by the repository owner.
 
@@ -77,7 +78,7 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 - Android package/application ID: `io.carmo.go.rdp.android`
 - Android versionCode: `2`
 
-Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations were refreshed on 2026-05-17 after CI added the `/sec:nla /gfx` proof gate.
+Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations were refreshed on 2026-05-17 after CI added the `/sec:nla /gfx` proof gate. H.264/AVC release wording was refreshed on 2026-05-18 to keep forced AVC420 CI artifacts explicitly non-blocking until true client support is proven.
 
 ## Notes
 
