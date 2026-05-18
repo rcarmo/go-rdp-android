@@ -75,6 +75,11 @@ func TestRDPGFXCapabilitySupportsH264(t *testing.T) {
 	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion106}) {
 		t.Fatal("H.264 should be disabled by env override")
 	}
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
+	t.Setenv("GO_RDP_ANDROID_FORCE_H264", "1")
+	if !rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: rdpgfxCapsFlagAVCDisabled}) {
+		t.Fatal("forced H.264 should override AVC_DISABLED for experiments")
+	}
 }
 
 func TestDRDYNVCRDPGFXH264Status(t *testing.T) {
@@ -101,6 +106,13 @@ func TestDRDYNVCRDPGFXH264Status(t *testing.T) {
 	ready, _, _, reason = m.rdpgfxH264Status()
 	if ready || reason != "disabled-by-env" {
 		t.Fatalf("status ready=%t reason=%q, want disabled", ready, reason)
+	}
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
+	t.Setenv("GO_RDP_ANDROID_FORCE_H264", "1")
+	m.rdpgfxCapability = rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: rdpgfxCapsFlagAVCDisabled}
+	ready, _, _, reason = m.rdpgfxH264Status()
+	if !ready || reason != "forced-by-env" {
+		t.Fatalf("status ready=%t reason=%q, want forced", ready, reason)
 	}
 }
 

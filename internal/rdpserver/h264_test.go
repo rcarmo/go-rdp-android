@@ -2,6 +2,22 @@ package rdpserver
 
 import "testing"
 
+func TestH264ForcedFromEnv(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
+	t.Setenv("GO_RDP_ANDROID_FORCE_H264", "")
+	if h264ForcedFromEnv() {
+		t.Fatal("h264ForcedFromEnv() = true by default, want false")
+	}
+	t.Setenv("GO_RDP_ANDROID_FORCE_H264", "true")
+	if !h264ForcedFromEnv() {
+		t.Fatal("h264ForcedFromEnv() = false for true, want true")
+	}
+	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "1")
+	if h264ForcedFromEnv() {
+		t.Fatal("h264ForcedFromEnv() = true while disabled, want false")
+	}
+}
+
 func TestH264EnabledFromEnv(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
 	if !h264EnabledFromEnv() {

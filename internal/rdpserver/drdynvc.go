@@ -375,6 +375,9 @@ func (m *drdynvcManager) rdpgfxH264Status() (ready bool, version uint32, flags u
 	if !h264EnabledFromEnv() {
 		return false, version, flags, "disabled-by-env"
 	}
+	if h264ForcedFromEnv() && version >= rdpgfxCapsVersion81 {
+		return true, version, flags, "forced-by-env"
+	}
 	if rdpgfxCapabilitySupportsH264(m.rdpgfxCapability) {
 		return true, version, flags, "ready"
 	}

@@ -37,6 +37,18 @@ func h264EnabledFromEnv() bool {
 	}
 }
 
+func h264ForcedFromEnv() bool {
+	if !h264EnabledFromEnv() {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_FORCE_H264"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 func validateH264AccessUnit(unit h264AccessUnit) error {
 	if len(unit.Data) == 0 {
 		return fmt.Errorf("empty H.264 access unit")

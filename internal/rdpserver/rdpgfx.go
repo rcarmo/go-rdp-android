@@ -131,6 +131,9 @@ func rdpgfxCapabilitySupportsH264(cap rdpgfxCapabilitySet) bool {
 	if !h264EnabledFromEnv() {
 		return false
 	}
+	if h264ForcedFromEnv() {
+		return cap.Version >= rdpgfxCapsVersion81
+	}
 	if cap.Version == rdpgfxCapsVersion81 {
 		return cap.Flags&rdpgfxCapsFlagAVC420Enabled != 0
 	}
