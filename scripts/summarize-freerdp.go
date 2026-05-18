@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,8 @@ type summary struct {
 	RDPGFXSeen     bool     `json:"rdpgfx_seen"`
 	H264StatusSeen bool     `json:"h264_status_seen"`
 	H264WriteSeen  bool     `json:"h264_write_seen"`
+	H264WriteCount int      `json:"h264_write_count,omitempty"`
+	H264WriteBytes int      `json:"h264_write_bytes,omitempty"`
 	H264Reason     string   `json:"h264_reason,omitempty"`
 	AVC420ExitCode string   `json:"avc420_exit_code,omitempty"`
 	ActiveSeen     bool     `json:"active_seen"`
@@ -48,6 +51,7 @@ func main() {
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
+	s.H264WriteCount, s.H264WriteBytes = traceCountAndSum(sv, "rdpgfx_h264_write", "bytes")
 	s.H264Reason = lastTraceValue(sv, "rdpgfx_h264_status", "reason")
 	s.AVC420ExitCode = readTrim(filepath.Join(dir, "avc420-exit-code.txt"))
 	if s.AVC420ExitCode == "unknown" {
@@ -80,6 +84,8 @@ func main() {
 		"- RDPGFX trace seen: `%v`\n"+
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
+		"- H.264 write trace count: `%d`\n"+
+		"- H.264 write trace bytes: `%d`\n"+
 		"- H.264 status reason: `%s`\n"+
 		"- FreeRDP `/gfx:AVC420` exit code: `%s`\n"+
 		"- FreeRDP active state seen: `%v`\n"+
@@ -90,9 +96,30 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
+}
+
+func traceCountAndSum(logText, phase, key string) (int, int) {
+	needle := "trace phase=" + phase
+	prefix := key + "="
+	count := 0
+	sum := 0
+	for _, line := range strings.Split(logText, "\n") {
+		if !strings.Contains(line, needle) {
+			continue
+		}
+		count++
+		for _, field := range strings.Fields(line) {
+			if strings.HasPrefix(field, prefix) {
+				if n, err := strconv.Atoi(strings.TrimPrefix(field, prefix)); err == nil {
+					sum += n
+				}
+			}
+		}
+	}
+	return count, sum
 }
 
 func lastTraceValue(logText, phase, key string) string {
