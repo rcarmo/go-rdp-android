@@ -429,7 +429,7 @@ jobs:
 
           kill $server_pid 2>/dev/null || true
           wait $server_pid 2>/dev/null || true
-          printf '\x00\x00\x00\x01\x65\x88\x84' > freerdp-artifacts/h264-idr.h264
+          printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' > freerdp-artifacts/h264-idr.h264
           GO_RDP_ANDROID_TRACE=1 GO_RDP_ANDROID_FORCE_H264=1 ./freerdp-artifacts/mock-server -test-pattern -h264-file freerdp-artifacts/h264-idr.h264 -h264-fps 5 -width 64 -height 64 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
           server_pid=$!
           for _ in $(seq 1 50); do
