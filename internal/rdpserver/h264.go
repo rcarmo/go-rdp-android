@@ -120,6 +120,9 @@ func h264HasStartCode(data []byte) bool {
 
 func h264LengthPrefixedToAnnexB(data []byte) ([]byte, bool) {
 	out := make([]byte, 0, len(data)+16)
+	if cap(out) > h264MaxAccessUnitLen {
+		out = make([]byte, 0, h264MaxAccessUnitLen)
+	}
 	for offset := 0; offset < len(data); {
 		if len(data)-offset < 4 {
 			return nil, false
@@ -127,6 +130,9 @@ func h264LengthPrefixedToAnnexB(data []byte) ([]byte, bool) {
 		nalLen := int(binary.BigEndian.Uint32(data[offset : offset+4]))
 		offset += 4
 		if nalLen <= 0 || nalLen > len(data)-offset {
+			return nil, false
+		}
+		if len(out) > h264MaxAccessUnitLen-4-nalLen {
 			return nil, false
 		}
 		out = append(out, 0, 0, 0, 1)
