@@ -31,14 +31,14 @@ Partially implemented / experimental:
 
 - Real-client RDP compatibility. The mock server/probe path is stable, and the FreeRDP CI gate now requires `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback plus `/sec:nla /gfx` RDPGFX to reach active state, handle Fast-Path input, capture a screenshot, and stay connected until CI terminates the client; Microsoft-client compatibility is still pending.
 - Accessibility input injection. Pointer taps/drags and frame-aware RDPEI touch contacts now reach bounded Accessibility gesture paths with continuation/multi-stroke fallback; richer keyboard/text, secondary-button behavior, gesture failure handling, and physical-device validation still need hardening.
-- Performance. RDPGFX over `drdynvc` is implemented as the default compressed graphics path using Planar no-alpha RLE, while slow-path 24-bit bitmap transport remains the measured fallback. Physical-device performance comparison is still pending.
+- Performance. RDPGFX over `drdynvc` is implemented as the default compressed graphics path using Planar no-alpha RLE, while slow-path 24-bit bitmap transport remains the measured fallback. Experimental Android `MediaCodec` H.264 capture and RDPGFX AVC420 emission scaffolding exists, with CI artifacts proving forced server-side emission but not true client compatibility yet. Physical-device performance comparison is still pending.
 
 ## Known limitations
 
 - Physical Android-device validation is still pending; current automated evidence comes from CI, emulator, Go tests, and FreeRDP probes.
 - Microsoft Remote Desktop active-streaming validation is still pending, especially NLA behavior and certificate-warning UX.
 - Accessibility input depends on Android service availability and user consent; richer keyboard/text, secondary-button, and gesture-failure handling remain limited.
-- Graphics default to RDPGFX Planar when the client supports it, with raw 24-bit bitmap updates retained as compatibility fallback; physical-device and Microsoft-client performance/compatibility evidence is still pending.
+- Graphics default to RDPGFX Planar when the client supports it, with raw 24-bit bitmap updates retained as compatibility fallback. H.264/AVC over RDPGFX AVC420 is experimental and not a release compatibility claim until a client advertises support without force-mode probes; physical-device and Microsoft-client performance/compatibility evidence is still pending.
 - Public release defaults should prefer `nla-required`; `tls-only` is for non-NLA clients, and plain RDP is only for isolated compatibility testing.
 
 ## Package and version
@@ -180,7 +180,7 @@ Tag behavior:
    - Capture pacing/backpressure now has the first production-oriented layers in place: Android adaptive capture interval, bounded queue drops, and server-side queued-frame coalescing; remaining validation is on real devices and constrained networks.
    - Expand downscale/quality modes.
    - Investigate compressed bitmap/RDPGFX updates.
-   - Investigate H.264/AVC with Android hardware encoding.
+   - Continue H.264/AVC with Android hardware encoding: encoder/queue/RDPGFX AVC420 scaffolding exists, but client proof and physical performance validation remain pending.
 
 4. **Security and release readiness**
    - Security mode, failed-auth backoff controls, and copyable TLS fingerprint are now surfaced in Android UI; release guidance recommends `nla-required` first and reserves `rdp-only` for isolated compatibility testing. CIDR/user allowlists remain server-core/mock-server-only for the first polished APK; continue with TLS rotation controls.
