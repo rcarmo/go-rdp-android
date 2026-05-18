@@ -33,6 +33,26 @@ func TestNewFileH264Source(t *testing.T) {
 	}
 }
 
+func TestSplitAnnexBH264AccessUnits(t *testing.T) {
+	data := []byte{0, 0, 0, 1, 0x67, 1, 0, 0, 1, 0x65, 2}
+	units := splitAnnexBH264AccessUnits(data)
+	if len(units) != 2 {
+		t.Fatalf("len(units) = %d, want 2", len(units))
+	}
+	if string(units[0]) != string([]byte{0, 0, 0, 1, 0x67, 1}) {
+		t.Fatalf("unit[0] = %x", units[0])
+	}
+	if string(units[1]) != string([]byte{0, 0, 1, 0x65, 2}) {
+		t.Fatalf("unit[1] = %x", units[1])
+	}
+	if !h264FixtureContainsIDR(units[1]) {
+		t.Fatal("unit[1] should contain IDR")
+	}
+	if h264FixtureContainsIDR(units[0]) {
+		t.Fatal("unit[0] should not contain IDR")
+	}
+}
+
 func TestNewFileH264SourceRejectsEmptyFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "empty.h264")
 	if err := os.WriteFile(path, nil, 0o644); err != nil {

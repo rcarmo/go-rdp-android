@@ -21,6 +21,10 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 	if len(data) == 0 {
 		return nil, fmt.Errorf("H.264 file %q is empty", path)
 	}
+	units := splitAnnexBH264AccessUnits(data)
+	if len(units) == 0 {
+		units = [][]byte{data}
+	}
 	if fps <= 0 {
 		fps = 1
 	}
@@ -34,12 +38,15 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		pts := int64(0)
+		index := 0
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: true, Data: data}
+				unit := units[index%len(units)]
+				index++
+				frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: h264FixtureContainsIDR(unit), Data: unit}
 				pts += interval.Microseconds()
 				select {
 				case s.frames <- frame:
@@ -54,6 +61,53 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 		}
 	}()
 	return s, nil
+}
+
+func splitAnnexBH264AccessUnits(data []byte) [][]byte {
+	starts := h264FixtureStartCodeOffsets(data)
+	if len(starts) == 0 || starts[0] != 0 {
+		return nil
+	}
+	units := make([][]byte, 0, len(starts))
+	for i, start := range starts {
+		end := len(data)
+		if i+1 < len(starts) {
+			end = starts[i+1]
+		}
+		if end > start {
+			units = append(units, append([]byte(nil), data[start:end]...))
+		}
+	}
+	return units
+}
+
+func h264FixtureStartCodeOffsets(data []byte) []int {
+	var out []int
+	for i := 0; i+3 <= len(data); i++ {
+		if data[i] == 0 && data[i+1] == 0 && (data[i+2] == 1 || i+4 <= len(data) && data[i+2] == 0 && data[i+3] == 1) {
+			out = append(out, i)
+			if data[i+2] == 1 {
+				i += 2
+			} else {
+				i += 3
+			}
+		}
+	}
+	return out
+}
+
+func h264FixtureContainsIDR(data []byte) bool {
+	starts := h264FixtureStartCodeOffsets(data)
+	for _, start := range starts {
+		nal := start + 3
+		if start+3 < len(data) && data[start+2] == 0 {
+			nal = start + 4
+		}
+		if nal < len(data) && data[nal]&0x1f == 5 {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *fileH264Source) H264Frames() <-chan rdpserver.H264Frame { return s.frames }
