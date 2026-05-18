@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-17
 Current evidence commit: `3c566cc` (`Label H264 capture service mode`)
-Latest referenced CI run: `26056504234` (`main` CI, success)
+Latest referenced CI run: `26056504234` (`main` CI, success; follow-up run `26057144843` exposed a fuzz-smoke timeout unrelated to H.264 probe behavior)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
