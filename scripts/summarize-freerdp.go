@@ -19,6 +19,7 @@ type summary struct {
 	RDPGFXSeen     bool     `json:"rdpgfx_seen"`
 	H264StatusSeen bool     `json:"h264_status_seen"`
 	H264WriteSeen  bool     `json:"h264_write_seen"`
+	H264Reason     string   `json:"h264_reason,omitempty"`
 	ActiveSeen     bool     `json:"active_seen"`
 	FastPathSeen   bool     `json:"fastpath_seen"`
 	ErrorLines     []string `json:"error_lines"`
@@ -46,6 +47,7 @@ func main() {
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
+	s.H264Reason = lastTraceValue(sv, "rdpgfx_h264_status", "reason")
 	s.ActiveSeen = strings.Contains(xf, "CONNECTION_STATE_ACTIVE")
 	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore") || strings.Contains(sv, "fastpath_input")
 	s.ScreenshotPNG = exists(filepath.Join(dir, "xfreerdp-root.png"))
@@ -73,6 +75,7 @@ func main() {
 		"- RDPGFX trace seen: `%v`\n"+
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
+		"- H.264 status reason: `%s`\n"+
 		"- FreeRDP active state seen: `%v`\n"+
 		"- Fast-path packet handling seen: `%v`\n"+
 		"- FreeRDP log bytes: `%d`\n"+
@@ -81,9 +84,26 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264Reason, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
+}
+
+func lastTraceValue(logText, phase, key string) string {
+	needle := "trace phase=" + phase
+	prefix := key + "="
+	value := ""
+	for _, line := range strings.Split(logText, "\n") {
+		if !strings.Contains(line, needle) {
+			continue
+		}
+		for _, field := range strings.Fields(line) {
+			if strings.HasPrefix(field, prefix) {
+				value = strings.TrimPrefix(field, prefix)
+			}
+		}
+	}
+	return value
 }
 
 func read(path string) string { b, _ := os.ReadFile(path); return string(b) }
