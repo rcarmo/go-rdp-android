@@ -442,7 +442,7 @@ jobs:
           set +e
           xvfb-run -a bash -c "
             set +e
-            xfreerdp /v:127.0.0.1:3390 /w:64 /h:64 /sec:nla /gfx /cert:ignore /u:runner /p:secret /log-level:DEBUG >freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log 2>&1 &
+            xfreerdp /v:127.0.0.1:3390 /w:64 /h:64 /sec:nla /gfx:AVC420 /cert:ignore /u:runner /p:secret /log-level:DEBUG >freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log 2>&1 &
             rdp_pid=\$!
             sleep 8
             xwd -root -silent -out freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd 2>freerdp-artifacts/h264-gfx/attempt-1/xwd.log
