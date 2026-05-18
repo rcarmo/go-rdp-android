@@ -120,7 +120,7 @@ Deliberately skip initially:
 - Add dirty-region detection. ✅
 - Add RDPGFX Planar over `drdynvc`. ✅ (FreeRDP `/sec:nla /gfx` CI proof)
 - Add NSCodec/RemoteFX or legacy bitmap RLE only if clients need it and encoders are mature enough.
-- Add full-spectrum H.264/AVC using Android `MediaCodec` as the next top-priority graphics workstream, layered ahead of RDPGFX only when protocol/client support is negotiated.
+- Add full-spectrum H.264/AVC using Android `MediaCodec` as the next top-priority graphics workstream, layered ahead of RDPGFX only when protocol/client support is negotiated. ✅/experimental (encoder, queue, RDPGFX AVC420 wrapping/streaming, diagnostics, and non-blocking CI artifact exist; true client proof is still pending)
 
 ## Screen pipeline choices
 
@@ -148,7 +148,8 @@ Cons:
 
 ```text
 MediaProjection → Surface → MediaCodec H.264
-  → RDP GFX/H.264 virtual channel
+  → gomobile H.264 access-unit queue
+  → RDPGFX AVC420 (RFX_AVC420_BITMAP_STREAM) over drdynvc
 ```
 
 Pros:
@@ -156,10 +157,12 @@ Pros:
 - close to scrcpy performance
 
 Cons:
-- RDP H.264/GFX server-side implementation is substantially harder
-- `go-rdp` currently has H.264 GUID awareness but not a full server-side graphics pipeline
+- RDP H.264/GFX client compatibility is harder than Planar and depends on clients advertising AVC420 support.
+- The current CI FreeRDP package rejects explicit `/gfx:AVC420` and advertises AVC disabled in fallback `/gfx`, so server-side forced emission is artifact evidence only, not compatibility proof.
 
-Recommendation: keep Option A as the current proven public-APK baseline while adding Option B as the top-priority graphics workstream. The negotiated graphics order should be H.264/AVC when the exact RDPGFX codec/capability path and client support are proven, RDPGFX Planar as compressed fallback, and slow-path bitmap as compatibility/benchmark fallback. H.264 bring-up must include Android `MediaCodec` lifecycle handling, bitrate/frame-rate/keyframe controls, resize/orientation recovery, strict encoded-payload bounds, diagnostics, and explicit opt-out while compatibility is being proven.
+Current implementation status: Option B has an experimental end-to-end scaffold. Android can start a `MediaCodec` surface encoder and forward codec config/access units; gomobile queues bounded encoded frames; the server normalizes H.264 to Annex B, caches codec config, infers IDR keyframes, bounds config+keyframe transport units, wraps access units as `RFX_AVC420_BITMAP_STREAM`, and emits/streams them through RDPGFX `WireToSurface_1` with codec ID AVC420. The path is gated on confirmed AVC420-capable RDPGFX flags by default, can be disabled with `GO_RDP_ANDROID_DISABLE_H264=1`, and can be forced only for protocol experiments with `GO_RDP_ANDROID_FORCE_H264=1`.
+
+Recommendation: keep Option A as the current proven public-APK baseline while continuing Option B as the top-priority graphics workstream. The negotiated graphics order should be H.264/AVC when exact RDPGFX AVC420 capability and client support are proven, RDPGFX Planar as compressed fallback, and slow-path bitmap as compatibility/benchmark fallback. H.264 bring-up still needs client proof, physical-device lifecycle/performance validation, and final user-facing UI decisions before it can become a release compatibility claim.
 
 ## Input pipeline
 
