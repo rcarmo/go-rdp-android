@@ -46,7 +46,9 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 			case <-ticker.C:
 				unit := units[index%len(units)]
 				index++
-				frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: h264FixtureContainsIDR(unit), Data: unit}
+				keyFrame := h264FixtureContainsNALType(unit, 5)
+				codecConfig := !keyFrame && (h264FixtureContainsNALType(unit, 7) || h264FixtureContainsNALType(unit, 8))
+				frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: keyFrame, CodecConfig: codecConfig, Data: unit}
 				pts += interval.Microseconds()
 				select {
 				case s.frames <- frame:
@@ -96,18 +98,22 @@ func h264FixtureStartCodeOffsets(data []byte) []int {
 	return out
 }
 
-func h264FixtureContainsIDR(data []byte) bool {
+func h264FixtureContainsNALType(data []byte, nalType byte) bool {
 	starts := h264FixtureStartCodeOffsets(data)
 	for _, start := range starts {
 		nal := start + 3
 		if start+3 < len(data) && data[start+2] == 0 {
 			nal = start + 4
 		}
-		if nal < len(data) && data[nal]&0x1f == 5 {
+		if nal < len(data) && data[nal]&0x1f == nalType {
 			return true
 		}
 	}
 	return false
+}
+
+func h264FixtureContainsIDR(data []byte) bool {
+	return h264FixtureContainsNALType(data, 5)
 }
 
 func (s *fileH264Source) H264Frames() <-chan rdpserver.H264Frame { return s.frames }

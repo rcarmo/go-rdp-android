@@ -51,6 +51,31 @@ func TestSplitAnnexBH264AccessUnits(t *testing.T) {
 	if h264FixtureContainsIDR(units[0]) {
 		t.Fatal("unit[0] should not contain IDR")
 	}
+	if !h264FixtureContainsNALType(units[0], 7) {
+		t.Fatal("unit[0] should contain SPS")
+	}
+}
+
+func TestNewFileH264SourceMarksCodecConfigUnits(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "frames.h264")
+	data := []byte{0, 0, 0, 1, 0x67, 1, 0, 0, 0, 1, 0x65, 2}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	source, err := newFileH264Source(ctx, path, 60)
+	if err != nil {
+		t.Fatalf("newFileH264Source: %v", err)
+	}
+	first := <-source.H264Frames()
+	second := <-source.H264Frames()
+	if !first.CodecConfig || first.KeyFrame {
+		t.Fatalf("first frame CodecConfig=%t KeyFrame=%t, want config-only", first.CodecConfig, first.KeyFrame)
+	}
+	if !second.KeyFrame || second.CodecConfig {
+		t.Fatalf("second frame CodecConfig=%t KeyFrame=%t, want keyframe", second.CodecConfig, second.KeyFrame)
+	}
 }
 
 func TestNewFileH264SourceRejectsEmptyFile(t *testing.T) {
