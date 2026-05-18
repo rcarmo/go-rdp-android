@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `5e26ea0` (`Bound H264 Annex B conversion output`)
-Latest referenced CI run: `26054650016` (`main` CI, success)
+Current evidence commit: `e2d1e00` (`Accumulate H264 codec config units`)
+Latest referenced CI run: `26055271124` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26054650016`:
+Latest checked artifact from CI run `26055271124`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

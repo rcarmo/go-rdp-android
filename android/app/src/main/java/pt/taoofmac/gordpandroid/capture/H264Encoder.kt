@@ -150,8 +150,14 @@ class H264Encoder(
             codec.releaseOutputBuffer(index, false)
             return
         }
+        val end = info.offset + info.size
+        if (info.offset < 0 || info.size < 0 || end < info.offset || end > buffer.capacity()) {
+            codec.releaseOutputBuffer(index, false)
+            listener.onEncoderError(IllegalArgumentException("invalid H.264 output buffer bounds offset=${info.offset} size=${info.size} capacity=${buffer.capacity()}"))
+            return
+        }
         buffer.position(info.offset)
-        buffer.limit(info.offset + info.size)
+        buffer.limit(end)
         val data = ByteArray(info.size)
         buffer.get(data)
         val flags = info.flags
