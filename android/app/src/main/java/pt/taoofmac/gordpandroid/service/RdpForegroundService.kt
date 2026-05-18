@@ -84,7 +84,7 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         val securityMode = intent?.getStringExtra(EXTRA_SECURITY_MODE) ?: savedSettings.securityMode.wireValue
         val securityModeSetting = RdpSecurityMode.fromWireValue(securityMode) ?: savedSettings.securityMode
         val failedAuthPolicy = failedAuthPolicyFromIntent(intent, savedSettings)
-        val mode = serviceMode(hasProjection, testPattern)
+        val mode = serviceMode(hasProjection, h264Capture, testPattern)
         if (username.isEmpty() || password.isEmpty()) {
             Log.w(TAG, "Refusing to start RDP server without configured credentials")
             startForeground(NOTIFICATION_ID, notification("missing credentials"))
@@ -268,7 +268,8 @@ class RdpForegroundService : Service(), ScreenCaptureManager.Listener {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun serviceMode(hasProjection: Boolean, testPattern: Boolean): String = when {
+    private fun serviceMode(hasProjection: Boolean, h264Capture: Boolean, testPattern: Boolean): String = when {
+        hasProjection && h264Capture -> "screen capture (H.264)"
         hasProjection -> "screen capture"
         testPattern -> "test pattern"
         else -> "no frame source"
