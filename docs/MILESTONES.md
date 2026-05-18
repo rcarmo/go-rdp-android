@@ -57,6 +57,7 @@ Tasks:
 - dirty tile suppression ✅
 - negotiated/session desktop sizing ✅
 - RDPGFX dynamic-channel negotiation and Planar compressed frames ✅ (FreeRDP `/sec:nla /gfx` CI proof; physical-device/Microsoft-client performance evidence pending)
+- experimental H.264/AVC over RDPGFX AVC420 ✅/partial (Android `MediaCodec` scaffold, encoded-frame queue, AVC420 `RFX_AVC420_BITMAP_STREAM` emission/streaming, diagnostics, and forced non-blocking CI artifact evidence; true client AVC420 compatibility and physical-device performance pending)
 - optional legacy bitmap RLE encoding
 
 ## M4 — Input
