@@ -77,6 +77,27 @@ func TestH264StreamStateInfersKeyFrameFromIDR(t *testing.T) {
 	}
 }
 
+func TestH264StreamStateAccumulatesSeparateCodecConfigUnits(t *testing.T) {
+	var state h264StreamState
+	sps := []byte{0, 0, 0, 1, 0x67, 0x01}
+	pps := []byte{0, 0, 0, 1, 0x68, 0x02}
+	idr := []byte{0, 0, 0, 1, 0x65, 0x03}
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, CodecConfig: true, Data: sps}); ok {
+		t.Fatal("SPS config-only unit should not be ready")
+	}
+	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 2, CodecConfig: true, Data: pps}); ok {
+		t.Fatal("PPS config-only unit should not be ready")
+	}
+	unit, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 3, KeyFrame: true, Data: idr})
+	if !ok {
+		t.Fatal("IDR after config should be ready")
+	}
+	want := append(append(append([]byte(nil), sps...), pps...), idr...)
+	if string(unit.Data) != string(want) {
+		t.Fatalf("combined data = %x, want %x", unit.Data, want)
+	}
+}
+
 func TestH264StreamStatePrepareForWire(t *testing.T) {
 	var state h264StreamState
 	if _, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: 1, Data: []byte{0, 0, 0, 1, 0x41}}); ok {

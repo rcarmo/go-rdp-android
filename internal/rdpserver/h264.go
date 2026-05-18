@@ -80,7 +80,14 @@ func (s *h264StreamState) prepareForWire(unit h264AccessUnit) (h264AccessUnit, b
 		unit.KeyFrame = true
 	}
 	if unit.CodecConfig {
-		s.codecConfig = append(s.codecConfig[:0], unit.Data...)
+		if h264AnnexBContainsNALType(unit.Data, 7) {
+			s.codecConfig = append(s.codecConfig[:0], unit.Data...)
+		} else {
+			if len(s.codecConfig) > h264MaxAccessUnitLen-len(unit.Data) {
+				return h264AccessUnit{}, false
+			}
+			s.codecConfig = append(s.codecConfig, unit.Data...)
+		}
 		if !unit.KeyFrame {
 			return h264AccessUnit{}, false
 		}
