@@ -426,6 +426,41 @@ jobs:
           done
           grep -q 'listening on' freerdp-artifacts/mock-server.log
           run_freerdp_mode nla-gfx nla "/gfx" 1 64 64
+
+          kill $server_pid 2>/dev/null || true
+          wait $server_pid 2>/dev/null || true
+          printf '\x00\x00\x00\x01\x65\x88\x84' > freerdp-artifacts/h264-idr.h264
+          GO_RDP_ANDROID_TRACE=1 ./freerdp-artifacts/mock-server -test-pattern -h264-file freerdp-artifacts/h264-idr.h264 -h264-fps 5 -width 64 -height 64 -fps 5 -username runner -password secret >freerdp-artifacts/mock-server.log 2>&1 &
+          server_pid=$!
+          for _ in $(seq 1 50); do
+            if grep -q 'listening on' freerdp-artifacts/mock-server.log; then
+              break
+            fi
+            sleep 0.2
+          done
+          mkdir -p freerdp-artifacts/h264-gfx/attempt-1
+          set +e
+          xvfb-run -a bash -c "
+            set +e
+            xfreerdp /v:127.0.0.1:3390 /w:64 /h:64 /sec:nla /gfx /cert:ignore /u:runner /p:secret /log-level:DEBUG >freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log 2>&1 &
+            rdp_pid=\$!
+            sleep 8
+            xwd -root -silent -out freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd 2>freerdp-artifacts/h264-gfx/attempt-1/xwd.log
+            (convert freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.png || magick freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.png) >freerdp-artifacts/h264-gfx/attempt-1/convert.log 2>&1
+            if kill -0 \$rdp_pid >/dev/null 2>&1; then
+              kill -INT \$rdp_pid >/dev/null 2>&1 || true
+            fi
+            wait \$rdp_pid
+            echo \$? > freerdp-artifacts/h264-gfx/attempt-1/exit-code.txt
+          "
+          echo $? > freerdp-artifacts/h264-gfx/attempt-1/xvfb-exit-code.txt
+          set -e
+          cp freerdp-artifacts/mock-server.log freerdp-artifacts/h264-gfx/attempt-1/mock-server.log
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-freerdp.go freerdp-artifacts/h264-gfx/attempt-1 || true
+          cp freerdp-artifacts/h264-gfx/attempt-1/summary.md freerdp-artifacts/h264-gfx-summary.md || true
+          cp freerdp-artifacts/h264-gfx/attempt-1/summary.json freerdp-artifacts/h264-gfx-summary.json || true
+          cat freerdp-artifacts/h264-gfx-summary.md || true
+
           test -s freerdp-artifacts/rdp-summary.md
           test -s freerdp-artifacts/tls-summary.md
           test -s freerdp-artifacts/nla-summary.md
