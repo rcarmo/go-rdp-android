@@ -444,6 +444,17 @@ jobs:
             set +e
             xfreerdp /v:127.0.0.1:3390 /w:64 /h:64 /sec:nla /gfx:AVC420 /cert:ignore /u:runner /p:secret /log-level:DEBUG >freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log 2>&1 &
             rdp_pid=\$!
+            sleep 1
+            if ! kill -0 \$rdp_pid >/dev/null 2>&1; then
+              wait \$rdp_pid
+              early_code=\$?
+              echo \$early_code > freerdp-artifacts/h264-gfx/attempt-1/avc420-exit-code.txt
+              if [ \$early_code -eq 24 ]; then
+                echo 'xfreerdp rejected /gfx:AVC420; falling back to /gfx for capability-status evidence' >> freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log
+                xfreerdp /v:127.0.0.1:3390 /w:64 /h:64 /sec:nla /gfx /cert:ignore /u:runner /p:secret /log-level:DEBUG >>freerdp-artifacts/h264-gfx/attempt-1/xfreerdp.log 2>&1 &
+                rdp_pid=\$!
+              fi
+            fi
             sleep 8
             xwd -root -silent -out freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd 2>freerdp-artifacts/h264-gfx/attempt-1/xwd.log
             (convert freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.png || magick freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.xwd freerdp-artifacts/h264-gfx/attempt-1/xfreerdp-root.png) >freerdp-artifacts/h264-gfx/attempt-1/convert.log 2>&1
