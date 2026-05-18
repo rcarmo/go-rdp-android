@@ -20,6 +20,7 @@ type summary struct {
 	H264StatusSeen bool     `json:"h264_status_seen"`
 	H264WriteSeen  bool     `json:"h264_write_seen"`
 	H264Reason     string   `json:"h264_reason,omitempty"`
+	AVC420ExitCode string   `json:"avc420_exit_code,omitempty"`
 	ActiveSeen     bool     `json:"active_seen"`
 	FastPathSeen   bool     `json:"fastpath_seen"`
 	ErrorLines     []string `json:"error_lines"`
@@ -48,6 +49,10 @@ func main() {
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
 	s.H264Reason = lastTraceValue(sv, "rdpgfx_h264_status", "reason")
+	s.AVC420ExitCode = readTrim(filepath.Join(dir, "avc420-exit-code.txt"))
+	if s.AVC420ExitCode == "unknown" {
+		s.AVC420ExitCode = ""
+	}
 	s.ActiveSeen = strings.Contains(xf, "CONNECTION_STATE_ACTIVE")
 	s.FastPathSeen = strings.Contains(sv, "fastpath_ignore") || strings.Contains(sv, "fastpath_input")
 	s.ScreenshotPNG = exists(filepath.Join(dir, "xfreerdp-root.png"))
@@ -76,6 +81,7 @@ func main() {
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
 		"- H.264 status reason: `%s`\n"+
+		"- FreeRDP `/gfx:AVC420` exit code: `%s`\n"+
 		"- FreeRDP active state seen: `%v`\n"+
 		"- Fast-path packet handling seen: `%v`\n"+
 		"- FreeRDP log bytes: `%d`\n"+
@@ -84,7 +90,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264Reason, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }
