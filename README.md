@@ -143,6 +143,14 @@ Current blocking FreeRDP compatibility signals are tracked in [docs/STATUS.md](d
 | `/sec:tls` | ✅ | ✅ | ✅ | ✅ | `131` non-timeout shutdown after capture |
 | `/sec:nla` | ✅ | ✅ | ✅ | ✅ | `131` non-timeout shutdown after capture |
 
+Run the local graphics encoding matrix when changing transport code or collecting release-candidate evidence:
+
+```bash
+make encoding-matrix
+```
+
+That matrix covers slow-path bitmap fallback, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx` H.264 smoke cases, and explicitly lists unimplemented/deferred codec families: bitmap RLE, NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, and JPEG/PNG bitmap codecs.
+
 Manual emulator UX run:
 
 ```bash
