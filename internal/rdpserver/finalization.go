@@ -151,6 +151,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	nextFrameID := uint32(1)
 	var h264State h264StreamState
 	h264Ready, h264Version, h264Flags, h264Reason := dvc.rdpgfxH264Status()
+	metrics.recordH264Status(h264Reason)
 	tracef("rdpgfx_h264_status", "ready=%t version=0x%08x flags=0x%08x reason=%s source=%t", h264Ready, h264Version, h264Flags, h264Reason, h264 != nil)
 	if h264 != nil && h264Ready {
 		select {

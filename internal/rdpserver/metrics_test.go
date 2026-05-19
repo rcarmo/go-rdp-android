@@ -27,6 +27,18 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 	}
 }
 
+func TestServerH264Status(t *testing.T) {
+	s := &Server{}
+	if got := s.H264Status(); got != "not-observed" {
+		t.Fatalf("H264Status() = %q, want not-observed", got)
+	}
+	metrics := serverMetrics{h264Status: &s.h264Status}
+	metrics.recordH264Status("client-avc420-not-advertised")
+	if got := s.H264Status(); got != "client-avc420-not-advertised" {
+		t.Fatalf("H264Status() = %q", got)
+	}
+}
+
 func TestServerMetricsRecordH264Frame(t *testing.T) {
 	var framesSent atomic.Int64
 	var h264Frames atomic.Int64

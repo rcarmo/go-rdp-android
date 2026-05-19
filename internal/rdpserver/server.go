@@ -49,6 +49,7 @@ type Server struct {
 	h264Frames        atomic.Int64
 	h264Bytes         atomic.Int64
 	dvcFragments      atomic.Int64
+	h264Status        atomic.Value
 
 	mu sync.Mutex
 	ln net.Listener
@@ -173,6 +174,14 @@ func (s *Server) H264Frames() int64 { return s.h264Frames.Load() }
 // H264Bytes returns the total number of H.264/AVC payload bytes sent to clients.
 func (s *Server) H264Bytes() int64 { return s.h264Bytes.Load() }
 
+// H264Status returns the latest H.264 capability/emission status reason observed for diagnostics.
+func (s *Server) H264Status() string {
+	if status, ok := s.h264Status.Load().(string); ok && status != "" {
+		return status
+	}
+	return "not-observed"
+}
+
 // GraphicsPath returns the active/last observed graphics transport path.
 func (s *Server) GraphicsPath() string {
 	if s.h264Frames.Load() > 0 {
@@ -264,7 +273,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
 	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)

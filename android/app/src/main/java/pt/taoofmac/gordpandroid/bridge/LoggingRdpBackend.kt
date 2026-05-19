@@ -90,6 +90,8 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun h264Bytes(): Long = 0
 
+    override fun h264Status(): String = if (running.get()) "logging-stub" else "stopped"
+
     override fun graphicsPath(): String = if (running.get()) "logging-stub" else "stopped"
 
     override fun dvcFragments(): Long = 0

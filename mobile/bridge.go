@@ -360,6 +360,16 @@ func (s *Server) H264Bytes() int64 {
 	return s.server.H264Bytes()
 }
 
+// H264Status returns the latest H.264 capability/emission status reason.
+func (s *Server) H264Status() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return "stopped"
+	}
+	return s.server.H264Status()
+}
+
 // GraphicsPath returns the active/last observed graphics transport path.
 func (s *Server) GraphicsPath() string {
 	s.mu.Lock()
@@ -469,6 +479,9 @@ func H264Frames() int64 { return defaultServer.H264Frames() }
 
 // H264Bytes returns the H.264/AVC payload bytes for the default server.
 func H264Bytes() int64 { return defaultServer.H264Bytes() }
+
+// H264Status returns the latest H.264 capability/emission status reason for the default server.
+func H264Status() string { return defaultServer.H264Status() }
 
 // GraphicsPath returns the active/last observed graphics transport path for the default server.
 func GraphicsPath() string { return defaultServer.GraphicsPath() }

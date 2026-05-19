@@ -10,6 +10,13 @@ type serverMetrics struct {
 	h264Frames   *atomic.Int64
 	h264Bytes    *atomic.Int64
 	dvcFragments *atomic.Int64
+	h264Status   *atomic.Value
+}
+
+func (m serverMetrics) recordH264Status(status string) {
+	if m.h264Status != nil && status != "" {
+		m.h264Status.Store(status)
+	}
 }
 
 func (m serverMetrics) recordDVCFragment() {

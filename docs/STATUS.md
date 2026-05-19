@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `dad3b6c` (`Preserve H264 config while coalescing`)
-Latest referenced CI run: `26080685995` (`main` CI, success)
+Current evidence commit: `83b138f` (`Record restored H264 coalescing evidence`)
+Latest referenced CI run: `26081153191` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26080685995`:
+Latest checked artifact from CI run `26081153191`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
