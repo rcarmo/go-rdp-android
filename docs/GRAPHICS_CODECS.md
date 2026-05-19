@@ -60,4 +60,4 @@ Run:
 make encoding-matrix
 ```
 
-The matrix currently exercises implemented paths and then lists the missing families above so reports are explicit about coverage boundaries.
+The matrix currently exercises implemented paths, records observed RDPGFX capability advertisements from server traces, and then lists the missing families above so reports are explicit about coverage boundaries.

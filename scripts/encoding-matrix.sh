@@ -110,6 +110,31 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
 
+## Observed RDPGFX capability advertisements
+
+SUMMARY
+python3 - "$OUT" >>"$OUT/summary.md" <<'PY'
+import pathlib, re, sys
+base = pathlib.Path(sys.argv[1])
+pattern = re.compile(r"rdpgfx_cap .*index=(\d+) version=(0x[0-9a-fA-F]+).*flags=(0x[0-9a-fA-F]+) supported=(\w+)")
+seen = []
+for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+    log = base / label / "mock-server.log"
+    if not log.exists():
+        continue
+    caps = []
+    for line in log.read_text(errors="replace").splitlines():
+        m = pattern.search(line)
+        if m:
+            caps.append(m.groups())
+    if not caps:
+        print(f"- {label}: no RDPGFX capability traces found")
+        continue
+    joined = ", ".join(f"{version}/flags={flags}/supported={supported}" for _, version, flags, supported in caps)
+    print(f"- {label}: {joined}")
+PY
+cat >>"$OUT/summary.md" <<'SUMMARY'
+
 ## Encoding families not implemented by this server yet
 
 These are tracked explicitly so the matrix does not imply full RDP graphics-codec coverage:
