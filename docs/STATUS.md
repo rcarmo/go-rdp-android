@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `b4e3949` (`Annotate RDPGFX AVC capability flags`)
-Latest referenced CI run: `26130299803` (`main` CI, success)
+Current evidence commit: `87b2fcb` (`Record annotated capability matrix smoke`)
+Latest referenced CI run: `26130790091` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26130299803`:
+Latest checked artifact from CI run `26130790091`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
