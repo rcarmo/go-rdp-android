@@ -224,6 +224,13 @@ func TestMobileServerSecurityPolicy(t *testing.T) {
 	}
 }
 
+func TestMobileServerH264StatusStopped(t *testing.T) {
+	srv := NewServer()
+	if got := srv.H264Status(); got != "stopped" {
+		t.Fatalf("H264Status() = %q, want stopped", got)
+	}
+}
+
 func TestMobileServerSubmitFrameValidation(t *testing.T) {
 	srv := NewServer()
 	cases := []struct {
