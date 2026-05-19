@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `9ffcf7f` (`Record H264 capability summary evidence`)
-Latest referenced CI run: `26085100039` (`main` CI, success)
+Current evidence commit: `5bbacd3` (`Refresh H264 diagnostics index`)
+Latest referenced CI run: `26085717993` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26085100039`:
+Latest checked artifact from CI run `26085717993`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
