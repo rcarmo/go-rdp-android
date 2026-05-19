@@ -102,6 +102,27 @@ for label in ["bitmap", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-
     s = json.load(open(base / label / "summary.json"))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
+python3 - "$OUT" <<'PY'
+import json, pathlib, sys
+base = pathlib.Path(sys.argv[1])
+failures = []
+def load(label):
+    return json.load(open(base / label / "summary.json"))
+bitmap = load("bitmap")
+if not bitmap.get("active_seen") or not bitmap.get("bitmap_seen") or bitmap.get("rdpgfx_seen"):
+    failures.append("bitmap fallback did not produce active bitmap-only evidence")
+planar = load("rdpgfx-planar")
+if not planar.get("active_seen") or not planar.get("rdpgfx_seen") or planar.get("h264_write_count", 0) != 0:
+    failures.append("RDPGFX Planar did not produce active RDPGFX evidence without H.264 writes")
+for label in ["h264-avc420-forced", "h264-forced-gfx-fallback"]:
+    s = load(label)
+    if not s.get("active_seen") or not s.get("rdpgfx_seen") or s.get("h264_reason") != "forced-by-env" or s.get("h264_write_count", 0) <= 0 or s.get("h264_write_bytes", 0) <= 0:
+        failures.append(f"{label} did not produce active forced H.264 evidence")
+if failures:
+    for failure in failures:
+        print(f"encoding matrix failure: {failure}", file=sys.stderr)
+    raise SystemExit(1)
+PY
 cat >>"$OUT/summary.md" <<'SUMMARY'
 
 ## Interpretation
