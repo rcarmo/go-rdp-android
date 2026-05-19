@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `c7cdc39` (`Refresh H264 transport spec status`)
-Latest referenced CI run: `26086331740` (`main` CI, success)
+Current evidence commit: `963438c` (`Refresh H264 milestones status`)
+Latest referenced CI run: `26086952959` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26086331740`:
+Latest checked artifact from CI run `26086952959`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -63,7 +63,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; allowlists are server-core/mock-server-only for the first polished APK, and Android TLS certificate rotation remains pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics now has a default RDPGFX Planar path plus explicit slow-path bitmap fallback evidence in CI. Remaining graphics blockers are physical-device/constrained-network validation, Microsoft-client validation, and performance comparison on target hardware.
-- Release preflight diagnostic mode passes clean/synced/version/latest-CI checks, but signing secret presence could not be confirmed from automation (`gh secret list --repo rcarmo/go-rdp-android` returned no visible repository secrets again on 2026-05-17); controlled `v*` release-candidate/dry-run tagging is blocked until the repository owner confirms `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`.
+- Release preflight currently passes clean/synced/version/latest-CI checks, but signing secret presence still cannot be confirmed from automation (`make release-preflight` on 2026-05-19 failed only on missing/not-visible `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`); controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets.
 
 ## Documentation update policy
 

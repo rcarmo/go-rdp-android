@@ -68,7 +68,7 @@ Release-tag staging requires production signing secrets in GitHub Actions (never
 - `RELEASE_KEY_ALIAS`
 - `RELEASE_KEY_PASSWORD`
 
-If these are missing, the `release-files` job fails before publishing artifacts. As of 2026-05-17, release preflight diagnostic mode (`-require-secrets=false`) passed the clean-tree, upstream-sync, version-alignment, and latest-CI checks, but `gh secret list --repo rcarmo/go-rdp-android` from the automation token still returned no visible repository secrets. A controlled `v*` release-candidate/dry-run tag remains blocked until the repository owner confirms those four signing secrets are present and correct.
+If these are missing, the `release-files` job fails before publishing artifacts. As of 2026-05-19, `make release-preflight` passed the clean-tree, upstream-sync, version-alignment, and latest-CI checks, but failed only because `gh secret list --repo rcarmo/go-rdp-android` from the automation token still cannot see `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, or `RELEASE_KEY_PASSWORD`. A controlled `v*` release-candidate/dry-run tag remains blocked until the repository owner confirms those four signing secrets are present and correct.
 
 ## Current identifiers
 
