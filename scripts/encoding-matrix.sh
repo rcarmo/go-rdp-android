@@ -109,6 +109,20 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - Bitmap fallback should show active streaming with `bitmap_seen=true` and no RDPGFX.
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
+
+## Encoding families not implemented by this server yet
+
+These are tracked explicitly so the matrix does not imply full RDP graphics-codec coverage:
+
+| Encoding family | Matrix status | Rationale |
+| --- | --- | --- |
+| RDP 5/6 bitmap compression / bitmap RLE | Not implemented | Potential legacy-client bandwidth improvement; lower priority than RDPGFX Planar unless client evidence requires it. |
+| NSCodec | Not implemented | Useful for some non-GFX clients; needs capability parsing plus encoder implementation before it can be tested. |
+| RemoteFX / RFX | Not implemented | Deprecated/disabled in many clients; only implement if compatibility evidence justifies it. |
+| RDPGFX AVC444 / AVC444v2 | Not implemented | Higher-fidelity H.264 variants; defer until AVC420 negotiation/client proof exists. |
+| RDPGFX ClearCodec | Not implemented | Text/graphics optimized codec; defer behind Planar and AVC420. |
+| RDPGFX Progressive / other progressive codecs | Not implemented | More complex progressive pipeline; not first-APK scope. |
+| JPEG/PNG bitmap codecs | Not implemented | No current server output path; add only if client capabilities and performance data justify it. |
 SUMMARY
 
 cat "$OUT/summary.md"

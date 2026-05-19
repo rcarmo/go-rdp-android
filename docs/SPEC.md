@@ -119,7 +119,7 @@ Deliberately skip initially:
 - Start with raw bitmap updates. ✅ (slow-path fallback and benchmark oracle)
 - Add dirty-region detection. ✅
 - Add RDPGFX Planar over `drdynvc`. ✅ (FreeRDP `/sec:nla /gfx` CI proof)
-- Add NSCodec/RemoteFX or legacy bitmap RLE only if clients need it and encoders are mature enough.
+- Add NSCodec, RemoteFX/RFX, legacy bitmap RLE, RDPGFX AVC444/AVC444v2, ClearCodec, progressive codecs, or JPEG/PNG bitmap codecs only if client capability evidence shows they materially improve compatibility/performance; they are explicitly not implemented in the current server.
 - Add full-spectrum H.264/AVC using Android `MediaCodec` as the next top-priority graphics workstream, layered ahead of RDPGFX only when protocol/client support is negotiated. ✅/experimental (encoder, queue, RDPGFX AVC420 wrapping/streaming, diagnostics, and non-blocking CI artifact exist; true client proof is still pending)
 
 ## Screen pipeline choices

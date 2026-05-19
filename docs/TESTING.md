@@ -82,7 +82,7 @@ make encoding-matrix
 scripts/encoding-matrix.sh /workspace/tmp/rdp-encoding-matrix-$(date +%Y%m%d-%H%M%S)
 ```
 
-Requirements: `xfreerdp3`/`xfreerdp`, `Xvfb`, and `xwd`. The matrix starts `cmd/mock-server` with a test pattern and runs four NLA cases: slow-path bitmap fallback, RDPGFX Planar with H.264 disabled, forced H.264 with `/gfx:AVC420`, and forced H.264 with `/gfx`. It writes per-case FreeRDP logs, mock-server logs, screenshots, JSON/Markdown summaries, and a top-level `summary.md`. Treat the H.264 cases as protocol smoke evidence only unless the client advertises AVC420 without `GO_RDP_ANDROID_FORCE_H264=1`.
+Requirements: `xfreerdp3`/`xfreerdp`, `Xvfb`, and `xwd`. The matrix starts `cmd/mock-server` with a test pattern and runs four NLA cases: slow-path bitmap fallback, RDPGFX Planar with H.264 disabled, forced H.264 with `/gfx:AVC420`, and forced H.264 with `/gfx`. It writes per-case FreeRDP logs, mock-server logs, screenshots, JSON/Markdown summaries, and a top-level `summary.md`. Treat the H.264 cases as protocol smoke evidence only unless the client advertises AVC420 without `GO_RDP_ANDROID_FORCE_H264=1`. The summary also lists missing/unimplemented encoding families so the matrix is explicit about not covering RDP bitmap RLE, NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, or JPEG/PNG bitmap codecs yet.
 
 ## Nightly/optional FreeRDP soak
 
