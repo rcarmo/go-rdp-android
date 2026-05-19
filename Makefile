@@ -159,6 +159,10 @@ release-preflight: ## Check clean/synced repo, green latest CI, version alignmen
 	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/release-preflight.go
 	rm -rf .gotmp
 
+.PHONY: encoding-matrix
+encoding-matrix: ## Run local FreeRDP bitmap/RDPGFX/H.264 encoding matrix (requires xfreerdp + Xvfb)
+	./scripts/encoding-matrix.sh
+
 .PHONY: clean
 clean: ## Clean generated outputs
 	$(GO) clean

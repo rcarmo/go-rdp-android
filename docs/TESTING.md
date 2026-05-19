@@ -72,6 +72,18 @@ The same full UX path runs automatically for `*-ux` tags and release tags (`vX.X
 
 Release-tag staging now expects production signing secrets in GitHub Actions (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`) and fails fast if they are absent.
 
+## Local encoding matrix
+
+Use the local FreeRDP encoding matrix when changing graphics transport or before release-candidate testing:
+
+```bash
+make encoding-matrix
+# or choose an output directory:
+scripts/encoding-matrix.sh /workspace/tmp/rdp-encoding-matrix-$(date +%Y%m%d-%H%M%S)
+```
+
+Requirements: `xfreerdp3`/`xfreerdp`, `Xvfb`, and `xwd`. The matrix starts `cmd/mock-server` with a test pattern and runs four NLA cases: slow-path bitmap fallback, RDPGFX Planar with H.264 disabled, forced H.264 with `/gfx:AVC420`, and forced H.264 with `/gfx`. It writes per-case FreeRDP logs, mock-server logs, screenshots, JSON/Markdown summaries, and a top-level `summary.md`. Treat the H.264 cases as protocol smoke evidence only unless the client advertises AVC420 without `GO_RDP_ANDROID_FORCE_H264=1`.
+
 ## Nightly/optional FreeRDP soak
 
 A dedicated `FreeRDP soak` workflow now runs nightly (cron) and supports manual `workflow_dispatch` runs. It repeatedly connects `xfreerdp` to the mock server in one selected security mode (`rdp`/`tls`/`nla`), captures per-iteration exit codes and server RSS, and fails when memory growth exceeds a configurable threshold. Each iteration is now bounded by a hard timeout (`SOAK_ITERATION_TIMEOUT_SEC`, default `45`) and escalates client shutdown (`INT` → `TERM` → `KILL`) to avoid stuck `xfreerdp` attempts stalling the entire soak run.
