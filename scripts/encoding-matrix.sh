@@ -157,4 +157,23 @@ These are tracked explicitly so the matrix does not imply full RDP graphics-code
 | JPEG/PNG bitmap codecs | Not implemented | No current server output path; add only if client capabilities and performance data justify it. |
 SUMMARY
 
+cat >"$OUT/codec-coverage.json" <<'JSON'
+{
+  "implemented": [
+    {"name":"slow-path raw bitmap", "status":"implemented", "matrix_case":"bitmap"},
+    {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
+    {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
+  ],
+  "missing": [
+    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "priority":"evidence-gated"},
+    {"name":"NSCodec", "priority":"evidence-gated"},
+    {"name":"RemoteFX / RFX", "priority":"deferred"},
+    {"name":"RDPGFX AVC444 / AVC444v2", "priority":"deferred-until-avc420-proof"},
+    {"name":"RDPGFX ClearCodec", "priority":"deferred"},
+    {"name":"RDPGFX Progressive / other progressive codecs", "priority":"deferred"},
+    {"name":"JPEG/PNG bitmap codecs", "priority":"evidence-gated"}
+  ]
+}
+JSON
+
 cat "$OUT/summary.md"
