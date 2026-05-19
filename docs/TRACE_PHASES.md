@@ -21,7 +21,7 @@ Trace lines are intended for CI artifacts and local debugging. They must not log
 | Classic input | `fastpath_input`, `fastpath_input_skip` | Fast-Path input decode counts and skipped/unsupported payload metadata. |
 | Dynamic virtual channels | `drdynvc_pdu`, `drdynvc_caps`, `drdynvc_create`, `drdynvc_data_first`, `drdynvc_close`, `drdynvc_fragment_expired` | Static `drdynvc` routing, DVC negotiation/lifecycle, fragmentation, cleanup. |
 | RDPEI | `rdpei_cs_ready`, `rdpei_touch`, `rdpei_dismiss_hovering` | True RDP touch negotiation and bounded touch-frame/contact metadata. |
-| Android bridge | Android logcat tags `GoRdpAndroid`, `GoRdpAndroidService`, `GoRdpAndroidCapture`, `GoRdpAndroidH264`, `GoRdpAndroidGo` | Bridge/service/capture health. The health string exposes backend, mode, auth, address/fingerprint, connection/auth/input/RDPEI/DVC/frame counters, selected graphics path, bitmap/RDPGFX/H.264 byte counters, H.264 key/config/error and submitted/queued/dropped counters, queue depth/drop count, and input scale. |
+| Android bridge | Android logcat tags `GoRdpAndroid`, `GoRdpAndroidService`, `GoRdpAndroidCapture`, `GoRdpAndroidH264`, `GoRdpAndroidGo` | Bridge/service/capture health. The health string exposes backend, mode, auth, address/fingerprint, connection/auth/input/RDPEI/DVC/frame counters, selected graphics path, H.264 status reason, bitmap/RDPGFX/H.264 byte counters, H.264 key/config/error and submitted/queued/dropped counters, queue depth/drop count, and input scale. |
 
 ## Adding new phases
 
