@@ -184,7 +184,7 @@ Use this matrix for manual client evidence before a public APK. Keep screenshots
 | pending | pending | Microsoft Remote Desktop | nla-required | pending | screenshot, client log, app diagnostics | Release blocker until active streaming and disconnect behavior are recorded. |
 | pending | pending | Microsoft Remote Desktop | tls-only | pending | screenshot, client log, app diagnostics | Compatibility fallback only for non-NLA behavior. |
 
-For each manual row, record the app diagnostics text, TLS fingerprint/certificate warning behavior, client screenshot or log, security mode, selected graphics path (`rdpgfx-planar` or `bitmap-fallback`), whether streaming became active, input behavior, and logoff/disconnect cleanup.
+For each manual row, record the app diagnostics text, TLS fingerprint/certificate warning behavior, client screenshot or log, security mode, selected graphics path (`h264-avc`, `rdpgfx-planar`, or `bitmap-fallback`), `h264Status` when present, whether streaming became active, input behavior, and logoff/disconnect cleanup. For codec-priority decisions, also capture the client graphics capability evidence described in [GRAPHICS_CODECS](GRAPHICS_CODECS.md).
 
 ## Blocked on physical devices
 

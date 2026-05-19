@@ -22,6 +22,18 @@ This page separates the graphics paths the server implements today from RDP code
 | RDPGFX Progressive / other progressive codecs | No | No | More complex progressive pipeline; not first-APK scope. |
 | JPEG/PNG bitmap codecs | No | No | No current server output path; add only if capability/performance data justifies it. |
 
+## Client capability evidence to collect
+
+When testing FreeRDP, Remmina, or Microsoft Remote Desktop, preserve enough logs to answer these questions before adding another encoder:
+
+- Does the client advertise RDPGFX and which RDPGFX version/flags are present?
+- Does it advertise AVC420 without `AVC_DISABLED`?
+- Does it advertise AVC444/AVC444v2, ClearCodec, progressive codecs, RemoteFX/RFX, NSCodec, or classic bitmap compression preferences?
+- Does the client fail or degrade on RDPGFX Planar but remain capable of another codec family?
+- Does a constrained-network measurement show a meaningful bandwidth/latency/CPU win over RDPGFX Planar?
+
+For FreeRDP, keep `xfreerdp` TRACE logs plus `mock-server.log` and `summary.json` from `make encoding-matrix` or the CI probe. For Remmina, keep the Remmina debug log, FreeRDP library version, profile settings, screenshot, and the server trace log for the same session. For Microsoft Remote Desktop, keep client version/platform, screenshots, Android diagnostics text, and server trace summaries.
+
 ## Decision rule for adding a codec
 
 Before implementing a missing codec, collect at least one of:
