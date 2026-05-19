@@ -58,7 +58,7 @@ Tasks:
 - negotiated/session desktop sizing ✅
 - RDPGFX dynamic-channel negotiation and Planar compressed frames ✅ (FreeRDP `/sec:nla /gfx` CI proof; physical-device/Microsoft-client performance evidence pending)
 - experimental H.264/AVC over RDPGFX AVC420 ✅/partial (Android `MediaCodec` scaffold, encoded-frame queue, AVC420 `RFX_AVC420_BITMAP_STREAM` emission/streaming, codec-config/coalescing hardening, `h264Status` diagnostics, and forced non-blocking CI artifact evidence with capability fields; true client AVC420 compatibility and physical-device performance pending)
-- optional legacy/extra codecs (bitmap RLE, NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive, JPEG/PNG bitmap codecs) — not implemented; add only if client evidence justifies them
+- optional legacy/extra codecs (bitmap RLE, NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive, JPEG/PNG bitmap codecs) — not implemented; add only if client evidence justifies them; tracked in `/workspace/workitems/10-next/go-rdp-android-graphics-codec-coverage.md`
 
 ## M4 — Input
 
