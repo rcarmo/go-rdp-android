@@ -8,6 +8,25 @@ import (
 	"time"
 )
 
+func TestNewFileH264SourceEmitsInitialFrameImmediately(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "frame.h264")
+	data := []byte{0, 0, 0, 1, 0x65}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	source, err := newFileH264Source(ctx, path, 1)
+	if err != nil {
+		t.Fatalf("newFileH264Source: %v", err)
+	}
+	select {
+	case <-source.H264Frames():
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for initial H.264 frame")
+	}
+}
+
 func TestNewFileH264Source(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "frame.h264")
 	data := []byte{0, 0, 0, 1, 0x65}

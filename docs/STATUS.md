@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `edcc751` (`Record coalesced H264 probe evidence`)
-Latest referenced CI run: `26079295781` (`main` CI, success)
+Current evidence commit: `e4ca8e0` (`Refresh FreeRDP soak evidence`)
+Latest referenced CI run: `26079735177` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26079295781`:
+Latest checked artifact from CI run `26079735177`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

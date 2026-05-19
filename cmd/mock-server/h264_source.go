@@ -41,26 +41,30 @@ func newFileH264Source(ctx context.Context, path string, fps int) (*fileH264Sour
 		defer ticker.Stop()
 		pts := int64(0)
 		index := 0
+		sendNext := func() {
+			unit := units[index%len(units)]
+			index++
+			keyFrame := h264FixtureContainsNALType(unit, 5)
+			codecConfig := !keyFrame && (h264FixtureContainsNALType(unit, 7) || h264FixtureContainsNALType(unit, 8))
+			frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: keyFrame, CodecConfig: codecConfig, Data: unit}
+			pts += interval.Microseconds()
+			select {
+			case s.frames <- frame:
+			default:
+				select {
+				case <-s.frames:
+				default:
+				}
+				s.frames <- frame
+			}
+		}
+		sendNext()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				unit := units[index%len(units)]
-				index++
-				keyFrame := h264FixtureContainsNALType(unit, 5)
-				codecConfig := !keyFrame && (h264FixtureContainsNALType(unit, 7) || h264FixtureContainsNALType(unit, 8))
-				frame := rdpserver.H264Frame{PresentationTimeUS: pts, KeyFrame: keyFrame, CodecConfig: codecConfig, Data: unit}
-				pts += interval.Microseconds()
-				select {
-				case s.frames <- frame:
-				default:
-					select {
-					case <-s.frames:
-					default:
-					}
-					s.frames <- frame
-				}
+				sendNext()
 			}
 		}
 	}()
