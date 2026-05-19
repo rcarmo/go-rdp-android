@@ -53,6 +53,23 @@ func le16ForTest(data []byte) uint16 {
 	return uint16(data[0]) | uint16(data[1])<<8
 }
 
+func TestLatestAvailableH264UnitProcessesCurrentConfig(t *testing.T) {
+	ch := make(chan H264Frame, 1)
+	idr := H264Frame{PresentationTimeUS: 2, KeyFrame: true, Data: []byte{0, 0, 0, 1, 0x65}}
+	ch <- idr
+	var state h264StreamState
+	current := H264Frame{PresentationTimeUS: 1, CodecConfig: true, Data: []byte{0, 0, 0, 1, 0x67, 0, 0, 0, 1, 0x68}}
+	latest := latestAvailableH264Unit(ch, current, &state)
+	wire, ok := state.prepareForWire(latest)
+	if !ok {
+		t.Fatal("IDR after current config should be ready")
+	}
+	want := append(append([]byte(nil), current.Data...), idr.Data...)
+	if string(wire.Data) != string(want) {
+		t.Fatalf("wire data = %x, want %x", wire.Data, want)
+	}
+}
+
 func TestH264StreamStateQueuesConfigOnly(t *testing.T) {
 	var state h264StreamState
 	_, ok := state.prepareForWire(h264AccessUnit{CodecConfig: true, Data: []byte{0, 0, 0, 1, 1}})

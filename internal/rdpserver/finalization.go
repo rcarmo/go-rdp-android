@@ -242,6 +242,10 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 
 func latestAvailableH264Unit(frameCh <-chan H264Frame, current H264Frame, state *h264StreamState) H264Frame {
 	latest := current
+	if state != nil && current.CodecConfig && !current.KeyFrame {
+		_, _ = state.prepareForWire(current)
+		latest = H264Frame{}
+	}
 	for {
 		select {
 		case unit, ok := <-frameCh:
