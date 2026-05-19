@@ -18,6 +18,7 @@ Start here when working on `go-rdp-android`.
 - [DEBUGGING](DEBUGGING.md) — protocol, Android, gomobile, emulator, input, UX report, performance, and release troubleshooting.
 - [TRACE_PHASES](TRACE_PHASES.md) — structured server/Android trace phase taxonomy, H.264 status traces, and diagnostic bundle sources.
 - [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics, bitmap/RDPGFX/H.264 baselines/status, known first-APK performance limits, and optimization workstreams.
+- [GRAPHICS_CODECS](GRAPHICS_CODECS.md) — implemented graphics paths, missing/deferred RDP codec families, and codec-addition decision rules.
 - [RELEASES](RELEASES.md) — tag policy and release identifiers.
 
 ## Assets
