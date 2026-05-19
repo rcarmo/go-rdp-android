@@ -22,6 +22,9 @@ type summary struct {
 	H264WriteSeen  bool     `json:"h264_write_seen"`
 	H264WriteCount int      `json:"h264_write_count,omitempty"`
 	H264WriteBytes int      `json:"h264_write_bytes,omitempty"`
+	H264Ready      string   `json:"h264_ready,omitempty"`
+	H264Version    string   `json:"h264_version,omitempty"`
+	H264Flags      string   `json:"h264_flags,omitempty"`
 	H264Reason     string   `json:"h264_reason,omitempty"`
 	AVC420ExitCode string   `json:"avc420_exit_code,omitempty"`
 	ActiveSeen     bool     `json:"active_seen"`
@@ -52,6 +55,9 @@ func main() {
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
 	s.H264WriteCount, s.H264WriteBytes = traceCountAndSum(sv, "rdpgfx_h264_write", "bytes")
+	s.H264Ready = lastTraceValue(sv, "rdpgfx_h264_status", "ready")
+	s.H264Version = lastTraceValue(sv, "rdpgfx_h264_status", "version")
+	s.H264Flags = lastTraceValue(sv, "rdpgfx_h264_status", "flags")
 	s.H264Reason = lastTraceValue(sv, "rdpgfx_h264_status", "reason")
 	s.AVC420ExitCode = readTrim(filepath.Join(dir, "avc420-exit-code.txt"))
 	if s.AVC420ExitCode == "unknown" {
@@ -86,6 +92,9 @@ func main() {
 		"- H.264 write trace seen: `%v`\n"+
 		"- H.264 write trace count: `%d`\n"+
 		"- H.264 write trace bytes: `%d`\n"+
+		"- H.264 ready: `%s`\n"+
+		"- H.264 version: `%s`\n"+
+		"- H.264 flags: `%s`\n"+
 		"- H.264 status reason: `%s`\n"+
 		"- FreeRDP `/gfx:AVC420` exit code: `%s`\n"+
 		"- FreeRDP active state seen: `%v`\n"+
@@ -96,7 +105,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }
