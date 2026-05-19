@@ -117,7 +117,14 @@ python3 - "$OUT" >>"$OUT/summary.md" <<'PY'
 import pathlib, re, sys
 base = pathlib.Path(sys.argv[1])
 pattern = re.compile(r"rdpgfx_cap .*index=(\d+) version=(0x[0-9a-fA-F]+).*flags=(0x[0-9a-fA-F]+) supported=(\w+)")
-seen = []
+def flag_notes(flags):
+    value = int(flags, 16)
+    notes = []
+    if value & 0x10:
+        notes.append("AVC420_ENABLED")
+    if value & 0x20:
+        notes.append("AVC_DISABLED")
+    return "/" + "+".join(notes) if notes else ""
 for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     log = base / label / "mock-server.log"
     if not log.exists():
@@ -130,7 +137,7 @@ for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]
     if not caps:
         print(f"- {label}: no RDPGFX capability traces found")
         continue
-    joined = ", ".join(f"{version}/flags={flags}/supported={supported}" for _, version, flags, supported in caps)
+    joined = ", ".join(f"{version}/flags={flags}{flag_notes(flags)}/supported={supported}" for _, version, flags, supported in caps)
     print(f"- {label}: {joined}")
 PY
 cat >>"$OUT/summary.md" <<'SUMMARY'

@@ -60,4 +60,4 @@ Run:
 make encoding-matrix
 ```
 
-The matrix currently exercises implemented paths, records observed RDPGFX capability advertisements from server traces, and then lists the missing families above so reports are explicit about coverage boundaries.
+The matrix currently exercises implemented paths, records observed RDPGFX capability advertisements from server traces, annotates the AVC-related flag bits (`0x10` = `AVC420_ENABLED`, `0x20` = `AVC_DISABLED`), and then lists the missing families above so reports are explicit about coverage boundaries.

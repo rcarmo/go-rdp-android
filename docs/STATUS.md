@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-17
-Current evidence commit: `69bb4ab` (`Document graphics capability evidence`)
-Latest referenced CI run: `26129225166` (`main` CI, success)
+Current evidence commit: `1f22250` (`Include RDPGFX capabilities in matrix`)
+Latest referenced CI run: `26129799603` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26129225166`:
+Latest checked artifact from CI run `26129799603`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
