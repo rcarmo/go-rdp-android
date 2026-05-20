@@ -33,23 +33,26 @@ type Server struct {
 	frames frame.Source
 	input  input.Sink
 
-	tlsConfig         *tls.Config
-	tlsFingerprint    string
-	authLimiter       *authBackoffLimiter
-	activeConns       atomic.Int64
-	acceptedConns     atomic.Int64
-	handshakeFailures atomic.Int64
-	authFailures      atomic.Int64
-	inputEvents       atomic.Int64
-	rdpeiContacts     atomic.Int64
-	framesSent        atomic.Int64
-	bitmapBytes       atomic.Int64
-	rdpgfxFrames      atomic.Int64
-	rdpgfxBytes       atomic.Int64
-	h264Frames        atomic.Int64
-	h264Bytes         atomic.Int64
-	dvcFragments      atomic.Int64
-	h264Status        atomic.Value
+	tlsConfig           *tls.Config
+	tlsFingerprint      string
+	authLimiter         *authBackoffLimiter
+	activeConns         atomic.Int64
+	acceptedConns       atomic.Int64
+	handshakeFailures   atomic.Int64
+	authFailures        atomic.Int64
+	inputEvents         atomic.Int64
+	rdpeiContacts       atomic.Int64
+	framesSent          atomic.Int64
+	bitmapBytes         atomic.Int64
+	bitmapRLEFrames     atomic.Int64
+	bitmapRLEBytes      atomic.Int64
+	bitmapRLESavedBytes atomic.Int64
+	rdpgfxFrames        atomic.Int64
+	rdpgfxBytes         atomic.Int64
+	h264Frames          atomic.Int64
+	h264Bytes           atomic.Int64
+	dvcFragments        atomic.Int64
+	h264Status          atomic.Value
 
 	mu sync.Mutex
 	ln net.Listener
@@ -162,6 +165,15 @@ func (s *Server) FramesSent() int64 { return s.framesSent.Load() }
 // BitmapBytes returns the total number of bitmap update payload bytes sent to clients.
 func (s *Server) BitmapBytes() int64 { return s.bitmapBytes.Load() }
 
+// BitmapRLEFrames returns the total number of bitmap frame batches containing compressed RLE rectangles.
+func (s *Server) BitmapRLEFrames() int64 { return s.bitmapRLEFrames.Load() }
+
+// BitmapRLEBytes returns the total number of compressed bitmap RLE payload bytes sent to clients.
+func (s *Server) BitmapRLEBytes() int64 { return s.bitmapRLEBytes.Load() }
+
+// BitmapRLESavedBytes returns the estimated bytes saved versus uncompressed bitmap rectangles.
+func (s *Server) BitmapRLESavedBytes() int64 { return s.bitmapRLESavedBytes.Load() }
+
 // RDPGFXFrames returns the total number of RDPGFX frame update batches sent to clients.
 func (s *Server) RDPGFXFrames() int64 { return s.rdpgfxFrames.Load() }
 
@@ -189,6 +201,9 @@ func (s *Server) GraphicsPath() string {
 	}
 	if s.rdpgfxFrames.Load() > 0 {
 		return "rdpgfx-planar"
+	}
+	if s.bitmapRLEFrames.Load() > 0 {
+		return "bitmap-rle"
 	}
 	if s.bitmapBytes.Load() > 0 || s.framesSent.Load() > 0 {
 		return "bitmap-fallback"
@@ -273,7 +288,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
 	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)

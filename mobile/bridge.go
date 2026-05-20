@@ -320,6 +320,36 @@ func (s *Server) BitmapBytes() int64 {
 	return s.server.BitmapBytes()
 }
 
+// BitmapRLEFrames returns the total number of bitmap batches containing compressed RLE rectangles.
+func (s *Server) BitmapRLEFrames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.BitmapRLEFrames()
+}
+
+// BitmapRLEBytes returns the total number of compressed bitmap RLE payload bytes sent by the running server.
+func (s *Server) BitmapRLEBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.BitmapRLEBytes()
+}
+
+// BitmapRLESavedBytes returns the estimated bytes saved by bitmap RLE versus uncompressed rectangles.
+func (s *Server) BitmapRLESavedBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.BitmapRLESavedBytes()
+}
+
 // RDPGFXFrames returns the total number of RDPGFX frame batches sent by the running server.
 func (s *Server) RDPGFXFrames() int64 {
 	s.mu.Lock()
@@ -467,6 +497,15 @@ func FramesSent() int64 { return defaultServer.FramesSent() }
 
 // BitmapBytes returns the bitmap update payload bytes sent by the default server.
 func BitmapBytes() int64 { return defaultServer.BitmapBytes() }
+
+// BitmapRLEFrames returns the bitmap RLE frame-batch count for the default server.
+func BitmapRLEFrames() int64 { return defaultServer.BitmapRLEFrames() }
+
+// BitmapRLEBytes returns the compressed bitmap RLE payload bytes for the default server.
+func BitmapRLEBytes() int64 { return defaultServer.BitmapRLEBytes() }
+
+// BitmapRLESavedBytes returns estimated bytes saved by bitmap RLE for the default server.
+func BitmapRLESavedBytes() int64 { return defaultServer.BitmapRLESavedBytes() }
 
 // RDPGFXFrames returns the RDPGFX frame count for the default server.
 func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }

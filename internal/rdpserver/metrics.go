@@ -3,14 +3,17 @@ package rdpserver
 import "sync/atomic"
 
 type serverMetrics struct {
-	framesSent   *atomic.Int64
-	bitmapBytes  *atomic.Int64
-	rdpgfxFrames *atomic.Int64
-	rdpgfxBytes  *atomic.Int64
-	h264Frames   *atomic.Int64
-	h264Bytes    *atomic.Int64
-	dvcFragments *atomic.Int64
-	h264Status   *atomic.Value
+	framesSent          *atomic.Int64
+	bitmapBytes         *atomic.Int64
+	bitmapRLEFrames     *atomic.Int64
+	bitmapRLEBytes      *atomic.Int64
+	bitmapRLESavedBytes *atomic.Int64
+	rdpgfxFrames        *atomic.Int64
+	rdpgfxBytes         *atomic.Int64
+	h264Frames          *atomic.Int64
+	h264Bytes           *atomic.Int64
+	dvcFragments        *atomic.Int64
+	h264Status          *atomic.Value
 }
 
 func (m serverMetrics) recordH264Status(status string) {
@@ -31,6 +34,18 @@ func (m serverMetrics) recordBitmapFrame(updates [][]byte) {
 	}
 	if m.bitmapBytes != nil {
 		m.bitmapBytes.Add(totalPayloadBytes(updates))
+	}
+	rleCount, rleBytes, savedBytes := bitmapRLEStatsFromUpdates(updates)
+	if rleCount > 0 {
+		if m.bitmapRLEFrames != nil {
+			m.bitmapRLEFrames.Add(1)
+		}
+		if m.bitmapRLEBytes != nil {
+			m.bitmapRLEBytes.Add(rleBytes)
+		}
+		if m.bitmapRLESavedBytes != nil {
+			m.bitmapRLESavedBytes.Add(savedBytes)
+		}
 	}
 }
 

@@ -82,6 +82,12 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun bitmapBytes(): Long = 0
 
+    override fun bitmapRleFrames(): Long = 0
+
+    override fun bitmapRleBytes(): Long = 0
+
+    override fun bitmapRleSavedBytes(): Long = 0
+
     override fun rdpgfxFrames(): Long = 0
 
     override fun rdpgfxBytes(): Long = 0

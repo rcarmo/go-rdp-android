@@ -16,6 +16,11 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 		t.Fatalf("GraphicsPath() = %q, want bitmap-fallback", got)
 	}
 
+	s.bitmapRLEFrames.Store(1)
+	if got := s.GraphicsPath(); got != "bitmap-rle" {
+		t.Fatalf("GraphicsPath() = %q, want bitmap-rle", got)
+	}
+
 	s.rdpgfxFrames.Store(1)
 	if got := s.GraphicsPath(); got != "rdpgfx-planar" {
 		t.Fatalf("GraphicsPath() = %q, want rdpgfx-planar", got)
@@ -36,6 +41,37 @@ func TestServerH264Status(t *testing.T) {
 	metrics.recordH264Status("client-avc420-not-advertised")
 	if got := s.H264Status(); got != "client-avc420-not-advertised" {
 		t.Fatalf("H264Status() = %q", got)
+	}
+}
+
+func TestServerMetricsRecordBitmapRLEFrame(t *testing.T) {
+	var framesSent atomic.Int64
+	var bitmapBytes atomic.Int64
+	var bitmapRLEFrames atomic.Int64
+	var bitmapRLEBytes atomic.Int64
+	var bitmapRLESavedBytes atomic.Int64
+	metrics := serverMetrics{framesSent: &framesSent, bitmapBytes: &bitmapBytes, bitmapRLEFrames: &bitmapRLEFrames, bitmapRLEBytes: &bitmapRLEBytes, bitmapRLESavedBytes: &bitmapRLESavedBytes}
+
+	update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{buildSolidBitmapRect(64, 64, 0xff336699)})
+	if !ok {
+		t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
+	}
+	metrics.recordBitmapFrame([][]byte{update})
+
+	if got := framesSent.Load(); got != 1 {
+		t.Fatalf("framesSent = %d, want 1", got)
+	}
+	if got := bitmapBytes.Load(); got != int64(len(update)) {
+		t.Fatalf("bitmapBytes = %d, want %d", got, len(update))
+	}
+	if got := bitmapRLEFrames.Load(); got != 1 {
+		t.Fatalf("bitmapRLEFrames = %d, want 1", got)
+	}
+	if got := bitmapRLEBytes.Load(); got <= 0 {
+		t.Fatalf("bitmapRLEBytes = %d, want positive", got)
+	}
+	if got := bitmapRLESavedBytes.Load(); got <= 0 {
+		t.Fatalf("bitmapRLESavedBytes = %d, want positive", got)
 	}
 }
 
