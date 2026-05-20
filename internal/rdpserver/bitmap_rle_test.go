@@ -92,6 +92,38 @@ func TestBuildSolidBitmapUpdateUsesRLEWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestBitmapRLEStatsFromUpdates(t *testing.T) {
+	rect := buildSolidBitmapRect(64, 64, 0xff336699)
+	update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
+	if !ok {
+		t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
+	}
+	rects, bytes, saved := bitmapRLEStatsFromUpdates([][]byte{update})
+	if rects != 1 {
+		t.Fatalf("rects = %d, want 1", rects)
+	}
+	if bytes <= 0 {
+		t.Fatalf("bytes = %d, want positive", bytes)
+	}
+	if saved <= 0 {
+		t.Fatalf("saved = %d, want positive", saved)
+	}
+}
+
+func TestBitmapRLEStatsFromUpdatesIgnoresMalformed(t *testing.T) {
+	for _, update := range [][][]byte{
+		{nil},
+		{{0x00, 0x00}},
+		{{0x01, 0x00, 0x01, 0x00, 0x00}},
+		{{0x01, 0x00, 0x01, 0x00, 0, 0, 0, 0, 64, 0, 64, 0, 24, 0, byte(bitmapCompressionFlag), byte((bitmapCompressionFlag | noBitmapCompressionHeader) >> 8), 0xff, 0xff}},
+	} {
+		rects, bytes, saved := bitmapRLEStatsFromUpdates(update)
+		if rects != 0 || bytes != 0 || saved != 0 {
+			t.Fatalf("bitmapRLEStatsFromUpdates(%x) = %d,%d,%d", update, rects, bytes, saved)
+		}
+	}
+}
+
 func TestBuildCompressedBitmapRLEUpdateRejectsExpansion(t *testing.T) {
 	rect := bitmapRect{Width: 80, Height: 1, BPP: bitmapBPP24, Data: make([]byte, alignedBitmapRowBytes(80, bitmapBPP24))}
 	for i := range rect.Data {
