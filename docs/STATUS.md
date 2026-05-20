@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-20
-Current evidence commit: `75eb451` (`Add bitmap RLE copy encoder scaffold`)
-Latest referenced CI run: `26173411582` (`main` CI, success)
+Current evidence commit: `1d6d3fe` (`Mark bitmap RLE scaffold in matrix`)
+Latest referenced CI run: `26174180805` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26173411582`:
+Latest checked artifact from CI run `26174180805`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
