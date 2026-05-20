@@ -81,7 +81,7 @@ For `/sec:rdp`, `/sec:tls`, and `/sec:nla`, the gate requires `active_seen=true`
 
 ## Legacy bitmap RLE scaffold debugging
 
-The classic RDP 5/6 bitmap-compression path is currently a scaffold only. `internal/rdpserver/bitmap_rle.go` contains a conservative 24-bpp COPY-order encoder with round-trip unit coverage, and `buildCompressedBitmapRLEUpdate(...)` can build a compressed Bitmap Update payload with `BITMAP_COMPRESSION | NO_BITMAP_COMPRESSION_HDR`; however, the server does not negotiate or emit compressed bitmap updates at runtime yet. If work resumes on this path, keep the default bitmap fallback uncompressed until a client capability trace proves the path is needed, then add a guarded runtime toggle plus FreeRDP/Remmina smoke evidence before enabling it by default.
+The classic RDP 5/6 bitmap-compression path is currently a scaffold only. `internal/rdpserver/bitmap_rle.go` contains a conservative 24-bpp COPY/color-order encoder with round-trip unit coverage, and `buildCompressedBitmapRLEUpdate(...)` can build a compressed Bitmap Update payload with `BITMAP_COMPRESSION | NO_BITMAP_COMPRESSION_HDR`; the builder rejects payloads that would expand beyond the uncompressed tile. However, the server does not negotiate or emit compressed bitmap updates at runtime yet. If work resumes on this path, keep the default bitmap fallback uncompressed until a client capability trace proves the path is needed, then add a guarded runtime toggle plus FreeRDP/Remmina smoke evidence before enabling it by default.
 
 ## Android build debugging
 
