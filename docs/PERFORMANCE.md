@@ -87,9 +87,9 @@ ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 
 This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
 
-## FreeRDP soak snapshot: 2026-05-19 scheduled run
+## FreeRDP soak snapshot: 2026-05-20 scheduled run
 
-Scheduled workflow run `26076121092` exercised 30 `/sec:nla` FreeRDP sessions against the mock server with an 8-second per-iteration hold and 45-second timeout guard. The run passed with RSS ranging from 15,176 KB to 20,424 KB, a 5,248 KB delta against the 51,200 KB threshold. Each iteration remained bounded by the controlled timeout/escalation path rather than a stuck-client hang.
+Scheduled workflow run `26141256232` exercised 30 `/sec:nla` FreeRDP sessions against the mock server with an 8-second per-iteration hold and 45-second timeout guard. The run passed with RSS ranging from 15,440 KB to 19,164 KB, a 3,724 KB delta against the 51,200 KB threshold. Each iteration remained bounded by the controlled timeout/escalation path rather than a stuck-client hang.
 
 This is not a substitute for physical Android device stability testing, but it is the current close-to-release soak evidence for server-side session cleanup and gross RSS growth.
 

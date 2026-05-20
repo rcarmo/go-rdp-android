@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-19
-Current evidence commit: `9242fbf` (`Assert encoding matrix evidence`)
-Latest referenced CI run: `26132243179` (`main` CI, success)
+Last updated: 2026-05-20
+Current evidence commit: `fc1da40` (`Refresh documentation status summary`)
+Latest referenced CI run: `26132702123` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -27,13 +27,13 @@ This page is the compact, human-readable status matrix for production readiness.
 | `drdynvc` scaffold | Unit/fuzz covered | Static `drdynvc`, DVC caps/create/data/data-first/close, RDPEI routing, fragment assembly, caps-before-lifecycle enforcement, unsupported/duplicate/second RDPEI create rejection, size bounds, fragment limits, stale-fragment cleanup, unexpected channel IDs, simultaneous fragments, close/reopen, variable-length channel IDs, and synthetic caps→create→RDPEI touch integration sequence. |
 | RDPEI touch lifecycle | Unit covered | Down/update/up, cancellation, duplicate contact IDs, reordered/stray events, multi-contact ordering, and optional rectangle/orientation/pressure metadata preservation. |
 | Android emulator UX | Optional/tag/manual | Full UX path runs for `*-ux` and release tags; default push does not run the emulator capture path. Scene plans now support synthetic `rdpei-tap` actions (via `drdynvc` + RDPEI) in addition to pointer taps. Latest on-demand `workflow_dispatch` evidence (`25517361134`) passed with Go-backed capture + UX report generation. |
-| FreeRDP soak (nightly/dispatch) | Optional | Dedicated `FreeRDP soak` workflow runs repeated security-mode sessions and fails on configurable server RSS growth, producing per-iteration CSV/log artifacts for stability analysis. Iterations now have a hard timeout and escalated shutdown path to prevent stuck-client runs; recent scheduled evidence: `26076121092` (success, 30 `/sec:nla` iterations, RSS delta 5,248 KB vs 51,200 KB threshold). |
+| FreeRDP soak (nightly/dispatch) | Optional | Dedicated `FreeRDP soak` workflow runs repeated security-mode sessions and fails on configurable server RSS growth, producing per-iteration CSV/log artifacts for stability analysis. Iterations now have a hard timeout and escalated shutdown path to prevent stuck-client runs; recent scheduled evidence: `26141256232` (success, 30 `/sec:nla` iterations, RSS delta 3,724 KB vs 51,200 KB threshold). |
 | Release file checks | Tag-only | `v*` release staging signs APK (`apksigner`) and AAB (`jarsigner`) with production keystore secrets from GitHub Actions, verifies signature reports, emits CycloneDX Go SBOM, and ships SHA-256 checksums with explicit artifact retention. |
 | GitHub Actions JS runtime | Updated | Workflows now opt into Node 24 execution (`FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`) to preempt Node 20 deprecation cutover risk. |
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26132243179`:
+Latest checked artifact from CI run `26132702123`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
