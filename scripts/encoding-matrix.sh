@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="${1:-$ROOT/encoding-matrix-artifacts}"
 XFREERDP="${XFREERDP:-$(command -v xfreerdp3 || command -v xfreerdp || true)}"
 XVFB="${XVFB:-$(command -v Xvfb || true)}"
+XWD="${XWD:-$(command -v xwd || true)}"
+PYTHON="${PYTHON:-$(command -v python3 || true)}"
 DISPLAY_NUM="${ENCODING_MATRIX_DISPLAY:-:98}"
 SERVER_PID=""
 XVFB_PID=""
@@ -15,6 +17,14 @@ if [[ -z "$XFREERDP" ]]; then
 fi
 if [[ -z "$XVFB" ]]; then
   echo "Xvfb not found; install xvfb" >&2
+  exit 127
+fi
+if [[ -z "$XWD" ]]; then
+  echo "xwd not found; install x11-apps or equivalent" >&2
+  exit 127
+fi
+if [[ -z "$PYTHON" ]]; then
+  echo "python3 not found; install Python 3" >&2
   exit 127
 fi
 
@@ -66,7 +76,7 @@ run_case() {
   DISPLAY="$DISPLAY_NUM" timeout --preserve-status 12s "$XFREERDP" /v:127.0.0.1:3390 /u:runner /p:secret /cert:ignore /log-level:TRACE $client_args >"$dir/xfreerdp.log" 2>&1 &
   local client_pid=$!
   sleep 6
-  DISPLAY="$DISPLAY_NUM" xwd -root -silent -out "$dir/xfreerdp-root.xwd" 2>/dev/null
+  DISPLAY="$DISPLAY_NUM" "$XWD" -root -silent -out "$dir/xfreerdp-root.xwd" 2>/dev/null
   wait "$client_pid"
   local exit_code=$?
   set -e
@@ -95,14 +105,14 @@ Server: cmd/mock-server test pattern, NLA credentials runner/secret
 | Case | Exit | Active | Bitmap | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
 | --- | ---: | --- | --- | --- | --- | ---: | ---: |
 SUMMARY
-python3 - "$OUT" >>"$OUT/summary.md" <<'PY'
+"$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
 for label in ["bitmap", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
-python3 - "$OUT" <<'PY'
+"$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
 failures = []
@@ -134,7 +144,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 ## Observed RDPGFX capability advertisements
 
 SUMMARY
-python3 - "$OUT" >>"$OUT/summary.md" <<'PY'
+"$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import pathlib, re, sys
 base = pathlib.Path(sys.argv[1])
 pattern = re.compile(r"rdpgfx_cap .*index=(\d+) version=(0x[0-9a-fA-F]+).*flags=(0x[0-9a-fA-F]+) supported=(\w+)")
