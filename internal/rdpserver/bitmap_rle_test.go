@@ -21,6 +21,25 @@ func TestEncodeBitmapRLE24CopyOnlyRoundTrip(t *testing.T) {
 	}
 }
 
+func TestBuildCompressedBitmapRLEUpdate(t *testing.T) {
+	rect := bitmapRect{Width: 2, Height: 1, BPP: bitmapBPP24, Data: []byte{1, 2, 3, 4, 5, 6, 0, 0}}
+	update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
+	if !ok {
+		t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
+	}
+	if rects, err := parseBitmapUpdateHeader(update); err != nil || rects != 1 {
+		t.Fatalf("parseBitmapUpdateHeader() rects=%d err=%v", rects, err)
+	}
+	flags := le16ForTest(update[4+14 : 4+16])
+	if flags != bitmapCompressionFlag|noBitmapCompressionHeader {
+		t.Fatalf("flags = 0x%04x", flags)
+	}
+	compressedLen := int(le16ForTest(update[4+16 : 4+18]))
+	if compressedLen != len(update)-(4+18) {
+		t.Fatalf("compressed length = %d, payload has %d", compressedLen, len(update)-(4+18))
+	}
+}
+
 func TestEncodeBitmapRLE24CopyOnlyRejectsInvalid(t *testing.T) {
 	if _, ok := encodeBitmapRLE24CopyOnly(bitmapRect{Width: 1, Height: 1, BPP: 16, Data: []byte{0}}); ok {
 		t.Fatal("expected non-24bpp input to be rejected")

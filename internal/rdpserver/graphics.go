@@ -279,17 +279,35 @@ func buildBitmapUpdate(rects []bitmapRect) []byte {
 	out := appendLE16Bytes(nil, updateTypeBitmap)
 	out = appendLE16Bytes(out, uint16(len(rects)))
 	for _, rect := range rects {
-		out = appendLE16Bytes(out, rect.Left)
-		out = appendLE16Bytes(out, rect.Top)
-		out = appendLE16Bytes(out, rect.Right)
-		out = appendLE16Bytes(out, rect.Bottom)
-		out = appendLE16Bytes(out, rect.Width)
-		out = appendLE16Bytes(out, rect.Height)
-		out = appendLE16Bytes(out, rect.BPP)
-		out = appendLE16Bytes(out, 0) // flags: uncompressed bitmap data
-		out = appendLE16Bytes(out, uint16(len(rect.Data)))
-		out = append(out, rect.Data...)
+		out = appendBitmapRect(out, rect, 0, rect.Data)
 	}
+	return out
+}
+
+func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
+	out := appendLE16Bytes(nil, updateTypeBitmap)
+	out = appendLE16Bytes(out, uint16(len(rects)))
+	for _, rect := range rects {
+		encoded, ok := encodeBitmapRLE24CopyOnly(rect)
+		if !ok || len(encoded) > int(^uint16(0)) {
+			return nil, false
+		}
+		out = appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded)
+	}
+	return out, true
+}
+
+func appendBitmapRect(out []byte, rect bitmapRect, flags uint16, data []byte) []byte {
+	out = appendLE16Bytes(out, rect.Left)
+	out = appendLE16Bytes(out, rect.Top)
+	out = appendLE16Bytes(out, rect.Right)
+	out = appendLE16Bytes(out, rect.Bottom)
+	out = appendLE16Bytes(out, rect.Width)
+	out = appendLE16Bytes(out, rect.Height)
+	out = appendLE16Bytes(out, rect.BPP)
+	out = appendLE16Bytes(out, flags)
+	out = appendLE16Bytes(out, uint16(len(data)))
+	out = append(out, data...)
 	return out
 }
 
