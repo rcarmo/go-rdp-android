@@ -103,15 +103,15 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
 for label in ["bitmap", "bitmap-rle", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -125,9 +125,8 @@ if not bitmap.get("active_seen") or not bitmap.get("bitmap_seen") or bitmap.get(
 bitmap_rle = load("bitmap-rle")
 if not bitmap_rle.get("active_seen") or not bitmap_rle.get("bitmap_seen") or bitmap_rle.get("rdpgfx_seen"):
     failures.append("bitmap RLE did not produce active bitmap-only evidence")
-bitmap_rle_log = (base / "bitmap-rle" / "mock-server.log").read_text(errors="replace")
-if "bitmap_rle_" not in bitmap_rle_log:
-    failures.append("bitmap RLE case did not emit bitmap_rle trace evidence")
+if not bitmap_rle.get("bitmap_rle_seen") or bitmap_rle.get("bitmap_rle_count", 0) <= 0 or bitmap_rle.get("bitmap_rle_saved_bytes", 0) <= 0:
+    failures.append("bitmap RLE case did not emit shrinking bitmap_rle trace evidence")
 planar = load("rdpgfx-planar")
 if not planar.get("active_seen") or not planar.get("rdpgfx_seen") or planar.get("h264_write_count", 0) != 0:
     failures.append("RDPGFX Planar did not produce active RDPGFX evidence without H.264 writes")
@@ -145,6 +144,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 ## Interpretation
 
 - Bitmap fallback should show active streaming with `bitmap_seen=true` and no RDPGFX.
+- Bitmap RLE should show active bitmap streaming plus `bitmap_rle_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`.
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
 

@@ -12,29 +12,33 @@ import (
 )
 
 type summary struct {
-	ExitCode       string   `json:"exit_code"`
-	TCPSeen        bool     `json:"tcp_seen"`
-	X224Seen       bool     `json:"x224_seen"`
-	MCSSeen        bool     `json:"mcs_seen"`
-	BitmapSeen     bool     `json:"bitmap_seen"`
-	RDPGFXSeen     bool     `json:"rdpgfx_seen"`
-	H264StatusSeen bool     `json:"h264_status_seen"`
-	H264WriteSeen  bool     `json:"h264_write_seen"`
-	H264WriteCount int      `json:"h264_write_count,omitempty"`
-	H264WriteBytes int      `json:"h264_write_bytes,omitempty"`
-	H264Ready      string   `json:"h264_ready,omitempty"`
-	H264Version    string   `json:"h264_version,omitempty"`
-	H264Flags      string   `json:"h264_flags,omitempty"`
-	H264Reason     string   `json:"h264_reason,omitempty"`
-	AVC420ExitCode string   `json:"avc420_exit_code,omitempty"`
-	ActiveSeen     bool     `json:"active_seen"`
-	FastPathSeen   bool     `json:"fastpath_seen"`
-	ErrorLines     []string `json:"error_lines"`
-	ServerPhases   []string `json:"server_phases"`
-	ScreenshotPNG  bool     `json:"screenshot_png"`
-	ScreenshotXWD  bool     `json:"screenshot_xwd"`
-	FreeRDPLogSize int      `json:"freerdp_log_size"`
-	ServerLogSize  int      `json:"server_log_size"`
+	ExitCode            string   `json:"exit_code"`
+	TCPSeen             bool     `json:"tcp_seen"`
+	X224Seen            bool     `json:"x224_seen"`
+	MCSSeen             bool     `json:"mcs_seen"`
+	BitmapSeen          bool     `json:"bitmap_seen"`
+	BitmapRLESeen       bool     `json:"bitmap_rle_seen"`
+	BitmapRLECount      int      `json:"bitmap_rle_count,omitempty"`
+	BitmapRLEBytes      int      `json:"bitmap_rle_bytes,omitempty"`
+	BitmapRLESavedBytes int      `json:"bitmap_rle_saved_bytes,omitempty"`
+	RDPGFXSeen          bool     `json:"rdpgfx_seen"`
+	H264StatusSeen      bool     `json:"h264_status_seen"`
+	H264WriteSeen       bool     `json:"h264_write_seen"`
+	H264WriteCount      int      `json:"h264_write_count,omitempty"`
+	H264WriteBytes      int      `json:"h264_write_bytes,omitempty"`
+	H264Ready           string   `json:"h264_ready,omitempty"`
+	H264Version         string   `json:"h264_version,omitempty"`
+	H264Flags           string   `json:"h264_flags,omitempty"`
+	H264Reason          string   `json:"h264_reason,omitempty"`
+	AVC420ExitCode      string   `json:"avc420_exit_code,omitempty"`
+	ActiveSeen          bool     `json:"active_seen"`
+	FastPathSeen        bool     `json:"fastpath_seen"`
+	ErrorLines          []string `json:"error_lines"`
+	ServerPhases        []string `json:"server_phases"`
+	ScreenshotPNG       bool     `json:"screenshot_png"`
+	ScreenshotXWD       bool     `json:"screenshot_xwd"`
+	FreeRDPLogSize      int      `json:"freerdp_log_size"`
+	ServerLogSize       int      `json:"server_log_size"`
 }
 
 func main() {
@@ -51,6 +55,8 @@ func main() {
 	s.X224Seen = strings.Contains(sv, "x224") || strings.Contains(sv, "initial handshake")
 	s.MCSSeen = strings.Contains(sv, "MCS") || strings.Contains(sv, "mcs_")
 	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
+	s.BitmapRLESeen = strings.Contains(sv, "bitmap_rle_")
+	s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes = bitmapRLETraceStats(sv)
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
@@ -87,6 +93,10 @@ func main() {
 		"- X.224 seen: `%v`\n"+
 		"- MCS seen: `%v`\n"+
 		"- Bitmap/update trace seen: `%v`\n"+
+		"- Bitmap RLE trace seen: `%v`\n"+
+		"- Bitmap RLE trace count: `%d`\n"+
+		"- Bitmap RLE bytes: `%d`\n"+
+		"- Bitmap RLE saved bytes: `%d`\n"+
 		"- RDPGFX trace seen: `%v`\n"+
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
@@ -105,9 +115,27 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
+}
+
+func bitmapRLETraceStats(logText string) (int, int, int) {
+	count := 0
+	bytes := 0
+	uncompressedBytes := 0
+	for _, phase := range []string{"bitmap_rle_tile", "bitmap_rle_solid"} {
+		phaseCount, phaseBytes := traceCountAndSum(logText, phase, "bytes")
+		_, phaseUncompressed := traceCountAndSum(logText, phase, "uncompressed_bytes")
+		count += phaseCount
+		bytes += phaseBytes
+		uncompressedBytes += phaseUncompressed
+	}
+	saved := uncompressedBytes - bytes
+	if saved < 0 {
+		saved = 0
+	}
+	return count, bytes, saved
 }
 
 func traceCountAndSum(logText, phase, key string) (int, int) {
