@@ -199,7 +199,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
 {
   "implemented": [
     {"name":"slow-path raw bitmap", "status":"implemented", "matrix_case":"bitmap"},
-    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-toggle", "matrix_case":"bitmap-rle"},
+    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-opt-in", "matrix_case":"bitmap-rle", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1"},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
