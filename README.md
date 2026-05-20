@@ -38,7 +38,7 @@ Partially implemented / experimental:
 - Physical Android-device validation is still pending; current automated evidence comes from CI, emulator, Go tests, and FreeRDP probes.
 - Microsoft Remote Desktop active-streaming validation is still pending, especially NLA behavior and certificate-warning UX.
 - Accessibility input depends on Android service availability and user consent; richer keyboard/text, secondary-button, and gesture-failure handling remain limited.
-- Graphics default to RDPGFX Planar when the client supports it, with raw 24-bit bitmap updates retained as compatibility fallback. H.264/AVC over RDPGFX AVC420 is experimental and not a release compatibility claim until a client advertises support without force-mode probes; use `h264Status` in diagnostics to classify fallback reasons, and keep physical-device/Microsoft-client performance and compatibility evidence pending.
+- Graphics default to RDPGFX Planar when the client supports it, with raw 24-bit bitmap updates retained as compatibility fallback. Bitmap RLE is available only as an experimental opt-in fallback (`GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`) with diagnostics/saved-byte evidence, not as a negotiated/default release path. H.264/AVC over RDPGFX AVC420 is experimental and not a release compatibility claim until a client advertises support without force-mode probes; use `h264Status` in diagnostics to classify fallback reasons, and keep physical-device/Microsoft-client performance and compatibility evidence pending.
 - Public release defaults should prefer `nla-required`; `tls-only` is for non-NLA clients, and plain RDP is only for isolated compatibility testing.
 
 ## Package and version
@@ -149,7 +149,7 @@ Run the local graphics encoding matrix when changing transport code or collectin
 make encoding-matrix
 ```
 
-That matrix covers slow-path bitmap fallback, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx` H.264 smoke cases, and explicitly lists unimplemented/deferred codec families: bitmap RLE, NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, and JPEG/PNG bitmap codecs. See [docs/GRAPHICS_CODECS.md](docs/GRAPHICS_CODECS.md) for the codec coverage and decision matrix.
+That matrix covers slow-path bitmap fallback, opt-in bitmap RLE fallback with saved-byte evidence, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx` H.264 smoke cases, and explicitly lists unimplemented/deferred codec families: NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, and JPEG/PNG bitmap codecs. See [docs/GRAPHICS_CODECS.md](docs/GRAPHICS_CODECS.md) for the codec coverage and decision matrix.
 
 Manual emulator UX run:
 
