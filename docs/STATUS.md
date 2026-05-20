@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-20
-Current evidence commit: `e33d684` (`Refresh status after matrix dependency check`)
-Latest referenced CI run: `26147488205` (`main` CI, success)
+Current evidence commit: `57c6407` (`Ignore local encoding artifacts`)
+Latest referenced CI run: `26148073101` (`main` CI, success after rerunning transient artifact-upload failure)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26147488205`:
+Latest checked artifact from CI run `26148073101`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
