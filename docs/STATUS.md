@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-20
-Current evidence commit: `daf90cc` (`Reject expanding bitmap RLE updates`)
-Latest referenced CI run: `26177406848` (`main` CI, success)
+Current evidence commit: `12d0fe0` (`Build compressed bitmap RLE updates`)
+Latest referenced CI run: `26175719074` (`main` CI, success; bitmap RLE opt-in runtime/matrix assertion work pending CI in this edit)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26177406848`:
+Latest checked artifact from CI run `26175719074`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

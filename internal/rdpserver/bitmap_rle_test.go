@@ -1,6 +1,10 @@
 package rdpserver
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/rcarmo/go-rdp-android/internal/frame"
+)
 
 func TestEncodeBitmapRLE24CopyOnlyRoundTrip(t *testing.T) {
 	rect := bitmapRect{Width: 3, Height: 2, BPP: bitmapBPP24}
@@ -40,6 +44,51 @@ func TestBuildCompressedBitmapRLEUpdate(t *testing.T) {
 	}
 	if compressedLen != len(update)-(4+18) {
 		t.Fatalf("compressed length = %d, payload has %d", compressedLen, len(update)-(4+18))
+	}
+}
+
+func TestBuildFrameBitmapUpdatesCanUseRLEWhenEnabled(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_BITMAP_RLE", "1")
+	fr := frameOfSolidBGRAForRLETest(80, 1)
+	updates, ok := buildFrameBitmapUpdates(fr)
+	if !ok || len(updates) != 1 {
+		t.Fatalf("buildFrameBitmapUpdates() ok=%t len=%d", ok, len(updates))
+	}
+	flags := le16ForTest(updates[0][4+14 : 4+16])
+	if flags != bitmapCompressionFlag|noBitmapCompressionHeader {
+		t.Fatalf("flags = 0x%04x", flags)
+	}
+}
+
+func TestBuildFrameBitmapUpdatesLeavesRLEDisabledByDefault(t *testing.T) {
+	fr := frameOfSolidBGRAForRLETest(80, 1)
+	updates, ok := buildFrameBitmapUpdates(fr)
+	if !ok || len(updates) != 1 {
+		t.Fatalf("buildFrameBitmapUpdates() ok=%t len=%d", ok, len(updates))
+	}
+	flags := le16ForTest(updates[0][4+14 : 4+16])
+	if flags != 0 {
+		t.Fatalf("flags = 0x%04x, want uncompressed", flags)
+	}
+}
+
+func frameOfSolidBGRAForRLETest(width, height int) frame.Frame {
+	data := make([]byte, width*height*4)
+	for i := 0; i < len(data); i += 4 {
+		data[i+0] = 0x44
+		data[i+1] = 0x33
+		data[i+2] = 0x22
+		data[i+3] = 0xff
+	}
+	return frame.Frame{Width: width, Height: height, Stride: width * 4, Format: frame.PixelFormatBGRA8888, Data: data}
+}
+
+func TestBuildSolidBitmapUpdateUsesRLEWhenEnabled(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_BITMAP_RLE", "1")
+	update := buildSolidBitmapUpdate(64, 64, 0xff336699)
+	flags := le16ForTest(update[4+14 : 4+16])
+	if flags != bitmapCompressionFlag|noBitmapCompressionHeader {
+		t.Fatalf("flags = 0x%04x", flags)
 	}
 }
 

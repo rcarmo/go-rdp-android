@@ -3,6 +3,8 @@ package rdpserver
 import (
 	"encoding/binary"
 	"hash/fnv"
+	"os"
+	"strings"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
@@ -97,6 +99,12 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 				cache.hashes[key] = hash
 			}
 			update := buildBitmapUpdate([]bitmapRect{tile})
+			if bitmapRLEEnabledFromEnv() {
+				if compressed, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{tile}); ok && len(compressed) < len(update) {
+					tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
+					update = compressed
+				}
+			}
 			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bytes=%d", x, y, tileWidth, tileHeight, len(update))
 			updates = append(updates, update)
 		}
@@ -138,6 +146,15 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (b
 		BPP:    bitmapBPP24,
 		Data:   data,
 	}, hashBytes(data), true
+}
+
+func bitmapRLEEnabledFromEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("GO_RDP_ANDROID_ENABLE_BITMAP_RLE"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func alignedBitmapRowBytes(width int, bpp uint16) int {
@@ -244,6 +261,17 @@ func scaleFrameNearest(src frame.Frame, width, height int) (frame.Frame, bool) {
 }
 
 func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {
+	rect := buildSolidBitmapRect(width, height, argb)
+	if bitmapRLEEnabledFromEnv() {
+		if compressed, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect}); ok {
+			tracef("bitmap_rle_solid", "width=%d height=%d bytes=%d uncompressed_bytes=%d", rect.Width, rect.Height, len(compressed), len(buildBitmapUpdate([]bitmapRect{rect})))
+			return compressed
+		}
+	}
+	return buildBitmapUpdate([]bitmapRect{rect})
+}
+
+func buildSolidBitmapRect(width, height int, argb uint32) bitmapRect {
 	if width <= 0 || width > 64 {
 		width = 64
 	}
@@ -263,16 +291,7 @@ func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {
 			data[di+2] = r
 		}
 	}
-	return buildBitmapUpdate([]bitmapRect{{
-		Left:   0,
-		Top:    0,
-		Right:  uint16(width - 1),
-		Bottom: uint16(height - 1),
-		Width:  uint16(width),
-		Height: uint16(height),
-		BPP:    bitmapBPP24,
-		Data:   data,
-	}})
+	return bitmapRect{Left: 0, Top: 0, Right: uint16(width - 1), Bottom: uint16(height - 1), Width: uint16(width), Height: uint16(height), BPP: bitmapBPP24, Data: data}
 }
 
 func buildBitmapUpdate(rects []bitmapRect) []byte {

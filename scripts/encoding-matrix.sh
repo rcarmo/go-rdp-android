@@ -90,6 +90,7 @@ run_case() {
 }
 
 run_case bitmap 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /bpp:24'
+run_case bitmap-rle 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1' '' '/sec:nla /bpp:24'
 run_case rdpgfx-planar 'GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
 run_case h264-avc420-forced 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx:AVC420'
@@ -108,7 +109,7 @@ SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
@@ -121,6 +122,12 @@ def load(label):
 bitmap = load("bitmap")
 if not bitmap.get("active_seen") or not bitmap.get("bitmap_seen") or bitmap.get("rdpgfx_seen"):
     failures.append("bitmap fallback did not produce active bitmap-only evidence")
+bitmap_rle = load("bitmap-rle")
+if not bitmap_rle.get("active_seen") or not bitmap_rle.get("bitmap_seen") or bitmap_rle.get("rdpgfx_seen"):
+    failures.append("bitmap RLE did not produce active bitmap-only evidence")
+bitmap_rle_log = (base / "bitmap-rle" / "mock-server.log").read_text(errors="replace")
+if "bitmap_rle_" not in bitmap_rle_log:
+    failures.append("bitmap RLE case did not emit bitmap_rle trace evidence")
 planar = load("rdpgfx-planar")
 if not planar.get("active_seen") or not planar.get("rdpgfx_seen") or planar.get("h264_write_count", 0) != 0:
     failures.append("RDPGFX Planar did not produce active RDPGFX evidence without H.264 writes")
@@ -192,11 +199,11 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
 {
   "implemented": [
     {"name":"slow-path raw bitmap", "status":"implemented", "matrix_case":"bitmap"},
+    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-toggle", "matrix_case":"bitmap-rle"},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
   "missing": [
-    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "priority":"evidence-gated", "status":"scaffold-only", "notes":"24-bpp COPY-order encoder unit-covered; runtime negotiation/emission pending"},
     {"name":"NSCodec", "priority":"evidence-gated"},
     {"name":"RemoteFX / RFX", "priority":"deferred"},
     {"name":"RDPGFX AVC444 / AVC444v2", "priority":"deferred-until-avc420-proof"},

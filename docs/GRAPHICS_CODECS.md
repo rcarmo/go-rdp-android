@@ -14,7 +14,7 @@ This page separates the graphics paths the server implements today from RDP code
 
 | Codec family | Implemented? | First-APK blocker? | Notes |
 | --- | --- | --- | --- |
-| RDP 5/6 bitmap compression / bitmap RLE | Scaffold only | No | A conservative 24-bpp COPY/color-order encoder and compressed bitmap-update builder exist as test-covered building blocks, with expansion rejection so the builder only accepts payloads smaller than uncompressed data; they are not negotiated or used at runtime yet, and should remain behind future capability evidence/toggles while RDPGFX Planar is green. |
+| RDP 5/6 bitmap compression / bitmap RLE | Experimental opt-in | No | A conservative 24-bpp COPY/color-order encoder and compressed bitmap-update builder exist with expansion rejection; runtime emission is guarded by `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`, emits `bitmap_rle_*` traces in the local matrix, and should remain off by default while RDPGFX Planar is green. |
 | NSCodec | No | No | Could help some legacy/non-GFX clients; requires capability parsing and encoder implementation. |
 | RemoteFX / RFX | No | No | Deprecated/disabled in many clients; only worth implementing if real-client evidence requires it. |
 | RDPGFX AVC444 / AVC444v2 | No | No | Higher-fidelity H.264 family; defer until AVC420 negotiated-client proof exists. |
