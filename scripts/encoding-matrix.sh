@@ -179,7 +179,7 @@ These are tracked explicitly so the matrix does not imply full RDP graphics-code
 
 | Encoding family | Matrix status | Rationale |
 | --- | --- | --- |
-| RDP 5/6 bitmap compression / bitmap RLE | Not implemented | Potential legacy-client bandwidth improvement; lower priority than RDPGFX Planar unless client evidence requires it. |
+| RDP 5/6 bitmap compression / bitmap RLE | Scaffold only | 24-bpp COPY-order encoder has unit coverage, but runtime negotiation/emission is not enabled yet. |
 | NSCodec | Not implemented | Useful for some non-GFX clients; needs capability parsing plus encoder implementation before it can be tested. |
 | RemoteFX / RFX | Not implemented | Deprecated/disabled in many clients; only implement if compatibility evidence justifies it. |
 | RDPGFX AVC444 / AVC444v2 | Not implemented | Higher-fidelity H.264 variants; defer until AVC420 negotiation/client proof exists. |
@@ -196,7 +196,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
   "missing": [
-    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "priority":"evidence-gated"},
+    {"name":"RDP 5/6 bitmap compression / bitmap RLE", "priority":"evidence-gated", "status":"scaffold-only", "notes":"24-bpp COPY-order encoder unit-covered; runtime negotiation/emission pending"},
     {"name":"NSCodec", "priority":"evidence-gated"},
     {"name":"RemoteFX / RFX", "priority":"deferred"},
     {"name":"RDPGFX AVC444 / AVC444v2", "priority":"deferred-until-avc420-proof"},
