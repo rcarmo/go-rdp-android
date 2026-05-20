@@ -289,7 +289,7 @@ func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
 	out = appendLE16Bytes(out, uint16(len(rects)))
 	for _, rect := range rects {
 		encoded, ok := encodeBitmapRLE24CopyOnly(rect)
-		if !ok || len(encoded) > int(^uint16(0)) {
+		if !ok || len(encoded) == 0 || len(encoded) >= len(rect.Data) || len(encoded) > int(^uint16(0)) {
 			return nil, false
 		}
 		out = appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded)

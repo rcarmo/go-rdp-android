@@ -22,7 +22,7 @@ func TestEncodeBitmapRLE24CopyOnlyRoundTrip(t *testing.T) {
 }
 
 func TestBuildCompressedBitmapRLEUpdate(t *testing.T) {
-	rect := bitmapRect{Width: 2, Height: 1, BPP: bitmapBPP24, Data: []byte{1, 2, 3, 4, 5, 6, 0, 0}}
+	rect := bitmapRect{Width: 80, Height: 1, BPP: bitmapBPP24, Data: make([]byte, alignedBitmapRowBytes(80, bitmapBPP24))}
 	update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
 	if !ok {
 		t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
@@ -35,8 +35,21 @@ func TestBuildCompressedBitmapRLEUpdate(t *testing.T) {
 		t.Fatalf("flags = 0x%04x", flags)
 	}
 	compressedLen := int(le16ForTest(update[4+16 : 4+18]))
+	if compressedLen >= len(rect.Data) {
+		t.Fatalf("compressed length = %d, uncompressed = %d", compressedLen, len(rect.Data))
+	}
 	if compressedLen != len(update)-(4+18) {
 		t.Fatalf("compressed length = %d, payload has %d", compressedLen, len(update)-(4+18))
+	}
+}
+
+func TestBuildCompressedBitmapRLEUpdateRejectsExpansion(t *testing.T) {
+	rect := bitmapRect{Width: 80, Height: 1, BPP: bitmapBPP24, Data: make([]byte, alignedBitmapRowBytes(80, bitmapBPP24))}
+	for i := range rect.Data {
+		rect.Data[i] = byte(i)
+	}
+	if _, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect}); ok {
+		t.Fatal("expected compressed update that expands data to be rejected")
 	}
 }
 
@@ -67,7 +80,25 @@ func decodeBitmapRLE24CopyOnlyForTest(data []byte, width, height int) ([]byte, b
 			code := data[offset]
 			offset++
 			pixels := 0
+			isColor := false
 			switch {
+			case code&0xe0 == 0x60 && code != 0x60:
+				pixels = int(code & 0x1f)
+				isColor = true
+			case code == 0x60:
+				if offset >= len(data) {
+					return nil, false
+				}
+				pixels = 32 + int(data[offset])
+				offset++
+				isColor = true
+			case code == 0xf3:
+				if offset+2 > len(data) {
+					return nil, false
+				}
+				pixels = int(data[offset]) | int(data[offset+1])<<8
+				offset += 2
+				isColor = true
 			case code&0xe0 == 0x80 && code != 0x80:
 				pixels = int(code & 0x1f)
 			case code == 0x80:
@@ -85,11 +116,24 @@ func decodeBitmapRLE24CopyOnlyForTest(data []byte, width, height int) ([]byte, b
 			default:
 				return nil, false
 			}
-			if pixels <= 0 || rowPixels+pixels > width || offset+pixels*3 > len(data) {
+			if pixels <= 0 || rowPixels+pixels > width {
 				return nil, false
 			}
-			copy(out[rowOffset+rowPixels*3:], data[offset:offset+pixels*3])
-			offset += pixels * 3
+			if isColor {
+				if offset+3 > len(data) {
+					return nil, false
+				}
+				for i := 0; i < pixels; i++ {
+					copy(out[rowOffset+(rowPixels+i)*3:], data[offset:offset+3])
+				}
+				offset += 3
+			} else {
+				if offset+pixels*3 > len(data) {
+					return nil, false
+				}
+				copy(out[rowOffset+rowPixels*3:], data[offset:offset+pixels*3])
+				offset += pixels * 3
+			}
 			rowPixels += pixels
 		}
 		if rowPixels*3 != visibleRowBytes {

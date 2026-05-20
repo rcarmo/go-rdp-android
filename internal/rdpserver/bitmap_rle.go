@@ -44,6 +44,9 @@ func appendBitmapRLECopyOrder24(out []byte, pixels int, data []byte) []byte {
 	if pixels <= 0 {
 		return out
 	}
+	if bitmapRLE24AllSamePixel(data, pixels) {
+		return appendBitmapRLEColorOrder24(out, pixels, data[:3])
+	}
 	if pixels < 32 {
 		out = append(out, byte(0x80|pixels))
 	} else if pixels < 32+256 {
@@ -53,4 +56,33 @@ func appendBitmapRLECopyOrder24(out []byte, pixels int, data []byte) []byte {
 		out = binary.LittleEndian.AppendUint16(out, uint16(pixels))
 	}
 	return append(out, data...)
+}
+
+func appendBitmapRLEColorOrder24(out []byte, pixels int, pixel []byte) []byte {
+	if pixels <= 0 || len(pixel) < 3 {
+		return out
+	}
+	if pixels < 32 {
+		out = append(out, byte(0x60|pixels))
+	} else if pixels < 32+256 {
+		out = append(out, 0x60, byte(pixels-32))
+	} else {
+		out = append(out, 0xf3)
+		out = binary.LittleEndian.AppendUint16(out, uint16(pixels))
+	}
+	return append(out, pixel[0], pixel[1], pixel[2])
+}
+
+func bitmapRLE24AllSamePixel(data []byte, pixels int) bool {
+	if pixels <= 1 || len(data) < pixels*3 {
+		return false
+	}
+	b, g, r := data[0], data[1], data[2]
+	for i := 1; i < pixels; i++ {
+		o := i * 3
+		if data[o] != b || data[o+1] != g || data[o+2] != r {
+			return false
+		}
+	}
+	return true
 }
