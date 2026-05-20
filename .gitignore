@@ -5,6 +5,9 @@ coverage.out
 coverage.func.txt
 coverage.html
 .gotmp/
+encoding-matrix-artifacts/
+freerdp-artifacts/
+soak-artifacts/
 
 # Node / Playwright
 node_modules/

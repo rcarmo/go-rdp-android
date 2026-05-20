@@ -166,5 +166,5 @@ encoding-matrix: ## Run local FreeRDP bitmap/RDPGFX/H.264 encoding matrix (requi
 .PHONY: clean
 clean: ## Clean generated outputs
 	$(GO) clean
-	rm -f coverage.out coverage.html
-	rm -rf bin android/.gradle android/build android/app/build
+	rm -f coverage.out coverage.func.txt coverage.html
+	rm -rf bin encoding-matrix-artifacts freerdp-artifacts soak-artifacts android/.gradle android/build android/app/build
