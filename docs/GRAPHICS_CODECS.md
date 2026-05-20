@@ -14,7 +14,7 @@ This page separates the graphics paths the server implements today from RDP code
 
 | Codec family | Implemented? | First-APK blocker? | Notes |
 | --- | --- | --- | --- |
-| RDP 5/6 bitmap compression / bitmap RLE | No | No | Potential bandwidth improvement for non-GFX clients; lower priority while RDPGFX Planar is green. |
+| RDP 5/6 bitmap compression / bitmap RLE | Scaffold only | No | A conservative 24-bpp COPY-order encoder exists as a test-covered building block, but it is not negotiated or used at runtime yet; lower priority while RDPGFX Planar is green. |
 | NSCodec | No | No | Could help some legacy/non-GFX clients; requires capability parsing and encoder implementation. |
 | RemoteFX / RFX | No | No | Deprecated/disabled in many clients; only worth implementing if real-client evidence requires it. |
 | RDPGFX AVC444 / AVC444v2 | No | No | Higher-fidelity H.264 family; defer until AVC420 negotiated-client proof exists. |
