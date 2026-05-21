@@ -1,6 +1,6 @@
 # Threat model
 
-Last updated: 2026-05-11
+Last updated: 2026-05-21
 
 This document captures the current production-readiness threat model for `go-rdp-android`, a native Android RDP server that exposes the device screen and Android input surfaces to LAN RDP clients.
 
@@ -110,12 +110,12 @@ Current mitigations:
 
 - Capture depends on Android `MediaProjection` consent and a foreground service.
 - CI validates service startup, capture test-pattern mode, and emulator capture flows.
-- Capture/service code has bounded frame queue/drop behavior with submitted/queued/dropped counters, active/accepted connection, auth/handshake failure, decoded input event, RDPEI contact, DVC fragment, sent frame, and bitmap byte counters, serialized mode switching, projection-revocation shutdown, foreground notification stop action, missing-credential source/listener cleanup, permission-denial cleanup, network-change address refresh, non-sticky restart behavior, non-secret settings persistence, and compact UI health state.
+- Capture/service code has bounded frame queue/drop behavior with submitted/queued/dropped counters, active/accepted connection, auth/handshake failure, decoded input event, RDPEI contact, DVC fragment, sent frame, selected graphics path, bitmap byte, opt-in bitmap RLE frame/byte/saved-byte, RDPGFX frame/byte, and H.264 status/frame/byte counters, serialized mode switching, projection-revocation shutdown, foreground notification stop action, missing-credential source/listener cleanup, permission-denial cleanup, network-change address refresh, non-sticky restart behavior, non-secret settings persistence, and compact UI health state.
 
 Required before public production use:
 
 - Stronger permission/onboarding copy explaining exactly what is captured.
-- Fuller UI health state for projection active/revoked/error beyond current mode/input/client-count indicators.
+- Physical-device validation that the current UI health state remains understandable during projection active/revoked/error transitions.
 - Recovery flow when projection is revoked beyond stopping the service and requiring explicit restart.
 - Screen-off/lock/Doze behavior validation on physical devices.
 
@@ -175,7 +175,7 @@ Current mitigations:
 Required before public production use:
 
 - Broader long-running physical-device soak with real capture and input.
-- Runtime counters for connections, auth failures, frames, bitmap bytes, input events, RDPEI contacts, and DVC fragments.
+- Runtime counters for connections, auth failures, frames, bitmap/RDPGFX/H.264 bytes, opt-in bitmap RLE savings, input events, RDPEI contacts, and DVC fragments.
 - Diagnostic bundle with redaction.
 
 ## Production security defaults
