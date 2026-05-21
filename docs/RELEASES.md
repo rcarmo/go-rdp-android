@@ -68,7 +68,7 @@ Release-tag staging requires production signing secrets in GitHub Actions (never
 - `RELEASE_KEY_ALIAS`
 - `RELEASE_KEY_PASSWORD`
 
-If these are missing, the `release-files` job fails before publishing artifacts. As of 2026-05-19, `make release-preflight` passed the clean-tree, upstream-sync, version-alignment, and latest-CI checks, but failed only because `gh secret list --repo rcarmo/go-rdp-android` from the automation token still cannot see `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, or `RELEASE_KEY_PASSWORD`. A controlled `v*` release-candidate/dry-run tag remains blocked until the repository owner confirms those four signing secrets are present and correct.
+If these are missing, the `release-files` job fails before publishing artifacts. As of 2026-05-21, `make release-preflight` passed the clean-tree, upstream-sync, version-alignment, and latest-CI checks, but failed only because `gh secret list --repo rcarmo/go-rdp-android` from the automation token still cannot see `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, or `RELEASE_KEY_PASSWORD`. A controlled `v*` release-candidate/dry-run tag remains blocked until the repository owner confirms those four signing secrets are present and correct.
 
 ## Current identifiers
 
@@ -78,7 +78,7 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 - Android package/application ID: `io.carmo.go.rdp.android`
 - Android versionCode: `2`
 
-Checked on 2026-05-16: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations were refreshed on 2026-05-17 after CI added the `/sec:nla /gfx` proof gate. H.264/AVC release wording was refreshed on 2026-05-18 to keep forced AVC420 CI artifacts explicitly non-blocking until true client support is proven.
+Checked on 2026-05-21: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations remain covered by the blocking `/sec:nla /gfx` proof gate. H.264/AVC release wording keeps forced AVC420 CI artifacts explicitly non-blocking until true client support is proven, and bitmap RLE remains an opt-in diagnostic fallback rather than a release-default graphics path.
 
 ## Notes
 
