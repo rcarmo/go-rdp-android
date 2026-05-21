@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-21
-Current evidence commit: `074e600` (`Refresh status after preflight docs`)
-Latest referenced CI run: `26210934464` (`main` CI, success)
+Current evidence commit: `d8ea70a` (`Refresh Android graphics diagnostics docs`)
+Latest referenced CI run: `26211495128` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26210934464`:
+Latest checked artifact from CI run `26211495128`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
