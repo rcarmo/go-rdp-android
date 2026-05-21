@@ -16,9 +16,9 @@ Start here when working on `go-rdp-android`.
 - [STATUS](STATUS.md) — compact current CI evidence, production-readiness matrix, blockers, and documentation update policy.
 - [TESTING](TESTING.md) — CI matrix, emulator UX tests, Gherkin/Playwright report pipeline, and artifact map.
 - [DEBUGGING](DEBUGGING.md) — protocol, Android, gomobile, emulator, input, UX report, performance, and release troubleshooting.
-- [TRACE_PHASES](TRACE_PHASES.md) — structured server/Android trace phase taxonomy, H.264 status traces, and diagnostic bundle sources.
+- [TRACE_PHASES](TRACE_PHASES.md) — structured server/Android trace phase taxonomy, bitmap RLE/H.264 graphics traces, and diagnostic bundle sources.
 - [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics, bitmap/RDPGFX/H.264 baselines/status, known first-APK performance limits, and optimization workstreams.
-- [GRAPHICS_CODECS](GRAPHICS_CODECS.md) — implemented graphics paths, missing/deferred RDP codec families, and codec-addition decision rules.
+- [GRAPHICS_CODECS](GRAPHICS_CODECS.md) — implemented graphics paths, opt-in bitmap RLE status, missing/deferred RDP codec families, and codec-addition decision rules.
 - [RELEASES](RELEASES.md) — tag policy and release identifiers.
 
 ## Assets
