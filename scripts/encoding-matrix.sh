@@ -95,6 +95,7 @@ run_case nscodec-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_
 run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rfx-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RFX_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rdpgfx-planar 'GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /gfx'
+run_case rdpgfx-deferred-codecs 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1 GO_RDP_ANDROID_ENABLE_AVC444=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' '-test-pattern' '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
 run_case h264-avc420-forced 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx:AVC420'
 run_case h264-forced-gfx-fallback 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx'
@@ -106,15 +107,16 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RFX selected | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RFX selected | RDPGFX | Deferred GFX codecs | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | ---: | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "rdpgfx-deferred-codecs", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -146,6 +148,9 @@ if not rfx.get("active_seen"):
 planar = load("rdpgfx-planar")
 if not planar.get("active_seen") or not planar.get("rdpgfx_seen") or planar.get("h264_write_count", 0) != 0:
     failures.append("RDPGFX Planar did not produce active RDPGFX evidence without H.264 writes")
+deferred_gfx = load("rdpgfx-deferred-codecs")
+if not deferred_gfx.get("active_seen") or not deferred_gfx.get("rdpgfx_seen"):
+    failures.append("RDPGFX deferred-codec probe did not produce active RDPGFX evidence")
 for label in ["h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = load(label)
     if not s.get("active_seen") or not s.get("rdpgfx_seen") or s.get("h264_reason") != "forced-by-env" or s.get("h264_write_count", 0) <= 0 or s.get("h264_write_bytes", 0) <= 0:
@@ -165,6 +170,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - JPEG opt-in should at least reach active state. If the client advertises JPEG in Bitmap Codecs, the summary should show `jpeg_codec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - RemoteFX opt-in should at least reach active state. If the client advertises RemoteFX/RemoteFXImage in Bitmap Codecs, the summary should show `rfx_codec_selected=true` and deferred-emission evidence; otherwise it documents client capability absence without failing the matrix.
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
+- RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
 
 ## Observed RDPGFX capability advertisements
@@ -182,7 +188,7 @@ def flag_notes(flags):
     if value & 0x20:
         notes.append("AVC_DISABLED")
     return "/" + "+".join(notes) if notes else ""
-for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["rdpgfx-planar", "rdpgfx-deferred-codecs", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     log = base / label / "mock-server.log"
     if not log.exists():
         continue
@@ -223,6 +229,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "requires_client_advertisement":true},
     {"name":"RemoteFX / RFX", "status":"selection-scaffold", "matrix_case":"rfx-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_RFX_CODEC=1", "requires_client_advertisement":true, "emission":"deferred-encoder-missing"},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
+    {"name":"RDPGFX deferred codecs", "status":"selection-scaffold", "matrix_case":"rdpgfx-deferred-codecs", "toggles":["GO_RDP_ANDROID_ENABLE_CLEARCODEC=1", "GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "GO_RDP_ANDROID_ENABLE_AVC444=1", "GO_RDP_ANDROID_ENABLE_AVC444V2=1"], "emission":"deferred-safe-planar-fallback"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
   "upstream_metadata": [
