@@ -96,6 +96,9 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 					return nil
 				}
 			}
+			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
+				tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
+			}
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {

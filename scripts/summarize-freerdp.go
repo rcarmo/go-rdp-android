@@ -29,6 +29,7 @@ type summary struct {
 	JPEGCodecWriteSeen  bool     `json:"jpeg_codec_write_seen,omitempty"`
 	JPEGCodecWriteCount int      `json:"jpeg_codec_write_count,omitempty"`
 	JPEGCodecWriteBytes int      `json:"jpeg_codec_write_bytes,omitempty"`
+	RFXCodecSelected    bool     `json:"rfx_codec_selected,omitempty"`
 	RDPGFXSeen          bool     `json:"rdpgfx_seen"`
 	H264StatusSeen      bool     `json:"h264_status_seen"`
 	H264WriteSeen       bool     `json:"h264_write_seen"`
@@ -71,6 +72,7 @@ func main() {
 	s.JPEGCodecSelected = strings.Contains(sv, "jpeg_codec_selected")
 	s.JPEGCodecWriteSeen = strings.Contains(sv, "jpeg_codec_write")
 	s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes = traceCountAndSum(sv, "jpeg_codec_write", "bytes")
+	s.RFXCodecSelected = strings.Contains(sv, "rfx_codec_selected")
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")

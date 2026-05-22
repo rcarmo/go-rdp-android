@@ -128,6 +128,14 @@ func (c bitmapCodecsCapabilityInfo) jpegCodecID() (byte, bool) {
 	return c.codecIDByName(rdpcodec.BitmapCodecNameJPEG)
 }
 
+func (c bitmapCodecsCapabilityInfo) remoteFXCodecID() (byte, bool) {
+	return c.codecIDByName(rdpcodec.BitmapCodecNameRemoteFX)
+}
+
+func (c bitmapCodecsCapabilityInfo) remoteFXImageCodecID() (byte, bool) {
+	return c.codecIDByName(rdpcodec.BitmapCodecNameRemoteFXImage)
+}
+
 func writeDemandActive(conn net.Conn, width, height int) error {
 	pdu := buildDemandActivePDU(width, height)
 	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, pdu)
