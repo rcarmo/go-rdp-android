@@ -34,6 +34,7 @@ type summary struct {
 	PNGCodecWriteCount        int      `json:"png_codec_write_count,omitempty"`
 	PNGCodecWriteBytes        int      `json:"png_codec_write_bytes,omitempty"`
 	RFXCodecSelected          bool     `json:"rfx_codec_selected,omitempty"`
+	RDPGFXUncompressedSelected bool     `json:"rdpgfx_uncompressed_selected,omitempty"`
 	RDPGFXClearCodecSelected  bool     `json:"rdpgfx_clearcodec_selected,omitempty"`
 	RDPGFXProgressiveSelected bool     `json:"rdpgfx_progressive_selected,omitempty"`
 	RDPGFXAVC444Selected      bool     `json:"rdpgfx_avc444_selected,omitempty"`
@@ -84,6 +85,7 @@ func main() {
 	s.PNGCodecWriteSeen = strings.Contains(sv, "png_codec_write")
 	s.PNGCodecWriteCount, s.PNGCodecWriteBytes = traceCountAndSum(sv, "png_codec_write", "bytes")
 	s.RFXCodecSelected = strings.Contains(sv, "rfx_codec_selected")
+	s.RDPGFXUncompressedSelected = strings.Contains(sv, "rdpgfx_uncompressed_selected")
 	s.RDPGFXClearCodecSelected = strings.Contains(sv, "rdpgfx_clearcodec_selected")
 	s.RDPGFXProgressiveSelected = strings.Contains(sv, "rdpgfx_progressive_selected")
 	s.RDPGFXAVC444Selected = strings.Contains(sv, "rdpgfx_avc444_selected")
