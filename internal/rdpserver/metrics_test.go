@@ -151,6 +151,15 @@ func TestServerMetricsRecordPNGCodecFrame(t *testing.T) {
 	}
 }
 
+func TestServerMetricsRecordRDPGFXStreamStop(t *testing.T) {
+	var rdpgfxStreamStops atomic.Int64
+	metrics := serverMetrics{rdpgfxStreamStops: &rdpgfxStreamStops}
+	metrics.recordRDPGFXStreamStop()
+	if got := rdpgfxStreamStops.Load(); got != 1 {
+		t.Fatalf("rdpgfxStreamStops = %d, want 1", got)
+	}
+}
+
 func TestServerMetricsRecordRDPGFXFramePath(t *testing.T) {
 	var framesSent atomic.Int64
 	var rdpgfxFrames atomic.Int64

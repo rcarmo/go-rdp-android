@@ -55,6 +55,7 @@ type Server struct {
 	pngCodecBytes       atomic.Int64
 	rdpgfxFrames        atomic.Int64
 	rdpgfxBytes         atomic.Int64
+	rdpgfxStreamStops   atomic.Int64
 	rdpgfxPath          atomic.Value
 	h264Frames          atomic.Int64
 	h264Bytes           atomic.Int64
@@ -205,6 +206,9 @@ func (s *Server) RDPGFXFrames() int64 { return s.rdpgfxFrames.Load() }
 // RDPGFXBytes returns the total number of RDPGFX dynamic-channel payload bytes sent to clients.
 func (s *Server) RDPGFXBytes() int64 { return s.rdpgfxBytes.Load() }
 
+// RDPGFXStreamStops returns the total number of RDPGFX frame-stream write stops observed.
+func (s *Server) RDPGFXStreamStops() int64 { return s.rdpgfxStreamStops.Load() }
+
 // H264Frames returns the total number of H.264/AVC frame update batches sent to clients.
 func (s *Server) H264Frames() int64 { return s.h264Frames.Load() }
 
@@ -325,7 +329,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, nsCodecFrames: &s.nsCodecFrames, nsCodecBytes: &s.nsCodecBytes, jpegCodecFrames: &s.jpegCodecFrames, jpegCodecBytes: &s.jpegCodecBytes, pngCodecFrames: &s.pngCodecFrames, pngCodecBytes: &s.pngCodecBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, rdpgfxPath: &s.rdpgfxPath, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, nsCodecFrames: &s.nsCodecFrames, nsCodecBytes: &s.nsCodecBytes, jpegCodecFrames: &s.jpegCodecFrames, jpegCodecBytes: &s.jpegCodecBytes, pngCodecFrames: &s.pngCodecFrames, pngCodecBytes: &s.pngCodecBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, rdpgfxStreamStops: &s.rdpgfxStreamStops, rdpgfxPath: &s.rdpgfxPath, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
 	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)

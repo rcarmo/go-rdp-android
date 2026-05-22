@@ -430,6 +430,16 @@ func (s *Server) RDPGFXBytes() int64 {
 	return s.server.RDPGFXBytes()
 }
 
+// RDPGFXStreamStops returns the total number of RDPGFX frame-stream write stops observed.
+func (s *Server) RDPGFXStreamStops() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RDPGFXStreamStops()
+}
+
 // H264Frames returns the total number of H.264/AVC frame batches sent by the running server.
 func (s *Server) H264Frames() int64 {
 	s.mu.Lock()
@@ -590,6 +600,9 @@ func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }
 
 // RDPGFXBytes returns the RDPGFX dynamic-channel payload bytes for the default server.
 func RDPGFXBytes() int64 { return defaultServer.RDPGFXBytes() }
+
+// RDPGFXStreamStops returns the RDPGFX frame-stream stop count for the default server.
+func RDPGFXStreamStops() int64 { return defaultServer.RDPGFXStreamStops() }
 
 // H264Frames returns the H.264/AVC frame count for the default server.
 func H264Frames() int64 { return defaultServer.H264Frames() }

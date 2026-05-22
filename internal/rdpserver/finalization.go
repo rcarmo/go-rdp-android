@@ -268,6 +268,7 @@ func streamRDPGFXFrameUpdates(conn net.Conn, frames frame.Source, dvc *drdynvcMa
 		}
 		for _, pdu := range pdus {
 			if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
+				metrics.recordRDPGFXStreamStop()
 				tracef("rdpgfx_frame_stream_stop", "err=%v", err)
 				return
 			}

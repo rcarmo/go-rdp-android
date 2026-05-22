@@ -112,6 +112,8 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun rdpgfxBytes(): Long = callLong("rdpgfxBytes")
 
+    override fun rdpgfxStreamStops(): Long = callLong("rdpgfxStreamStops")
+
     override fun h264Frames(): Long = callLong("h264Frames")
 
     override fun h264Bytes(): Long = callLong("h264Bytes")

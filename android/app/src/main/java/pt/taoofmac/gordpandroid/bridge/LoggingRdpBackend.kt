@@ -104,6 +104,8 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun rdpgfxBytes(): Long = 0
 
+    override fun rdpgfxStreamStops(): Long = 0
+
     override fun h264Frames(): Long = 0
 
     override fun h264Bytes(): Long = 0

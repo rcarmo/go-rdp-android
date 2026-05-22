@@ -44,6 +44,7 @@ interface RdpBackend {
     fun pngCodecBytes(): Long
     fun rdpgfxFrames(): Long
     fun rdpgfxBytes(): Long
+    fun rdpgfxStreamStops(): Long
     fun h264Frames(): Long
     fun h264Bytes(): Long
     fun h264Status(): String
