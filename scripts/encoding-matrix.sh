@@ -109,8 +109,8 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RFX selected | RDPGFX | GFX writes | Uncompressed GFX | Deferred GFX codecs | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | ---: | --- | ---: | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RFX selected | RDPGFX | GFX writes | GFX stream stops | Uncompressed GFX | Deferred GFX codecs | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | ---: | ---: | --- | ---: | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
@@ -118,7 +118,7 @@ base = pathlib.Path(sys.argv[1])
 for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -178,7 +178,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - JPEG opt-in should at least reach active state. If the client advertises JPEG in Bitmap Codecs, the summary should show `jpeg_codec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - RemoteFX opt-in should at least reach active state. If the client advertises RemoteFX/RemoteFXImage in Bitmap Codecs, the summary should show `rfx_codec_selected=true` and deferred-emission evidence; otherwise it documents client capability absence without failing the matrix.
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
-- RDPGFX Planar stream probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1` while keeping Planar encoding and no H.264 writes.
+- RDPGFX Planar stream probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1` while keeping Planar encoding and no H.264 writes; `GFX stream stops` records whether the client closed the graphics DVC after the first frame.
 - RDPGFX uncompressed probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1` and should show `rdpgfx_uncompressed_selected=true` while remaining diagnostic-only.
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.

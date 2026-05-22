@@ -42,6 +42,8 @@ type summary struct {
 	RDPGFXFrameWriteSeen       bool     `json:"rdpgfx_frame_write_seen,omitempty"`
 	RDPGFXFrameWriteCount      int      `json:"rdpgfx_frame_write_count,omitempty"`
 	RDPGFXFrameWriteBytes      int      `json:"rdpgfx_frame_write_bytes,omitempty"`
+	RDPGFXFrameStreamStopSeen  bool     `json:"rdpgfx_frame_stream_stop_seen,omitempty"`
+	RDPGFXFrameStreamStopCount int      `json:"rdpgfx_frame_stream_stop_count,omitempty"`
 	RDPGFXSeen                 bool     `json:"rdpgfx_seen"`
 	H264StatusSeen             bool     `json:"h264_status_seen"`
 	H264WriteSeen              bool     `json:"h264_write_seen"`
@@ -95,6 +97,11 @@ func main() {
 	s.RDPGFXAVC444v2Selected = strings.Contains(sv, "rdpgfx_avc444v2_selected")
 	s.RDPGFXFrameWriteSeen = strings.Contains(sv, "rdpgfx_frame_write")
 	s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes = traceCountAndSum(sv, "rdpgfx_frame_write", "bytes")
+	s.RDPGFXFrameStreamStopSeen = strings.Contains(sv, "rdpgfx_frame_stream_stop")
+	s.RDPGFXFrameStreamStopCount, _ = traceCountAndSum(sv, "rdpgfx_frame_stream_stop", "bytes")
+	if s.RDPGFXFrameStreamStopSeen && s.RDPGFXFrameStreamStopCount == 0 {
+		s.RDPGFXFrameStreamStopCount = strings.Count(sv, "trace phase=rdpgfx_frame_stream_stop")
+	}
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
@@ -156,6 +163,8 @@ func main() {
 		"- RDPGFX frame write trace seen: `%v`\n"+
 		"- RDPGFX frame write trace count: `%d`\n"+
 		"- RDPGFX frame write trace bytes: `%d`\n"+
+		"- RDPGFX frame stream stop trace seen: `%v`\n"+
+		"- RDPGFX frame stream stop trace count: `%d`\n"+
 		"- RDPGFX trace seen: `%v`\n"+
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
@@ -174,7 +183,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.RFXCodecSelected, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXProgressiveSelected, s.RDPGFXAVC444Selected, s.RDPGFXAVC444v2Selected, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.RFXCodecSelected, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXProgressiveSelected, s.RDPGFXAVC444Selected, s.RDPGFXAVC444v2Selected, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXFrameStreamStopSeen, s.RDPGFXFrameStreamStopCount, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }
