@@ -20,7 +20,7 @@ This page separates the graphics paths the server implements today from RDP code
 | RDPGFX AVC444 / AVC444v2 | Codec IDs upstream; no emitter | No | Higher-fidelity H.264 family; IDs are now shared through `go-rdp`, but transport should defer until AVC420 negotiated-client proof exists. |
 | RDPGFX ClearCodec | Codec ID upstream; no emitter | No | Text/graphics optimized codec; ID is shared through `go-rdp`, encoder/emitter remains deferred behind Planar and AVC420. |
 | RDPGFX Progressive / other progressive codecs | Codec IDs upstream; no emitter | No | More complex progressive pipeline; IDs are shared through `go-rdp`, but this is not first-APK scope. |
-| JPEG/PNG bitmap codecs | JPEG GUID upstream; no Android encoder/emitter | No | `go-rdp` exposes JPEG bitmap-codec GUID metadata; PNG has no current negotiated RDP output path here. Add image codecs only if capability/performance data justifies them. |
+| JPEG/PNG bitmap codecs | JPEG GUID upstream; Android JPEG SurfaceBits builder scaffold | No | `go-rdp` exposes JPEG bitmap-codec GUID metadata. Android now has an opt-in `GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1` selection gate and tested JPEG `SetSurfaceBits` builder; runtime emission remains pending client Bitmap Codecs evidence. PNG has no current negotiated RDP output path here. |
 
 ## Client capability evidence to collect
 
