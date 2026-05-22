@@ -102,6 +102,7 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
 						return err
 					}
+					metrics.recordPNGCodecFrame([][]byte{command})
 					tracef("png_codec_write", "codec_id=%d bytes=%d", codecID, len(command))
 					return nil
 				}

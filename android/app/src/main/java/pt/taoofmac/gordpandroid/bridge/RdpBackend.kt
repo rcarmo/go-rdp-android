@@ -40,6 +40,8 @@ interface RdpBackend {
     fun nsCodecBytes(): Long
     fun jpegCodecFrames(): Long
     fun jpegCodecBytes(): Long
+    fun pngCodecFrames(): Long
+    fun pngCodecBytes(): Long
     fun rdpgfxFrames(): Long
     fun rdpgfxBytes(): Long
     fun h264Frames(): Long

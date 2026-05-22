@@ -12,6 +12,8 @@ type serverMetrics struct {
 	nsCodecBytes        *atomic.Int64
 	jpegCodecFrames     *atomic.Int64
 	jpegCodecBytes      *atomic.Int64
+	pngCodecFrames      *atomic.Int64
+	pngCodecBytes       *atomic.Int64
 	rdpgfxFrames        *atomic.Int64
 	rdpgfxBytes         *atomic.Int64
 	h264Frames          *atomic.Int64
@@ -74,6 +76,18 @@ func (m serverMetrics) recordJPEGCodecFrame(commands [][]byte) {
 	}
 	if m.jpegCodecBytes != nil {
 		m.jpegCodecBytes.Add(totalPayloadBytes(commands))
+	}
+}
+
+func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
+	if m.framesSent != nil {
+		m.framesSent.Add(1)
+	}
+	if m.pngCodecFrames != nil {
+		m.pngCodecFrames.Add(1)
+	}
+	if m.pngCodecBytes != nil {
+		m.pngCodecBytes.Add(totalPayloadBytes(commands))
 	}
 }
 
