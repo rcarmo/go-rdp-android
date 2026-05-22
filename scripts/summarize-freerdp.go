@@ -21,6 +21,10 @@ type summary struct {
 	BitmapRLECount      int      `json:"bitmap_rle_count,omitempty"`
 	BitmapRLEBytes      int      `json:"bitmap_rle_bytes,omitempty"`
 	BitmapRLESavedBytes int      `json:"bitmap_rle_saved_bytes,omitempty"`
+	NSCodecSelected     bool     `json:"nscodec_selected,omitempty"`
+	NSCodecWriteSeen    bool     `json:"nscodec_write_seen,omitempty"`
+	NSCodecWriteCount   int      `json:"nscodec_write_count,omitempty"`
+	NSCodecWriteBytes   int      `json:"nscodec_write_bytes,omitempty"`
 	RDPGFXSeen          bool     `json:"rdpgfx_seen"`
 	H264StatusSeen      bool     `json:"h264_status_seen"`
 	H264WriteSeen       bool     `json:"h264_write_seen"`
@@ -57,6 +61,9 @@ func main() {
 	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
 	s.BitmapRLESeen = strings.Contains(sv, "bitmap_rle_")
 	s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes = bitmapRLETraceStats(sv)
+	s.NSCodecSelected = strings.Contains(sv, "nscodec_selected")
+	s.NSCodecWriteSeen = strings.Contains(sv, "nscodec_write")
+	s.NSCodecWriteCount, s.NSCodecWriteBytes = traceCountAndSum(sv, "nscodec_write", "bytes")
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
@@ -97,6 +104,10 @@ func main() {
 		"- Bitmap RLE trace count: `%d`\n"+
 		"- Bitmap RLE bytes: `%d`\n"+
 		"- Bitmap RLE saved bytes: `%d`\n"+
+		"- NSCodec selected trace seen: `%v`\n"+
+		"- NSCodec write trace seen: `%v`\n"+
+		"- NSCodec write trace count: `%d`\n"+
+		"- NSCodec write trace bytes: `%d`\n"+
 		"- RDPGFX trace seen: `%v`\n"+
 		"- H.264 status trace seen: `%v`\n"+
 		"- H.264 write trace seen: `%v`\n"+
@@ -115,7 +126,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }
