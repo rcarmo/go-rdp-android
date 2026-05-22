@@ -92,6 +92,7 @@ run_case() {
 run_case bitmap 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case bitmap-rle 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1' '' '/sec:nla /bpp:24'
 run_case nscodec-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_NSCODEC=1' '-test-pattern' '/sec:nla /bpp:24'
+run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rdpgfx-planar 'GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
 run_case h264-avc420-forced 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx:AVC420'
@@ -104,15 +105,15 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | NSCodec bytes | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | ---: | ---: | --- | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_write_bytes',0)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -133,6 +134,11 @@ if not nscodec.get("active_seen"):
     failures.append("NSCodec opt-in case did not reach active state")
 if nscodec.get("nscodec_selected") and (not nscodec.get("nscodec_write_seen") or nscodec.get("nscodec_write_count", 0) <= 0 or nscodec.get("nscodec_write_bytes", 0) <= 0):
     failures.append("NSCodec opt-in selected but did not emit write evidence")
+jpeg_codec = load("jpeg-opt-in")
+if not jpeg_codec.get("active_seen"):
+    failures.append("JPEG opt-in case did not reach active state")
+if jpeg_codec.get("jpeg_codec_selected") and (not jpeg_codec.get("jpeg_codec_write_seen") or jpeg_codec.get("jpeg_codec_write_count", 0) <= 0 or jpeg_codec.get("jpeg_codec_write_bytes", 0) <= 0):
+    failures.append("JPEG opt-in selected but did not emit write evidence")
 planar = load("rdpgfx-planar")
 if not planar.get("active_seen") or not planar.get("rdpgfx_seen") or planar.get("h264_write_count", 0) != 0:
     failures.append("RDPGFX Planar did not produce active RDPGFX evidence without H.264 writes")
@@ -152,6 +158,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - Bitmap fallback should show active streaming with `bitmap_seen=true` and no RDPGFX.
 - Bitmap RLE should show active bitmap streaming plus `bitmap_rle_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`.
 - NSCodec opt-in should at least reach active state. If the client advertises NSCodec, the summary should show `nscodec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
+- JPEG opt-in should at least reach active state. If the client advertises JPEG in Bitmap Codecs, the summary should show `jpeg_codec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - RDPGFX Planar should show active streaming with `rdpgfx_seen=true` and no H.264 writes when H.264 is disabled.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
 
@@ -208,6 +215,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"slow-path raw bitmap", "status":"implemented", "matrix_case":"bitmap"},
     {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-opt-in", "matrix_case":"bitmap-rle", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1"},
     {"name":"NSCodec", "status":"experimental-opt-in", "matrix_case":"nscodec-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_NSCODEC=1", "requires_client_advertisement":true},
+    {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "requires_client_advertisement":true},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
