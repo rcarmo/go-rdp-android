@@ -217,34 +217,59 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			var pdus [][]byte
-			var ok bool
-			if rdpgfxUncompressedEnabledFromEnv() {
-				pdus, ok = buildRDPGFXUncompressedFramePDUs(0, 1, fr, width, height)
-				if ok {
-					tracef("rdpgfx_uncompressed_selected", "frame_id=%d pdus=%d", 1, len(pdus))
-				}
-			}
-			if !ok {
-				pdus, ok = buildRDPGFXPlanarFramePDUs(0, 1, fr, width, height)
-			}
+			pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height)
 			if ok {
 				for _, pdu := range pdus {
 					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
 						return err
 					}
 				}
-				if rdpgfxUncompressedEnabledFromEnv() {
-					metrics.recordRDPGFXFramePath(pdus, "rdpgfx-uncompressed")
-				} else {
-					metrics.recordRDPGFXFrame(pdus)
-				}
+				metrics.recordRDPGFXFramePath(pdus, path)
+				go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID+1)
 				return nil
 			}
 		default:
+			go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID)
 		}
 	}
 	return nil
+}
+
+func buildRDPGFXFrameUpdatePDUs(surfaceID uint16, frameID uint32, fr frame.Frame, width, height int) ([][]byte, string, bool) {
+	if rdpgfxUncompressedEnabledFromEnv() {
+		pdus, ok := buildRDPGFXUncompressedFramePDUs(surfaceID, frameID, fr, width, height)
+		if ok {
+			tracef("rdpgfx_uncompressed_selected", "frame_id=%d pdus=%d", frameID, len(pdus))
+			return pdus, "rdpgfx-uncompressed", true
+		}
+	}
+	pdus, ok := buildRDPGFXPlanarFramePDUs(surfaceID, frameID, fr, width, height)
+	if !ok {
+		return nil, "", false
+	}
+	return pdus, "rdpgfx-planar", true
+}
+
+func streamRDPGFXFrameUpdates(conn net.Conn, frames frame.Source, dvc *drdynvcManager, width, height int, metrics serverMetrics, nextFrameID uint32) {
+	if frames == nil || dvc == nil || !dvc.rdpgfxReady() {
+		return
+	}
+	frameCh := frames.Frames()
+	for fr := range frameCh {
+		fr = latestAvailableFrame(frameCh, fr)
+		pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height)
+		if !ok || len(pdus) == 0 {
+			continue
+		}
+		for _, pdu := range pdus {
+			if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
+				tracef("rdpgfx_frame_stream_stop", "err=%v", err)
+				return
+			}
+		}
+		metrics.recordRDPGFXFramePath(pdus, path)
+		nextFrameID++
+	}
 }
 
 func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager, width, height int, metrics serverMetrics, nextFrameID uint32, state h264StreamState) {
