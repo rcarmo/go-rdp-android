@@ -234,7 +234,11 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 						return err
 					}
 				}
-				metrics.recordRDPGFXFrame(pdus)
+				if rdpgfxUncompressedEnabledFromEnv() {
+					metrics.recordRDPGFXFramePath(pdus, "rdpgfx-uncompressed")
+				} else {
+					metrics.recordRDPGFXFrame(pdus)
+				}
 				return nil
 			}
 		default:

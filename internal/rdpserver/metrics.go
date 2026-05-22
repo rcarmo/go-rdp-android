@@ -16,6 +16,7 @@ type serverMetrics struct {
 	pngCodecBytes       *atomic.Int64
 	rdpgfxFrames        *atomic.Int64
 	rdpgfxBytes         *atomic.Int64
+	rdpgfxPath          *atomic.Value
 	h264Frames          *atomic.Int64
 	h264Bytes           *atomic.Int64
 	dvcFragments        *atomic.Int64
@@ -92,6 +93,10 @@ func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
 }
 
 func (m serverMetrics) recordRDPGFXFrame(pdus [][]byte) {
+	m.recordRDPGFXFramePath(pdus, "rdpgfx-planar")
+}
+
+func (m serverMetrics) recordRDPGFXFramePath(pdus [][]byte, path string) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
@@ -100,6 +105,9 @@ func (m serverMetrics) recordRDPGFXFrame(pdus [][]byte) {
 	}
 	if m.rdpgfxBytes != nil {
 		m.rdpgfxBytes.Add(totalPayloadBytes(pdus))
+	}
+	if m.rdpgfxPath != nil && path != "" {
+		m.rdpgfxPath.Store(path)
 	}
 }
 

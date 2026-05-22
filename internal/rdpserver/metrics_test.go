@@ -40,6 +40,10 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 	if got := s.GraphicsPath(); got != "rdpgfx-planar" {
 		t.Fatalf("GraphicsPath() = %q, want rdpgfx-planar", got)
 	}
+	s.rdpgfxPath.Store("rdpgfx-uncompressed")
+	if got := s.GraphicsPath(); got != "rdpgfx-uncompressed" {
+		t.Fatalf("GraphicsPath() = %q, want rdpgfx-uncompressed", got)
+	}
 
 	s.h264Frames.Store(1)
 	if got := s.GraphicsPath(); got != "h264-avc" {
@@ -144,6 +148,29 @@ func TestServerMetricsRecordPNGCodecFrame(t *testing.T) {
 	}
 	if got := pngCodecBytes.Load(); got != 3 {
 		t.Fatalf("pngCodecBytes = %d, want 3", got)
+	}
+}
+
+func TestServerMetricsRecordRDPGFXFramePath(t *testing.T) {
+	var framesSent atomic.Int64
+	var rdpgfxFrames atomic.Int64
+	var rdpgfxBytes atomic.Int64
+	var rdpgfxPath atomic.Value
+	metrics := serverMetrics{framesSent: &framesSent, rdpgfxFrames: &rdpgfxFrames, rdpgfxBytes: &rdpgfxBytes, rdpgfxPath: &rdpgfxPath}
+
+	metrics.recordRDPGFXFramePath([][]byte{[]byte("gfx")}, "rdpgfx-uncompressed")
+
+	if got := framesSent.Load(); got != 1 {
+		t.Fatalf("framesSent = %d, want 1", got)
+	}
+	if got := rdpgfxFrames.Load(); got != 1 {
+		t.Fatalf("rdpgfxFrames = %d, want 1", got)
+	}
+	if got := rdpgfxBytes.Load(); got != 3 {
+		t.Fatalf("rdpgfxBytes = %d, want 3", got)
+	}
+	if got, _ := rdpgfxPath.Load().(string); got != "rdpgfx-uncompressed" {
+		t.Fatalf("rdpgfxPath = %q", got)
 	}
 }
 
