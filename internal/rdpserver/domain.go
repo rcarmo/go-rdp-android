@@ -38,6 +38,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source
 	dvc := newDRDYNVCManager(channels, sink, metrics)
 	sessionWidth := clampDesktopDimension(width, width)
 	sessionHeight := clampDesktopDimension(height, height)
+	var sessionCapabilities confirmActiveCapabilities
 	remote := remoteHost(conn.RemoteAddr())
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(domainReadTimeout))
@@ -86,6 +87,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source
 					if err != nil {
 						return err
 					}
+					sessionCapabilities = info.Capabilities
 					if info.Capabilities.Bitmap.Present {
 						if info.Capabilities.Bitmap.DesktopWidth > 0 {
 							sessionWidth = clampDesktopDimension(int(info.Capabilities.Bitmap.DesktopWidth), sessionWidth)
@@ -120,7 +122,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
 					return nil
 				case pduTypeData:
-					if err := handleShareDataPDU(conn, share, frames, h264, sink, sessionWidth, sessionHeight, metrics, dvc); err != nil {
+					if err := handleShareDataPDU(conn, share, frames, h264, sink, sessionWidth, sessionHeight, sessionCapabilities, metrics, dvc); err != nil {
 						return err
 					}
 					continue

@@ -27,7 +27,7 @@ type shareDataPDU struct {
 	Payload            []byte
 }
 
-func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, h264 H264Source, sink input.Sink, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
+func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Source, h264 H264Source, sink input.Sink, width, height int, caps confirmActiveCapabilities, metrics serverMetrics, dvc *drdynvcManager) error {
 	data, err := parseShareDataPDU(share)
 	if err != nil {
 		return err
@@ -62,17 +62,22 @@ func handleShareDataPDU(conn net.Conn, share *shareControlPDU, frames frame.Sour
 		if dvc != nil && dvc.rdpgfxReady() {
 			return writeInitialRDPGFXUpdate(conn, frames, h264, width, height, metrics, dvc)
 		}
-		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
+		return writeInitialBitmapUpdate(conn, frames, width, height, caps, metrics)
 	case pduType2Input:
 		return dispatchSlowPathInput(data.Payload, sink)
 	}
 	return nil
 }
 
-func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height int, metrics serverMetrics) error {
+func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height int, caps confirmActiveCapabilities, metrics serverMetrics) error {
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
+			if codecID, ok := negotiatedNSCodecID(caps); ok {
+				if command, built := buildNSCodecSurfaceBitsCommand(normalizeFrameForDesktop(fr, width, height), codecID); built {
+					tracef("nscodec_selected", "codec_id=%d command_bytes=%d emission=deferred", codecID, len(command))
+				}
+			}
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {
@@ -136,11 +141,11 @@ func waitForRDPGFXReady(conn net.Conn, dvc *drdynvcManager, timeout time.Duratio
 func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Source, width, height int, metrics serverMetrics, dvc *drdynvcManager) error {
 	create, ok := buildRDPGFXCreateSurfacePDU(0, width, height)
 	if !ok {
-		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
+		return writeInitialBitmapUpdate(conn, frames, width, height, confirmActiveCapabilities{}, metrics)
 	}
 	mapped, ok := buildRDPGFXMapSurfaceToOutputPDU(0, 0, 0)
 	if !ok {
-		return writeInitialBitmapUpdate(conn, frames, width, height, metrics)
+		return writeInitialBitmapUpdate(conn, frames, width, height, confirmActiveCapabilities{}, metrics)
 	}
 	if err := dvc.writeRDPGFXPayload(conn, create); err != nil {
 		return err
