@@ -81,7 +81,7 @@ For `/sec:rdp`, `/sec:tls`, and `/sec:nla`, the gate requires `active_seen=true`
 
 ## Experimental codec debugging
 
-NSCodec runtime emission is not enabled yet, but selection scaffolding is guarded by `GO_RDP_ANDROID_ENABLE_NSCODEC=1` and only activates when the client advertises an NSCodec entry in the Bitmap Codecs capability set. Server traces include `bitmap_codec_cap` entries from Confirm Active so client codec IDs/properties can be captured before wiring emission.
+NSCodec runtime emission is experimental and guarded by `GO_RDP_ANDROID_ENABLE_NSCODEC=1`; it only activates when the client advertises an NSCodec entry in the Bitmap Codecs capability set. Server traces include `bitmap_codec_cap` entries from Confirm Active plus `nscodec_selected`/`nscodec_write` when the opt-in initial NSCodec SurfaceBits update is built and sent.
 
 ## Legacy bitmap RLE scaffold debugging
 

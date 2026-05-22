@@ -75,7 +75,12 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		case fr := <-frames.Frames():
 			if codecID, ok := negotiatedNSCodecID(caps); ok {
 				if command, built := buildNSCodecSurfaceBitsCommand(normalizeFrameForDesktop(fr, width, height), codecID); built {
-					tracef("nscodec_selected", "codec_id=%d command_bytes=%d emission=deferred", codecID, len(command))
+					tracef("nscodec_selected", "codec_id=%d command_bytes=%d emission=opt-in", codecID, len(command))
+					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
+						return err
+					}
+					tracef("nscodec_write", "codec_id=%d bytes=%d", codecID, len(command))
+					return nil
 				}
 			}
 			cache := newBitmapTileCache()
