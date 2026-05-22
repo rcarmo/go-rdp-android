@@ -104,15 +104,15 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | NSCodec bytes | RDPGFX | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | ---: | --- | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
 for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_write_bytes',0)} | {s.get('rdpgfx_seen')} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -187,14 +187,14 @@ for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]
 PY
 cat >>"$OUT/summary.md" <<'SUMMARY'
 
-## Encoding families not emitted by this server yet
+## Encoding families not default-enabled by this server yet
 
-These are tracked explicitly so the matrix does not imply full RDP graphics-codec emission coverage:
+These are tracked explicitly so the matrix does not imply default RDP graphics-codec emission coverage:
 
 | Encoding family | Matrix status | Rationale |
 | --- | --- | --- |
 | RDP 5/6 bitmap compression / bitmap RLE | Experimental opt-in | 24-bpp COPY/color-order encoder, expansion rejection, runtime toggle, diagnostics, and saved-byte matrix evidence exist; negotiated/default emission is still disabled. |
-| NSCodec | Metadata/decoder upstream; no Android emitter | `go-rdp` exposes NSCodec GUID metadata and decoder utilities; server-side encoder/emitter remains evidence-gated. |
+| NSCodec | Experimental opt-in | `go-rdp` exposes NSCodec encode/decode utilities; Android parses Bitmap Codecs, builds SurfaceBits commands, and emits an initial NSCodec update only when `GO_RDP_ANDROID_ENABLE_NSCODEC=1` and the client advertises NSCodec. Local FreeRDP 3.15.0 currently advertises zero bitmap codecs in this non-GFX case, so the matrix records capability absence. |
 | RemoteFX / RFX | Metadata/decoder upstream; no Android emitter | `go-rdp` exposes RemoteFX GUID metadata and RFX decode package coverage; deprecated/disabled in many clients, so emission needs compatibility evidence. |
 | RDPGFX AVC444 / AVC444v2 | Codec IDs upstream; no emitter | Higher-fidelity H.264 variants; shared IDs exist, but defer transport until AVC420 negotiation/client proof exists. |
 | RDPGFX ClearCodec | Codec ID upstream; no emitter | Text/graphics optimized codec; shared ID exists, but defer behind Planar and AVC420. |
@@ -212,7 +212,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
   "upstream_metadata": [
-    {"name":"NSCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"evidence-gated"},
+    {"name":"NSCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"experimental-opt-in", "priority":"client-evidence-gated"},
     {"name":"RemoteFX / RFX", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred"},
     {"name":"RDPGFX AVC444 / AVC444v2", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred-until-avc420-proof"},
     {"name":"RDPGFX ClearCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred"},
