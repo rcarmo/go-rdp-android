@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 const (
@@ -19,10 +20,14 @@ const (
 	rdpgfxCmdCapsAdvertise      uint16 = 0x0012
 	rdpgfxCmdCapsConfirm        uint16 = 0x0013
 
-	rdpgfxCodecUncompressed uint16 = 0x0000
-	rdpgfxCodecClearCodec   uint16 = 0x0008
-	rdpgfxCodecPlanar       uint16 = 0x000a
-	rdpgfxCodecAVC420       uint16 = 0x000b
+	rdpgfxCodecUncompressed    uint16 = rdpcodec.RDPGFXCodecUncompressed
+	rdpgfxCodecClearCodec      uint16 = rdpcodec.RDPGFXCodecClearCodec
+	rdpgfxCodecCAProgressive   uint16 = rdpcodec.RDPGFXCodecCAProgressive
+	rdpgfxCodecPlanar          uint16 = rdpcodec.RDPGFXCodecPlanar
+	rdpgfxCodecAVC420          uint16 = rdpcodec.RDPGFXCodecAVC420
+	rdpgfxCodecCAProgressiveV2 uint16 = rdpcodec.RDPGFXCodecCAProgressiveV2
+	rdpgfxCodecAVC444          uint16 = rdpcodec.RDPGFXCodecAVC444
+	rdpgfxCodecAVC444v2        uint16 = rdpcodec.RDPGFXCodecAVC444v2
 
 	rdpgfxPixelFormatXRGB8888 byte = 0x20
 

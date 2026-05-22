@@ -54,6 +54,24 @@ func TestParseRDPGFXRejectsMalformedPDUs(t *testing.T) {
 	}
 }
 
+func TestRDPGFXCodecConstantsCoverDeferredFamilies(t *testing.T) {
+	if rdpgfxCodecClearCodec != 0x0008 {
+		t.Fatalf("ClearCodec codec ID = 0x%04x", rdpgfxCodecClearCodec)
+	}
+	if rdpgfxCodecCAProgressive != 0x0009 {
+		t.Fatalf("CAProgressive codec ID = 0x%04x", rdpgfxCodecCAProgressive)
+	}
+	if rdpgfxCodecCAProgressiveV2 != 0x000d {
+		t.Fatalf("CAProgressiveV2 codec ID = 0x%04x", rdpgfxCodecCAProgressiveV2)
+	}
+	if rdpgfxCodecAVC444 != 0x000e {
+		t.Fatalf("AVC444 codec ID = 0x%04x", rdpgfxCodecAVC444)
+	}
+	if rdpgfxCodecAVC444v2 != 0x000f {
+		t.Fatalf("AVC444v2 codec ID = 0x%04x", rdpgfxCodecAVC444v2)
+	}
+}
+
 func TestRDPGFXCapabilitySupportsH264(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_DISABLE_H264", "")
 	if rdpgfxCapabilitySupportsH264(rdpgfxCapabilitySet{Version: rdpgfxCapsVersion8}) {

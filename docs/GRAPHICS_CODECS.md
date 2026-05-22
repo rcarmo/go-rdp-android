@@ -1,6 +1,6 @@
 # Graphics codec coverage
 
-This page separates the graphics paths the server implements today from RDP codec families that are explicitly missing/deferred. The first public APK baseline remains RDPGFX Planar with slow-path bitmap fallback; additional codecs should be added only when client capability evidence or performance data justifies the complexity.
+This page separates the graphics paths the server implements today from RDP codec families that are explicitly missing/deferred. The first public APK baseline remains RDPGFX Planar with slow-path bitmap fallback; additional codecs should be added only when client capability evidence or performance data justifies the complexity. Shared RDP bitmap/RDPGFX codec identifiers now come from upstream `github.com/rcarmo/go-rdp/pkg/codec` so server-side encoder work can be pushed there before being wired into Android.
 
 ## Implemented and tested
 
@@ -15,12 +15,12 @@ This page separates the graphics paths the server implements today from RDP code
 | Codec family | Implemented? | First-APK blocker? | Notes |
 | --- | --- | --- | --- |
 | RDP 5/6 bitmap compression / bitmap RLE | Experimental opt-in | No | A conservative 24-bpp COPY/color-order encoder and compressed bitmap-update builder exist with expansion rejection; runtime emission is guarded by `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`, the local matrix has a dedicated `bitmap-rle` case and records `bitmap_rle_seen`, compressed bytes, and saved bytes; gomobile/Android diagnostics expose `bitmapRleFrames`, `bitmapRleBytes`, and `bitmapRleSavedBytes` with unit coverage for malformed stats input; and the path should remain off by default while RDPGFX Planar is green. |
-| NSCodec | No | No | Could help some legacy/non-GFX clients; requires capability parsing and encoder implementation. |
-| RemoteFX / RFX | No | No | Deprecated/disabled in many clients; only worth implementing if real-client evidence requires it. |
-| RDPGFX AVC444 / AVC444v2 | No | No | Higher-fidelity H.264 family; defer until AVC420 negotiated-client proof exists. |
-| RDPGFX ClearCodec | No | No | Text/graphics optimized codec; defer behind Planar and AVC420. |
-| RDPGFX Progressive / other progressive codecs | No | No | More complex progressive pipeline; not first-APK scope. |
-| JPEG/PNG bitmap codecs | No | No | No current server output path; add only if capability/performance data justifies it. |
+| NSCodec | Decoder/capability metadata upstream; no Android encoder | No | `go-rdp` has NSCodec decode utilities and public GUID metadata; Android server still needs negotiated encoder/emitter work before runtime use. |
+| RemoteFX / RFX | Decoder/capability metadata upstream; no Android encoder | No | `go-rdp` has RFX package coverage and public GUID metadata; deprecated/disabled in many clients, so Android emission still needs client evidence. |
+| RDPGFX AVC444 / AVC444v2 | Codec IDs upstream; no emitter | No | Higher-fidelity H.264 family; IDs are now shared through `go-rdp`, but transport should defer until AVC420 negotiated-client proof exists. |
+| RDPGFX ClearCodec | Codec ID upstream; no emitter | No | Text/graphics optimized codec; ID is shared through `go-rdp`, encoder/emitter remains deferred behind Planar and AVC420. |
+| RDPGFX Progressive / other progressive codecs | Codec IDs upstream; no emitter | No | More complex progressive pipeline; IDs are shared through `go-rdp`, but this is not first-APK scope. |
+| JPEG/PNG bitmap codecs | JPEG GUID upstream; no Android encoder/emitter | No | `go-rdp` exposes JPEG bitmap-codec GUID metadata; PNG has no current negotiated RDP output path here. Add image codecs only if capability/performance data justifies them. |
 
 ## Client capability evidence to collect
 
