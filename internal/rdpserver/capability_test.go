@@ -3,6 +3,8 @@ package rdpserver
 import (
 	"encoding/binary"
 	"testing"
+
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 func TestBuildDemandActivePDU(t *testing.T) {
@@ -49,14 +51,16 @@ func TestParseConfirmActiveCapabilitySummary(t *testing.T) {
 	order := capabilitySet(capTypeOrder, buildTestOrderCapabilityPayload(0x000a, 0x0004, 0x00020000))
 	virtualChannel := capabilitySet(capTypeVirtualChannel, buildTestVirtualChannelCapabilityPayload(0x00000001, 1600))
 	largePointer := capabilitySet(capTypeLargePointer, []byte{0x01, 0x00})
-	pdu := buildTestConfirmActiveWithCapabilities(defaultShareID, defaultMCSUserID, bitmap, input, order, virtualChannel, largePointer)
+	surfaceCommands := capabilitySet(capTypeSurfaceCommands, buildTestSurfaceCommandsCapabilityPayload(0x00000052))
+	bitmapCodecs := capabilitySet(capTypeBitmapCodecs, buildTestBitmapCodecsCapabilityPayload())
+	pdu := buildTestConfirmActiveWithCapabilities(defaultShareID, defaultMCSUserID, bitmap, input, order, virtualChannel, largePointer, surfaceCommands, bitmapCodecs)
 
 	info, err := parseConfirmActive(pdu)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.CapabilitySetCount != 5 {
-		t.Fatalf("capability count = %d, want 5", info.CapabilitySetCount)
+	if info.CapabilitySetCount != 7 {
+		t.Fatalf("capability count = %d, want 7", info.CapabilitySetCount)
 	}
 	if !info.Capabilities.Bitmap.Present || info.Capabilities.Bitmap.DesktopWidth != 1280 || info.Capabilities.Bitmap.DesktopHeight != 720 || !info.Capabilities.Bitmap.DesktopResize {
 		t.Fatalf("unexpected bitmap capability: %#v", info.Capabilities.Bitmap)
@@ -72,6 +76,18 @@ func TestParseConfirmActiveCapabilitySummary(t *testing.T) {
 	}
 	if !info.Capabilities.LargePointer.Present || info.Capabilities.LargePointer.Flags != 0x0001 {
 		t.Fatalf("unexpected large pointer capability: %#v", info.Capabilities.LargePointer)
+	}
+	if !info.Capabilities.SurfaceCommands.Present || info.Capabilities.SurfaceCommands.Flags != 0x00000052 {
+		t.Fatalf("unexpected surface commands capability: %#v", info.Capabilities.SurfaceCommands)
+	}
+	if !info.Capabilities.BitmapCodecs.Present || len(info.Capabilities.BitmapCodecs.Codecs) != 2 {
+		t.Fatalf("unexpected bitmap codecs capability: %#v", info.Capabilities.BitmapCodecs)
+	}
+	if got := info.Capabilities.BitmapCodecs.Codecs[0]; got.Name != rdpcodec.BitmapCodecNameNSCodec || got.ID != 1 || got.PropertiesSize != 3 {
+		t.Fatalf("unexpected NSCodec entry: %#v", got)
+	}
+	if got := info.Capabilities.BitmapCodecs.Codecs[1]; got.Name != rdpcodec.BitmapCodecNameJPEG || got.ID != 2 || got.PropertiesSize != 0 {
+		t.Fatalf("unexpected JPEG entry: %#v", got)
 	}
 }
 
@@ -123,5 +139,23 @@ func buildTestVirtualChannelCapabilityPayload(flags, chunkSize uint32) []byte {
 	payload := make([]byte, 8)
 	binary.LittleEndian.PutUint32(payload[0:4], flags)
 	binary.LittleEndian.PutUint32(payload[4:8], chunkSize)
+	return payload
+}
+
+func buildTestSurfaceCommandsCapabilityPayload(flags uint32) []byte {
+	payload := make([]byte, 8)
+	binary.LittleEndian.PutUint32(payload[0:4], flags)
+	return payload
+}
+
+func buildTestBitmapCodecsCapabilityPayload() []byte {
+	payload := []byte{0x02}
+	payload = append(payload, rdpcodec.NSCodecGUID[:]...)
+	payload = append(payload, 0x01)
+	payload = appendLE16(payload, 3)
+	payload = append(payload, 1, 1, 3)
+	payload = append(payload, rdpcodec.JPEGCodecGUID[:]...)
+	payload = append(payload, 0x02)
+	payload = appendLE16(payload, 0)
 	return payload
 }

@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-22
-Current evidence commit: `bb584aa` (`Update go-rdp NSCodec encoder dependency`)
-Latest referenced CI run: `26292160856` (`main` CI, failure; fixed by follow-up dependency below)
+Current evidence commit: `be5bf18` (`Update go-rdp NSCodec encoder fix`)
+Latest referenced CI run: `26292895267` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26292160856`:
+Latest checked artifact from CI run `26292895267`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -48,7 +48,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| RDP negotiation | Prototype-compatible | X.224, TLS, Hybrid/NLA, MCS, GCC response, licensing, activation, bitmap streaming. Connect-Initial now parses client core desktop + monitor-layout metadata, Confirm Active parsing summarizes bitmap/input/order/virtual-channel/large-pointer capabilities (including desktop-resize flag), and session desktop sizing is propagated into bitmap encoding scale. |
+| RDP negotiation | Prototype-compatible | X.224, TLS, Hybrid/NLA, MCS, GCC response, licensing, activation, bitmap streaming. Connect-Initial now parses client core desktop + monitor-layout metadata, Confirm Active parsing summarizes bitmap/input/order/virtual-channel/large-pointer/surface-command/bitmap-codec capabilities (including desktop-resize flag), and session desktop sizing is propagated into bitmap encoding scale. |
 | Authentication | Prototype-compatible | TLS Client Info auth and Hybrid/NLA CredSSP/NTLMv2 work against current probes/FreeRDP. Defensive CredSSP pubKeyAuth nonce/order binding variants are intentionally retained for interoperability, with explicit comments and table-driven coverage. Android app flow now requires explicit credential setup before service start and persists configured credentials encrypted-at-rest (Android Keystore-backed AES/GCM) for subsequent starts; log user/domain fields are now bounded/sanitized. Server-side bcrypt hashed credential verification is available for TLS Client Info flows, while current NLA path still requires plaintext-equivalent credential input. Server policy controls now support security-mode selection (`negotiate`/`rdp-only`/`tls-only`/`nla-required`) plus allowed-users/CIDR allowlists, TLS cert persistence/rotation with handshake fingerprint logging for trust guidance, and optional failed-auth lockout/backoff policy controls. |
 | Graphics | RDPGFX compressed path implemented; experimental H.264-over-RDPGFX emission added | RDPGFX (`Microsoft::Windows::RDS::Graphics`) over `drdynvc` is enabled by default and sends Planar-codec no-alpha RLE frames through server-initiated dynamic channels. The blocking CI `/sec:nla /gfx` proof gate shows active RDPGFX negotiation/streaming, while `/sec:rdp`, `/sec:tls`, and `/sec:nla` keep the slow-path bitmap fallback honest by disabling RDPGFX. Experimental H.264/AVC now includes Android `MediaCodec` scaffolding, a bounded gomobile encoded-frame queue, Annex-B normalization, codec-config accumulation, latest-frame coalescing fixes, AVC420 `RFX_AVC420_BITMAP_STREAM` emission, `h264Status`, and forced CI/local smoke evidence. The local `make encoding-matrix` script asserts bitmap, RDPGFX Planar, and forced H.264 evidence; emits Markdown plus `codec-coverage.json`; records RDPGFX capability advertisements with `AVC420_ENABLED`/`AVC_DISABLED` annotations; and lists deferred/scaffolded codec families (bitmap RLE experimental opt-in with COPY/color orders, expansion-rejecting compressed update builder, dedicated local matrix case, saved-byte summary evidence, gomobile/Android diagnostic counters, and malformed stats parser coverage; upstream `go-rdp` NSCodec raw encoder/decoder (follow-up 32-bit/mobile build fix pending CI), and codec metadata for NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive, and JPEG; Android emitters for those families still deferred; PNG). Latest local matrix evidence reached active state for bitmap fallback, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx`; forced H.264 produced positive write/byte counts, but this remains force-mode protocol smoke evidence until a real client advertises/accepts AVC420 without `GO_RDP_ANDROID_FORCE_H264=1`. See `docs/GRAPHICS_CODECS.md`, `/workspace/workitems/10-next/go-rdp-android-h264-full-spectrum-encoding.md`, and `/workspace/workitems/10-next/go-rdp-android-graphics-codec-coverage.md`. |
 | Classic input | Functional baseline | Slow-path and Fast-Path pointer/keyboard/Unicode decoding with explicit sink-equivalence coverage; input/RDPEI metric wrappers now tolerate nil sinks and nil counters for safer test/prototype reuse; Android coalesces primary pointer down/move/up into bounded Accessibility strokes; wheel events are decoded/bridged/logged with safe Android degradation; keyboard/text, secondary-button behavior, and physical-device validation remain pending. |

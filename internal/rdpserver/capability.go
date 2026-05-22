@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 const (
@@ -18,15 +20,17 @@ const (
 	pduType2FontList    = 0x27
 	pduType2FontMap     = 0x28
 
-	capTypeGeneral        = 0x0001
-	capTypeBitmap         = 0x0002
-	capTypeOrder          = 0x0003
-	capTypePointer        = 0x0008
-	capTypeShare          = 0x0009
-	capTypeInput          = 0x000d
-	capTypeFont           = 0x000e
-	capTypeVirtualChannel = 0x0014
-	capTypeLargePointer   = 0x001b
+	capTypeGeneral         = 0x0001
+	capTypeBitmap          = 0x0002
+	capTypeOrder           = 0x0003
+	capTypePointer         = 0x0008
+	capTypeShare           = 0x0009
+	capTypeInput           = 0x000d
+	capTypeFont            = 0x000e
+	capTypeVirtualChannel  = 0x0014
+	capTypeLargePointer    = 0x001b
+	capTypeSurfaceCommands = 0x001c
+	capTypeBitmapCodecs    = 0x001d
 
 	defaultShareID   = 0x000103ea
 	serverChannelID  = 1002
@@ -50,11 +54,13 @@ type confirmActiveInfo struct {
 }
 
 type confirmActiveCapabilities struct {
-	Bitmap         bitmapCapabilityInfo
-	Input          inputCapabilityInfo
-	Order          orderCapabilityInfo
-	VirtualChannel virtualChannelCapabilityInfo
-	LargePointer   largePointerCapabilityInfo
+	Bitmap          bitmapCapabilityInfo
+	Input           inputCapabilityInfo
+	Order           orderCapabilityInfo
+	VirtualChannel  virtualChannelCapabilityInfo
+	LargePointer    largePointerCapabilityInfo
+	SurfaceCommands surfaceCommandsCapabilityInfo
+	BitmapCodecs    bitmapCodecsCapabilityInfo
 }
 
 type bitmapCapabilityInfo struct {
@@ -86,6 +92,23 @@ type virtualChannelCapabilityInfo struct {
 type largePointerCapabilityInfo struct {
 	Present bool
 	Flags   uint16
+}
+
+type surfaceCommandsCapabilityInfo struct {
+	Present bool
+	Flags   uint32
+}
+
+type bitmapCodecsCapabilityInfo struct {
+	Present bool
+	Codecs  []bitmapCodecInfo
+}
+
+type bitmapCodecInfo struct {
+	GUID           [16]byte
+	ID             byte
+	Name           string
+	PropertiesSize uint16
 }
 
 func writeDemandActive(conn net.Conn, width, height int) error {
@@ -293,6 +316,10 @@ func parseConfirmActiveCapabilities(data []byte, declaredCount uint16) (confirmA
 			parseVirtualChannelCapability(payload, &caps)
 		case capTypeLargePointer:
 			parseLargePointerCapability(payload, &caps)
+		case capTypeSurfaceCommands:
+			parseSurfaceCommandsCapability(payload, &caps)
+		case capTypeBitmapCodecs:
+			parseBitmapCodecsCapability(payload, &caps)
 		}
 		off += capLen
 		parsed++
@@ -353,6 +380,45 @@ func parseLargePointerCapability(payload []byte, caps *confirmActiveCapabilities
 	}
 	caps.LargePointer.Present = true
 	caps.LargePointer.Flags = binary.LittleEndian.Uint16(payload[0:2])
+}
+
+func parseSurfaceCommandsCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 4 {
+		return
+	}
+	caps.SurfaceCommands.Present = true
+	caps.SurfaceCommands.Flags = binary.LittleEndian.Uint32(payload[0:4])
+}
+
+func parseBitmapCodecsCapability(payload []byte, caps *confirmActiveCapabilities) {
+	if len(payload) < 1 {
+		return
+	}
+	count := int(payload[0])
+	off := 1
+	codecs := make([]bitmapCodecInfo, 0, count)
+	for i := 0; i < count; i++ {
+		if off+19 > len(payload) {
+			break
+		}
+		var guid [16]byte
+		copy(guid[:], payload[off:off+16])
+		off += 16
+		codecID := payload[off]
+		off++
+		propsLen := binary.LittleEndian.Uint16(payload[off : off+2])
+		off += 2
+		if int(propsLen) > len(payload)-off {
+			break
+		}
+		codecs = append(codecs, bitmapCodecInfo{GUID: guid, ID: codecID, Name: rdpcodec.BitmapCodecGUIDName(guid), PropertiesSize: propsLen})
+		off += int(propsLen)
+	}
+	if len(codecs) == 0 {
+		return
+	}
+	caps.BitmapCodecs.Present = true
+	caps.BitmapCodecs.Codecs = codecs
 }
 
 func writeShareControlHeader(buf *bytes.Buffer, totalLength int, pduType uint16, source uint16) {

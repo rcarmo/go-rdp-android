@@ -96,7 +96,7 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source
 					}
 					tracef(
 						"confirm_active",
-						"source=%q caps=%d bitmap=%t %dx%d resize=%t input_flags=0x%04x order_flags=0x%04x vc_flags=0x%08x large_pointer_flags=0x%04x session_desktop=%dx%d",
+						"source=%q caps=%d bitmap=%t %dx%d resize=%t input_flags=0x%04x order_flags=0x%04x vc_flags=0x%08x large_pointer_flags=0x%04x surface_cmd_flags=0x%08x bitmap_codecs=%d session_desktop=%dx%d",
 						info.SourceDescriptor,
 						info.CapabilitySetCount,
 						info.Capabilities.Bitmap.Present,
@@ -107,9 +107,14 @@ func handleMCSDomainSequence(conn net.Conn, frames frame.Source, h264 H264Source
 						info.Capabilities.Order.Flags,
 						info.Capabilities.VirtualChannel.Flags,
 						info.Capabilities.LargePointer.Flags,
+						info.Capabilities.SurfaceCommands.Flags,
+						len(info.Capabilities.BitmapCodecs.Codecs),
 						sessionWidth,
 						sessionHeight,
 					)
+					for _, codec := range info.Capabilities.BitmapCodecs.Codecs {
+						tracef("bitmap_codec_cap", "id=%d name=%q properties=%d guid=%x", codec.ID, codec.Name, codec.PropertiesSize, codec.GUID)
+					}
 					continue
 				case pduTypeDeactivateAll:
 					tracef("share_control_disconnect", "pdu_type=0x%04x", share.PDUType)
