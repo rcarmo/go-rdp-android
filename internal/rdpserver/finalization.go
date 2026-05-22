@@ -96,6 +96,16 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 					return nil
 				}
 			}
+			if codecID, ok := negotiatedPNGCodecID(); ok {
+				if command, built := buildPNGSurfaceBitsCommand(normalized, codecID); built {
+					tracef("png_codec_selected", "codec_id=%d command_bytes=%d emission=operator-override", codecID, len(command))
+					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
+						return err
+					}
+					tracef("png_codec_write", "codec_id=%d bytes=%d", codecID, len(command))
+					return nil
+				}
+			}
 			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
 				tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
 			}
