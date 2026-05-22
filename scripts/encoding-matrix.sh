@@ -99,6 +99,7 @@ run_case rdpgfx-planar-stream 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENAB
 run_case rdpgfx-uncompressed 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1 GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-deferred-codecs 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1 GO_RDP_ANDROID_ENABLE_AVC444=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' '-test-pattern' '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
+run_case h264-negotiated-gfx '' '-test-pattern' '/sec:nla /gfx'
 run_case h264-avc420-forced 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx:AVC420'
 run_case h264-forced-gfx-fallback 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx'
 
@@ -115,7 +116,7 @@ SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
@@ -159,6 +160,9 @@ if not uncompressed_gfx.get("active_seen") or not uncompressed_gfx.get("rdpgfx_s
 deferred_gfx = load("rdpgfx-deferred-codecs")
 if not deferred_gfx.get("active_seen") or not deferred_gfx.get("rdpgfx_seen"):
     failures.append("RDPGFX deferred-codec probe did not produce active RDPGFX evidence")
+negotiated_h264 = load("h264-negotiated-gfx")
+if not negotiated_h264.get("active_seen") or not negotiated_h264.get("rdpgfx_seen") or negotiated_h264.get("h264_write_count", 0) != 0 or negotiated_h264.get("h264_reason") in ["", "forced-by-env"]:
+    failures.append("negotiated H.264 probe did not produce active gated no-write evidence")
 for label in ["h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = load(label)
     if not s.get("active_seen") or not s.get("rdpgfx_seen") or s.get("h264_reason") != "forced-by-env" or s.get("h264_write_count", 0) <= 0 or s.get("h264_write_bytes", 0) <= 0:
@@ -181,6 +185,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX Planar stream probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1` while keeping Planar encoding and no H.264 writes; `GFX stream stops` records whether the client closed the graphics DVC after the first frame.
 - RDPGFX uncompressed probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1` and should show `rdpgfx_uncompressed_selected=true` while remaining diagnostic-only.
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
+- H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
 - H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
 
 ## Observed RDPGFX capability advertisements
@@ -198,7 +203,7 @@ def flag_notes(flags):
     if value & 0x20:
         notes.append("AVC_DISABLED")
     return "/" + "+".join(notes) if notes else ""
-for label in ["rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     log = base / label / "mock-server.log"
     if not log.exists():
         continue
@@ -242,7 +247,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RDPGFX Planar streaming", "status":"experimental-opt-in", "matrix_case":"rdpgfx-planar-stream", "toggle":"GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1"},
     {"name":"RDPGFX Uncompressed", "status":"diagnostic-opt-in", "matrix_case":"rdpgfx-uncompressed", "toggles":["GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1", "GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1"]},
     {"name":"RDPGFX deferred codecs", "status":"selection-scaffold", "matrix_case":"rdpgfx-deferred-codecs", "toggles":["GO_RDP_ANDROID_ENABLE_CLEARCODEC=1", "GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "GO_RDP_ANDROID_ENABLE_AVC444=1", "GO_RDP_ANDROID_ENABLE_AVC444V2=1"], "emission":"deferred-safe-planar-fallback"},
-    {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
+    {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
   "upstream_metadata": [
     {"name":"NSCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"experimental-opt-in", "priority":"client-evidence-gated"},
