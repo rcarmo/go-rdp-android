@@ -149,7 +149,7 @@ Run the local graphics encoding matrix when changing transport code or collectin
 make encoding-matrix
 ```
 
-That matrix covers slow-path bitmap fallback, opt-in bitmap RLE fallback with saved-byte evidence, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx` H.264 smoke cases, and explicitly lists unimplemented/deferred codec families: NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, and JPEG/PNG bitmap codecs. See [docs/GRAPHICS_CODECS.md](docs/GRAPHICS_CODECS.md) for the codec coverage and decision matrix.
+That matrix covers slow-path bitmap fallback, opt-in bitmap RLE fallback with saved-byte evidence, RDPGFX Planar, forced `/gfx:AVC420`, and forced `/gfx` H.264 smoke cases, and explicitly separates implemented paths from upstream `go-rdp` codec metadata whose Android emitters remain deferred: NSCodec, RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, progressive codecs, and JPEG bitmap metadata; PNG remains fully evidence-gated. See [docs/GRAPHICS_CODECS.md](docs/GRAPHICS_CODECS.md) for the codec coverage and decision matrix.
 
 Manual emulator UX run:
 
