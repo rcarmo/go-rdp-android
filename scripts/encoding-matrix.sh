@@ -180,19 +180,19 @@ for label in ["rdpgfx-planar", "h264-avc420-forced", "h264-forced-gfx-fallback"]
 PY
 cat >>"$OUT/summary.md" <<'SUMMARY'
 
-## Encoding families not implemented by this server yet
+## Encoding families not emitted by this server yet
 
-These are tracked explicitly so the matrix does not imply full RDP graphics-codec coverage:
+These are tracked explicitly so the matrix does not imply full RDP graphics-codec emission coverage:
 
 | Encoding family | Matrix status | Rationale |
 | --- | --- | --- |
-| RDP 5/6 bitmap compression / bitmap RLE | Scaffold only | 24-bpp COPY-order encoder has unit coverage, but runtime negotiation/emission is not enabled yet. |
-| NSCodec | Not implemented | Useful for some non-GFX clients; needs capability parsing plus encoder implementation before it can be tested. |
-| RemoteFX / RFX | Not implemented | Deprecated/disabled in many clients; only implement if compatibility evidence justifies it. |
-| RDPGFX AVC444 / AVC444v2 | Not implemented | Higher-fidelity H.264 variants; defer until AVC420 negotiation/client proof exists. |
-| RDPGFX ClearCodec | Not implemented | Text/graphics optimized codec; defer behind Planar and AVC420. |
-| RDPGFX Progressive / other progressive codecs | Not implemented | More complex progressive pipeline; not first-APK scope. |
-| JPEG/PNG bitmap codecs | Not implemented | No current server output path; add only if client capabilities and performance data justify it. |
+| RDP 5/6 bitmap compression / bitmap RLE | Experimental opt-in | 24-bpp COPY/color-order encoder, expansion rejection, runtime toggle, diagnostics, and saved-byte matrix evidence exist; negotiated/default emission is still disabled. |
+| NSCodec | Metadata/decoder upstream; no Android emitter | `go-rdp` exposes NSCodec GUID metadata and decoder utilities; server-side encoder/emitter remains evidence-gated. |
+| RemoteFX / RFX | Metadata/decoder upstream; no Android emitter | `go-rdp` exposes RemoteFX GUID metadata and RFX decode package coverage; deprecated/disabled in many clients, so emission needs compatibility evidence. |
+| RDPGFX AVC444 / AVC444v2 | Codec IDs upstream; no emitter | Higher-fidelity H.264 variants; shared IDs exist, but defer transport until AVC420 negotiation/client proof exists. |
+| RDPGFX ClearCodec | Codec ID upstream; no emitter | Text/graphics optimized codec; shared ID exists, but defer behind Planar and AVC420. |
+| RDPGFX Progressive / other progressive codecs | Codec IDs upstream; no emitter | Shared IDs exist; progressive pipeline remains too complex for first-APK scope without client evidence. |
+| JPEG/PNG bitmap codecs | JPEG metadata upstream; no Android emitter | `go-rdp` exposes JPEG bitmap-codec GUID metadata; PNG has no negotiated RDP output path here. Add image emitters only if client capabilities and performance data justify them. |
 SUMMARY
 
 cat >"$OUT/codec-coverage.json" <<'JSON'
@@ -203,13 +203,16 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],
+  "upstream_metadata": [
+    {"name":"NSCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"evidence-gated"},
+    {"name":"RemoteFX / RFX", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred"},
+    {"name":"RDPGFX AVC444 / AVC444v2", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred-until-avc420-proof"},
+    {"name":"RDPGFX ClearCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred"},
+    {"name":"RDPGFX Progressive / other progressive codecs", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"deferred"},
+    {"name":"JPEG bitmap codec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"missing", "priority":"evidence-gated"}
+  ],
   "missing": [
-    {"name":"NSCodec", "priority":"evidence-gated"},
-    {"name":"RemoteFX / RFX", "priority":"deferred"},
-    {"name":"RDPGFX AVC444 / AVC444v2", "priority":"deferred-until-avc420-proof"},
-    {"name":"RDPGFX ClearCodec", "priority":"deferred"},
-    {"name":"RDPGFX Progressive / other progressive codecs", "priority":"deferred"},
-    {"name":"JPEG/PNG bitmap codecs", "priority":"evidence-gated"}
+    {"name":"PNG bitmap codecs", "priority":"evidence-gated"}
   ]
 }
 JSON

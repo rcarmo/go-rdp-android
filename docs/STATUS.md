@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-22
-Current evidence commit: `c75c4e5` (`Keep gomobile tool dependency`)
-Latest referenced CI run: `26280180061` (`main` CI, success)
+Current evidence commit: `d28bdf2` (`Refresh status after codec metadata`)
+Latest referenced CI run: `26280851578` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26280180061`:
+Latest checked artifact from CI run `26280851578`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
