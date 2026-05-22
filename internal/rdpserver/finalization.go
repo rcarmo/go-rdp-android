@@ -225,6 +225,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 					}
 				}
 				metrics.recordRDPGFXFramePath(pdus, path)
+				tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
 				if rdpgfxStreamingEnabledFromEnv() {
 					go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID+1)
 				}
@@ -272,6 +273,7 @@ func streamRDPGFXFrameUpdates(conn net.Conn, frames frame.Source, dvc *drdynvcMa
 			}
 		}
 		metrics.recordRDPGFXFramePath(pdus, path)
+		tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
 		nextFrameID++
 	}
 }
