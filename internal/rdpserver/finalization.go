@@ -217,7 +217,17 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			pdus, ok := buildRDPGFXPlanarFramePDUs(0, 1, fr, width, height)
+			var pdus [][]byte
+			var ok bool
+			if rdpgfxUncompressedEnabledFromEnv() {
+				pdus, ok = buildRDPGFXUncompressedFramePDUs(0, 1, fr, width, height)
+				if ok {
+					tracef("rdpgfx_uncompressed_selected", "frame_id=%d pdus=%d", 1, len(pdus))
+				}
+			}
+			if !ok {
+				pdus, ok = buildRDPGFXPlanarFramePDUs(0, 1, fr, width, height)
+			}
 			if ok {
 				for _, pdu := range pdus {
 					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
