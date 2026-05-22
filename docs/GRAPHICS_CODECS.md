@@ -7,7 +7,7 @@ This page separates the graphics paths the server implements today from RDP code
 | Path | Transport | Status | Evidence |
 | --- | --- | --- | --- |
 | Slow-path raw bitmap updates | Share Data bitmap updates | Implemented fallback | Blocking FreeRDP `/sec:rdp`, `/sec:tls`, `/sec:nla` gates; local `make encoding-matrix` bitmap case. |
-| RDPGFX Planar | `drdynvc` + `Microsoft::Windows::RDS::Graphics` + Planar codec | Default compressed baseline | Blocking FreeRDP `/sec:nla /gfx` gate; local `make encoding-matrix` RDPGFX Planar case. The RDPGFX frame path now streams subsequent frame updates instead of only emitting the initial surface update. RDPGFX uncompressed is also available as an opt-in diagnostic path via `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1`; Planar remains the release default. |
+| RDPGFX Planar | `drdynvc` + `Microsoft::Windows::RDS::Graphics` + Planar codec | Default compressed baseline | Blocking FreeRDP `/sec:nla /gfx` gate; local `make encoding-matrix` RDPGFX Planar case. The RDPGFX frame path has an opt-in streaming path (`GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1`) for subsequent frame updates while CI/release gates keep the conservative initial-frame proof path until broader client soak evidence is collected. RDPGFX uncompressed is also available as an opt-in diagnostic path via `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1`; Planar remains the release default. |
 | RDPGFX AVC420 / H.264 | `drdynvc` + RDPGFX AVC420 `RFX_AVC420_BITMAP_STREAM` | Experimental / force-mode smoke only | Android `MediaCodec` scaffold, gomobile encoded-frame queue, server AVC420 emission, `h264Status`, CI forced artifact, local FreeRDP 3.15.0 forced `/gfx:AVC420` smoke. |
 
 ## Missing/deferred codec families

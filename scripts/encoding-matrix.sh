@@ -95,7 +95,7 @@ run_case nscodec-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_
 run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rfx-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RFX_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rdpgfx-planar 'GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /gfx'
-run_case rdpgfx-uncompressed 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1' '-test-pattern' '/sec:nla /gfx'
+run_case rdpgfx-uncompressed 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1 GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-deferred-codecs 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1 GO_RDP_ANDROID_ENABLE_AVC444=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' '-test-pattern' '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
 run_case h264-avc420-forced 'GO_RDP_ANDROID_FORCE_H264=1' "-test-pattern -h264-file $OUT/h264-idr.h264 -h264-fps 5" '/sec:nla /gfx:AVC420'
@@ -234,7 +234,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "requires_client_advertisement":true},
     {"name":"RemoteFX / RFX", "status":"selection-scaffold", "matrix_case":"rfx-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_RFX_CODEC=1", "requires_client_advertisement":true, "emission":"deferred-encoder-missing"},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
-    {"name":"RDPGFX Uncompressed", "status":"diagnostic-opt-in", "matrix_case":"rdpgfx-uncompressed", "toggle":"GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1"},
+    {"name":"RDPGFX Uncompressed", "status":"diagnostic-opt-in", "matrix_case":"rdpgfx-uncompressed", "toggles":["GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1", "GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1"]},
     {"name":"RDPGFX deferred codecs", "status":"selection-scaffold", "matrix_case":"rdpgfx-deferred-codecs", "toggles":["GO_RDP_ANDROID_ENABLE_CLEARCODEC=1", "GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "GO_RDP_ANDROID_ENABLE_AVC444=1", "GO_RDP_ANDROID_ENABLE_AVC444V2=1"], "emission":"deferred-safe-planar-fallback"},
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-avc420-forced", "h264-forced-gfx-fallback"]}
   ],

@@ -225,11 +225,15 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 					}
 				}
 				metrics.recordRDPGFXFramePath(pdus, path)
-				go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID+1)
+				if rdpgfxStreamingEnabledFromEnv() {
+					go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID+1)
+				}
 				return nil
 			}
 		default:
-			go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID)
+			if rdpgfxStreamingEnabledFromEnv() {
+				go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID)
+			}
 		}
 	}
 	return nil
