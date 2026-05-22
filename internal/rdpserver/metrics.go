@@ -8,6 +8,8 @@ type serverMetrics struct {
 	bitmapRLEFrames     *atomic.Int64
 	bitmapRLEBytes      *atomic.Int64
 	bitmapRLESavedBytes *atomic.Int64
+	nsCodecFrames       *atomic.Int64
+	nsCodecBytes        *atomic.Int64
 	rdpgfxFrames        *atomic.Int64
 	rdpgfxBytes         *atomic.Int64
 	h264Frames          *atomic.Int64
@@ -46,6 +48,18 @@ func (m serverMetrics) recordBitmapFrame(updates [][]byte) {
 		if m.bitmapRLESavedBytes != nil {
 			m.bitmapRLESavedBytes.Add(savedBytes)
 		}
+	}
+}
+
+func (m serverMetrics) recordNSCodecFrame(commands [][]byte) {
+	if m.framesSent != nil {
+		m.framesSent.Add(1)
+	}
+	if m.nsCodecFrames != nil {
+		m.nsCodecFrames.Add(1)
+	}
+	if m.nsCodecBytes != nil {
+		m.nsCodecBytes.Add(totalPayloadBytes(commands))
 	}
 }
 

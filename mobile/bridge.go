@@ -350,6 +350,26 @@ func (s *Server) BitmapRLESavedBytes() int64 {
 	return s.server.BitmapRLESavedBytes()
 }
 
+// NSCodecFrames returns the total number of experimental NSCodec update batches sent by the running server.
+func (s *Server) NSCodecFrames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.NSCodecFrames()
+}
+
+// NSCodecBytes returns the total number of experimental NSCodec SurfaceBits command bytes sent by the running server.
+func (s *Server) NSCodecBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.NSCodecBytes()
+}
+
 // RDPGFXFrames returns the total number of RDPGFX frame batches sent by the running server.
 func (s *Server) RDPGFXFrames() int64 {
 	s.mu.Lock()
@@ -506,6 +526,12 @@ func BitmapRLEBytes() int64 { return defaultServer.BitmapRLEBytes() }
 
 // BitmapRLESavedBytes returns estimated bytes saved by bitmap RLE for the default server.
 func BitmapRLESavedBytes() int64 { return defaultServer.BitmapRLESavedBytes() }
+
+// NSCodecFrames returns the experimental NSCodec update-batch count for the default server.
+func NSCodecFrames() int64 { return defaultServer.NSCodecFrames() }
+
+// NSCodecBytes returns the experimental NSCodec SurfaceBits command bytes for the default server.
+func NSCodecBytes() int64 { return defaultServer.NSCodecBytes() }
 
 // RDPGFXFrames returns the RDPGFX frame count for the default server.
 func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }

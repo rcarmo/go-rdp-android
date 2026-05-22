@@ -36,6 +36,8 @@ interface RdpBackend {
     fun bitmapRleFrames(): Long
     fun bitmapRleBytes(): Long
     fun bitmapRleSavedBytes(): Long
+    fun nsCodecFrames(): Long
+    fun nsCodecBytes(): Long
     fun rdpgfxFrames(): Long
     fun rdpgfxBytes(): Long
     fun h264Frames(): Long

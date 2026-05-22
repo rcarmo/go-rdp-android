@@ -81,7 +81,7 @@ For `/sec:rdp`, `/sec:tls`, and `/sec:nla`, the gate requires `active_seen=true`
 
 ## Experimental codec debugging
 
-NSCodec runtime emission is experimental and guarded by `GO_RDP_ANDROID_ENABLE_NSCODEC=1`; it only activates when the client advertises an NSCodec entry in the Bitmap Codecs capability set. Server traces include `bitmap_codec_cap` entries from Confirm Active plus `nscodec_selected`/`nscodec_write` when the opt-in initial NSCodec SurfaceBits update is built and sent.
+NSCodec runtime emission is experimental and guarded by `GO_RDP_ANDROID_ENABLE_NSCODEC=1`; it only activates when the client advertises an NSCodec entry in the Bitmap Codecs capability set. Server traces include `bitmap_codec_cap` entries from Confirm Active plus `nscodec_selected`/`nscodec_write` when the opt-in initial NSCodec SurfaceBits update is built and sent. Android health also exposes `graphics=nscodec`, `nsCodecFrames`, and `nsCodecBytes` once an opt-in NSCodec update is emitted.
 
 ## Legacy bitmap RLE scaffold debugging
 

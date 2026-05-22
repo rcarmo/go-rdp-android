@@ -21,6 +21,11 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 		t.Fatalf("GraphicsPath() = %q, want bitmap-rle", got)
 	}
 
+	s.nsCodecFrames.Store(1)
+	if got := s.GraphicsPath(); got != "nscodec" {
+		t.Fatalf("GraphicsPath() = %q, want nscodec", got)
+	}
+
 	s.rdpgfxFrames.Store(1)
 	if got := s.GraphicsPath(); got != "rdpgfx-planar" {
 		t.Fatalf("GraphicsPath() = %q, want rdpgfx-planar", got)
@@ -72,6 +77,25 @@ func TestServerMetricsRecordBitmapRLEFrame(t *testing.T) {
 	}
 	if got := bitmapRLESavedBytes.Load(); got <= 0 {
 		t.Fatalf("bitmapRLESavedBytes = %d, want positive", got)
+	}
+}
+
+func TestServerMetricsRecordNSCodecFrame(t *testing.T) {
+	var framesSent atomic.Int64
+	var nsCodecFrames atomic.Int64
+	var nsCodecBytes atomic.Int64
+	metrics := serverMetrics{framesSent: &framesSent, nsCodecFrames: &nsCodecFrames, nsCodecBytes: &nsCodecBytes}
+
+	metrics.recordNSCodecFrame([][]byte{[]byte("abc"), []byte("defg")})
+
+	if got := framesSent.Load(); got != 1 {
+		t.Fatalf("framesSent = %d, want 1", got)
+	}
+	if got := nsCodecFrames.Load(); got != 1 {
+		t.Fatalf("nsCodecFrames = %d, want 1", got)
+	}
+	if got := nsCodecBytes.Load(); got != 7 {
+		t.Fatalf("nsCodecBytes = %d, want 7", got)
 	}
 }
 
