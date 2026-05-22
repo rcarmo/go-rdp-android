@@ -370,6 +370,26 @@ func (s *Server) NSCodecBytes() int64 {
 	return s.server.NSCodecBytes()
 }
 
+// JPEGCodecFrames returns the total number of experimental JPEG bitmap-codec update batches sent by the running server.
+func (s *Server) JPEGCodecFrames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.JPEGCodecFrames()
+}
+
+// JPEGCodecBytes returns the total number of experimental JPEG bitmap-codec SurfaceBits command bytes sent by the running server.
+func (s *Server) JPEGCodecBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.JPEGCodecBytes()
+}
+
 // RDPGFXFrames returns the total number of RDPGFX frame batches sent by the running server.
 func (s *Server) RDPGFXFrames() int64 {
 	s.mu.Lock()
@@ -532,6 +552,12 @@ func NSCodecFrames() int64 { return defaultServer.NSCodecFrames() }
 
 // NSCodecBytes returns the experimental NSCodec SurfaceBits command bytes for the default server.
 func NSCodecBytes() int64 { return defaultServer.NSCodecBytes() }
+
+// JPEGCodecFrames returns the experimental JPEG bitmap-codec update count for the default server.
+func JPEGCodecFrames() int64 { return defaultServer.JPEGCodecFrames() }
+
+// JPEGCodecBytes returns the experimental JPEG bitmap-codec SurfaceBits command bytes for the default server.
+func JPEGCodecBytes() int64 { return defaultServer.JPEGCodecBytes() }
 
 // RDPGFXFrames returns the RDPGFX frame count for the default server.
 func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }

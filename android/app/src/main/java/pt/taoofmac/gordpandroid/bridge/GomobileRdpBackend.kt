@@ -100,6 +100,10 @@ class GomobileRdpBackend : RdpBackend {
 
     override fun nsCodecBytes(): Long = callLong("nsCodecBytes")
 
+    override fun jpegCodecFrames(): Long = callLong("jpegCodecFrames")
+
+    override fun jpegCodecBytes(): Long = callLong("jpegCodecBytes")
+
     override fun rdpgfxFrames(): Long = callLong("rdpgfxFrames")
 
     override fun rdpgfxBytes(): Long = callLong("rdpgfxBytes")

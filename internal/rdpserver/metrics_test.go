@@ -21,6 +21,11 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 		t.Fatalf("GraphicsPath() = %q, want bitmap-rle", got)
 	}
 
+	s.jpegCodecFrames.Store(1)
+	if got := s.GraphicsPath(); got != "jpeg-codec" {
+		t.Fatalf("GraphicsPath() = %q, want jpeg-codec", got)
+	}
+
 	s.nsCodecFrames.Store(1)
 	if got := s.GraphicsPath(); got != "nscodec" {
 		t.Fatalf("GraphicsPath() = %q, want nscodec", got)
@@ -96,6 +101,25 @@ func TestServerMetricsRecordNSCodecFrame(t *testing.T) {
 	}
 	if got := nsCodecBytes.Load(); got != 7 {
 		t.Fatalf("nsCodecBytes = %d, want 7", got)
+	}
+}
+
+func TestServerMetricsRecordJPEGCodecFrame(t *testing.T) {
+	var framesSent atomic.Int64
+	var jpegCodecFrames atomic.Int64
+	var jpegCodecBytes atomic.Int64
+	metrics := serverMetrics{framesSent: &framesSent, jpegCodecFrames: &jpegCodecFrames, jpegCodecBytes: &jpegCodecBytes}
+
+	metrics.recordJPEGCodecFrame([][]byte{[]byte("jpeg")})
+
+	if got := framesSent.Load(); got != 1 {
+		t.Fatalf("framesSent = %d, want 1", got)
+	}
+	if got := jpegCodecFrames.Load(); got != 1 {
+		t.Fatalf("jpegCodecFrames = %d, want 1", got)
+	}
+	if got := jpegCodecBytes.Load(); got != 4 {
+		t.Fatalf("jpegCodecBytes = %d, want 4", got)
 	}
 }
 

@@ -49,6 +49,8 @@ type Server struct {
 	bitmapRLESavedBytes atomic.Int64
 	nsCodecFrames       atomic.Int64
 	nsCodecBytes        atomic.Int64
+	jpegCodecFrames     atomic.Int64
+	jpegCodecBytes      atomic.Int64
 	rdpgfxFrames        atomic.Int64
 	rdpgfxBytes         atomic.Int64
 	h264Frames          atomic.Int64
@@ -182,6 +184,12 @@ func (s *Server) NSCodecFrames() int64 { return s.nsCodecFrames.Load() }
 // NSCodecBytes returns the total number of experimental NSCodec SurfaceBits command bytes sent to clients.
 func (s *Server) NSCodecBytes() int64 { return s.nsCodecBytes.Load() }
 
+// JPEGCodecFrames returns the total number of experimental JPEG bitmap-codec update batches sent to clients.
+func (s *Server) JPEGCodecFrames() int64 { return s.jpegCodecFrames.Load() }
+
+// JPEGCodecBytes returns the total number of experimental JPEG bitmap-codec SurfaceBits command bytes sent to clients.
+func (s *Server) JPEGCodecBytes() int64 { return s.jpegCodecBytes.Load() }
+
 // RDPGFXFrames returns the total number of RDPGFX frame update batches sent to clients.
 func (s *Server) RDPGFXFrames() int64 { return s.rdpgfxFrames.Load() }
 
@@ -212,6 +220,9 @@ func (s *Server) GraphicsPath() string {
 	}
 	if s.nsCodecFrames.Load() > 0 {
 		return "nscodec"
+	}
+	if s.jpegCodecFrames.Load() > 0 {
+		return "jpeg-codec"
 	}
 	if s.bitmapRLEFrames.Load() > 0 {
 		return "bitmap-rle"
@@ -299,7 +310,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, nsCodecFrames: &s.nsCodecFrames, nsCodecBytes: &s.nsCodecBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
+	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, nsCodecFrames: &s.nsCodecFrames, nsCodecBytes: &s.nsCodecBytes, jpegCodecFrames: &s.jpegCodecFrames, jpegCodecBytes: &s.jpegCodecBytes, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
 	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)
