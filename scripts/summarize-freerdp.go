@@ -12,42 +12,46 @@ import (
 )
 
 type summary struct {
-	ExitCode            string   `json:"exit_code"`
-	TCPSeen             bool     `json:"tcp_seen"`
-	X224Seen            bool     `json:"x224_seen"`
-	MCSSeen             bool     `json:"mcs_seen"`
-	BitmapSeen          bool     `json:"bitmap_seen"`
-	BitmapRLESeen       bool     `json:"bitmap_rle_seen"`
-	BitmapRLECount      int      `json:"bitmap_rle_count,omitempty"`
-	BitmapRLEBytes      int      `json:"bitmap_rle_bytes,omitempty"`
-	BitmapRLESavedBytes int      `json:"bitmap_rle_saved_bytes,omitempty"`
-	NSCodecSelected     bool     `json:"nscodec_selected,omitempty"`
-	NSCodecWriteSeen    bool     `json:"nscodec_write_seen,omitempty"`
-	NSCodecWriteCount   int      `json:"nscodec_write_count,omitempty"`
-	NSCodecWriteBytes   int      `json:"nscodec_write_bytes,omitempty"`
-	JPEGCodecSelected   bool     `json:"jpeg_codec_selected,omitempty"`
-	JPEGCodecWriteSeen  bool     `json:"jpeg_codec_write_seen,omitempty"`
-	JPEGCodecWriteCount int      `json:"jpeg_codec_write_count,omitempty"`
-	JPEGCodecWriteBytes int      `json:"jpeg_codec_write_bytes,omitempty"`
-	RFXCodecSelected    bool     `json:"rfx_codec_selected,omitempty"`
-	RDPGFXSeen          bool     `json:"rdpgfx_seen"`
-	H264StatusSeen      bool     `json:"h264_status_seen"`
-	H264WriteSeen       bool     `json:"h264_write_seen"`
-	H264WriteCount      int      `json:"h264_write_count,omitempty"`
-	H264WriteBytes      int      `json:"h264_write_bytes,omitempty"`
-	H264Ready           string   `json:"h264_ready,omitempty"`
-	H264Version         string   `json:"h264_version,omitempty"`
-	H264Flags           string   `json:"h264_flags,omitempty"`
-	H264Reason          string   `json:"h264_reason,omitempty"`
-	AVC420ExitCode      string   `json:"avc420_exit_code,omitempty"`
-	ActiveSeen          bool     `json:"active_seen"`
-	FastPathSeen        bool     `json:"fastpath_seen"`
-	ErrorLines          []string `json:"error_lines"`
-	ServerPhases        []string `json:"server_phases"`
-	ScreenshotPNG       bool     `json:"screenshot_png"`
-	ScreenshotXWD       bool     `json:"screenshot_xwd"`
-	FreeRDPLogSize      int      `json:"freerdp_log_size"`
-	ServerLogSize       int      `json:"server_log_size"`
+	ExitCode                  string   `json:"exit_code"`
+	TCPSeen                   bool     `json:"tcp_seen"`
+	X224Seen                  bool     `json:"x224_seen"`
+	MCSSeen                   bool     `json:"mcs_seen"`
+	BitmapSeen                bool     `json:"bitmap_seen"`
+	BitmapRLESeen             bool     `json:"bitmap_rle_seen"`
+	BitmapRLECount            int      `json:"bitmap_rle_count,omitempty"`
+	BitmapRLEBytes            int      `json:"bitmap_rle_bytes,omitempty"`
+	BitmapRLESavedBytes       int      `json:"bitmap_rle_saved_bytes,omitempty"`
+	NSCodecSelected           bool     `json:"nscodec_selected,omitempty"`
+	NSCodecWriteSeen          bool     `json:"nscodec_write_seen,omitempty"`
+	NSCodecWriteCount         int      `json:"nscodec_write_count,omitempty"`
+	NSCodecWriteBytes         int      `json:"nscodec_write_bytes,omitempty"`
+	JPEGCodecSelected         bool     `json:"jpeg_codec_selected,omitempty"`
+	JPEGCodecWriteSeen        bool     `json:"jpeg_codec_write_seen,omitempty"`
+	JPEGCodecWriteCount       int      `json:"jpeg_codec_write_count,omitempty"`
+	JPEGCodecWriteBytes       int      `json:"jpeg_codec_write_bytes,omitempty"`
+	RFXCodecSelected          bool     `json:"rfx_codec_selected,omitempty"`
+	RDPGFXClearCodecSelected  bool     `json:"rdpgfx_clearcodec_selected,omitempty"`
+	RDPGFXProgressiveSelected bool     `json:"rdpgfx_progressive_selected,omitempty"`
+	RDPGFXAVC444Selected      bool     `json:"rdpgfx_avc444_selected,omitempty"`
+	RDPGFXAVC444v2Selected    bool     `json:"rdpgfx_avc444v2_selected,omitempty"`
+	RDPGFXSeen                bool     `json:"rdpgfx_seen"`
+	H264StatusSeen            bool     `json:"h264_status_seen"`
+	H264WriteSeen             bool     `json:"h264_write_seen"`
+	H264WriteCount            int      `json:"h264_write_count,omitempty"`
+	H264WriteBytes            int      `json:"h264_write_bytes,omitempty"`
+	H264Ready                 string   `json:"h264_ready,omitempty"`
+	H264Version               string   `json:"h264_version,omitempty"`
+	H264Flags                 string   `json:"h264_flags,omitempty"`
+	H264Reason                string   `json:"h264_reason,omitempty"`
+	AVC420ExitCode            string   `json:"avc420_exit_code,omitempty"`
+	ActiveSeen                bool     `json:"active_seen"`
+	FastPathSeen              bool     `json:"fastpath_seen"`
+	ErrorLines                []string `json:"error_lines"`
+	ServerPhases              []string `json:"server_phases"`
+	ScreenshotPNG             bool     `json:"screenshot_png"`
+	ScreenshotXWD             bool     `json:"screenshot_xwd"`
+	FreeRDPLogSize            int      `json:"freerdp_log_size"`
+	ServerLogSize             int      `json:"server_log_size"`
 }
 
 func main() {
@@ -73,6 +77,10 @@ func main() {
 	s.JPEGCodecWriteSeen = strings.Contains(sv, "jpeg_codec_write")
 	s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes = traceCountAndSum(sv, "jpeg_codec_write", "bytes")
 	s.RFXCodecSelected = strings.Contains(sv, "rfx_codec_selected")
+	s.RDPGFXClearCodecSelected = strings.Contains(sv, "rdpgfx_clearcodec_selected")
+	s.RDPGFXProgressiveSelected = strings.Contains(sv, "rdpgfx_progressive_selected")
+	s.RDPGFXAVC444Selected = strings.Contains(sv, "rdpgfx_avc444_selected")
+	s.RDPGFXAVC444v2Selected = strings.Contains(sv, "rdpgfx_avc444v2_selected")
 	s.RDPGFXSeen = strings.Contains(sv, "rdpgfx_caps_confirm") || strings.Contains(sv, "rdpgfx_caps_advertise") || strings.Contains(sv, "Microsoft::Windows::RDS::Graphics")
 	s.H264StatusSeen = strings.Contains(sv, "rdpgfx_h264_status")
 	s.H264WriteSeen = strings.Contains(sv, "rdpgfx_h264_write")
