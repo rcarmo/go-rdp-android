@@ -111,6 +111,23 @@ type bitmapCodecInfo struct {
 	PropertiesSize uint16
 }
 
+func (c bitmapCodecsCapabilityInfo) codecIDByName(name string) (byte, bool) {
+	for _, codec := range c.Codecs {
+		if codec.Name == name && codec.ID != 0 {
+			return codec.ID, true
+		}
+	}
+	return 0, false
+}
+
+func (c bitmapCodecsCapabilityInfo) nsCodecID() (byte, bool) {
+	return c.codecIDByName(rdpcodec.BitmapCodecNameNSCodec)
+}
+
+func (c bitmapCodecsCapabilityInfo) jpegCodecID() (byte, bool) {
+	return c.codecIDByName(rdpcodec.BitmapCodecNameJPEG)
+}
+
 func writeDemandActive(conn net.Conn, width, height int) error {
 	pdu := buildDemandActivePDU(width, height)
 	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, pdu)

@@ -89,6 +89,12 @@ func TestParseConfirmActiveCapabilitySummary(t *testing.T) {
 	if got := info.Capabilities.BitmapCodecs.Codecs[1]; got.Name != rdpcodec.BitmapCodecNameJPEG || got.ID != 2 || got.PropertiesSize != 0 {
 		t.Fatalf("unexpected JPEG entry: %#v", got)
 	}
+	if id, ok := info.Capabilities.BitmapCodecs.nsCodecID(); !ok || id != 1 {
+		t.Fatalf("nsCodecID() = %d,%t", id, ok)
+	}
+	if id, ok := info.Capabilities.BitmapCodecs.jpegCodecID(); !ok || id != 2 {
+		t.Fatalf("jpegCodecID() = %d,%t", id, ok)
+	}
 }
 
 func TestParseConfirmActiveRejectsTruncatedCapability(t *testing.T) {
