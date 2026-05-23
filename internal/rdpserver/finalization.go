@@ -75,12 +75,12 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		case fr := <-frames.Frames():
 			normalized := normalizeFrameForDesktop(fr, width, height)
 			if cmd, ok := buildExperimentalBitmapCodecCommand(normalized, caps); ok {
-				traceExperimentalBitmapCodecSelected(cmd)
-				if err := writeShareDataPDU(conn, pduType2Update, cmd.Command); err != nil {
+				if err := writeExperimentalBitmapCodecUpdate(conn, metrics, cmd); err != nil {
 					return err
 				}
-				recordExperimentalBitmapCodecFrame(metrics, cmd)
-				traceExperimentalBitmapCodecWrite(cmd)
+				if bitmapCodecStreamingEnabledFromEnv() {
+					go streamExperimentalBitmapCodecUpdates(conn, frames, caps, width, height, metrics)
+				}
 				return nil
 			}
 			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
