@@ -33,6 +33,8 @@ type summary struct {
 	PNGCodecWriteSeen          bool     `json:"png_codec_write_seen,omitempty"`
 	PNGCodecWriteCount         int      `json:"png_codec_write_count,omitempty"`
 	PNGCodecWriteBytes         int      `json:"png_codec_write_bytes,omitempty"`
+	BitmapCodecStreamStopSeen  bool     `json:"bitmap_codec_stream_stop_seen,omitempty"`
+	BitmapCodecStreamStopCount int      `json:"bitmap_codec_stream_stop_count,omitempty"`
 	RFXCodecSelected           bool     `json:"rfx_codec_selected,omitempty"`
 	RDPGFXUncompressedSelected bool     `json:"rdpgfx_uncompressed_selected,omitempty"`
 	RDPGFXClearCodecSelected   bool     `json:"rdpgfx_clearcodec_selected,omitempty"`
@@ -89,6 +91,8 @@ func main() {
 	s.PNGCodecSelected = strings.Contains(sv, "png_codec_selected")
 	s.PNGCodecWriteSeen = strings.Contains(sv, "png_codec_write")
 	s.PNGCodecWriteCount, s.PNGCodecWriteBytes = traceCountAndSum(sv, "png_codec_write", "bytes")
+	s.BitmapCodecStreamStopSeen = strings.Contains(sv, "bitmap_codec_stream_stop")
+	s.BitmapCodecStreamStopCount = strings.Count(sv, "trace phase=bitmap_codec_stream_stop")
 	s.RFXCodecSelected = strings.Contains(sv, "rfx_codec_selected")
 	s.RDPGFXUncompressedSelected = strings.Contains(sv, "rdpgfx_uncompressed_selected")
 	s.RDPGFXClearCodecSelected = strings.Contains(sv, "rdpgfx_clearcodec_selected")
@@ -154,6 +158,8 @@ func main() {
 		"- PNG codec write trace seen: `%v`\n"+
 		"- PNG codec write trace count: `%d`\n"+
 		"- PNG codec write trace bytes: `%d`\n"+
+		"- Bitmap codec stream stop trace seen: `%v`\n"+
+		"- Bitmap codec stream stop trace count: `%d`\n"+
 		"- RemoteFX selected trace seen: `%v`\n"+
 		"- RDPGFX uncompressed selected trace seen: `%v`\n"+
 		"- RDPGFX ClearCodec selected trace seen: `%v`\n"+
@@ -183,7 +189,7 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.RFXCodecSelected, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXProgressiveSelected, s.RDPGFXAVC444Selected, s.RDPGFXAVC444v2Selected, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXFrameStreamStopSeen, s.RDPGFXFrameStreamStopCount, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.BitmapCodecStreamStopSeen, s.BitmapCodecStreamStopCount, s.RFXCodecSelected, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXProgressiveSelected, s.RDPGFXAVC444Selected, s.RDPGFXAVC444v2Selected, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXFrameStreamStopSeen, s.RDPGFXFrameStreamStopCount, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
 }

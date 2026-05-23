@@ -110,8 +110,8 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | RFX selected | RDPGFX | GFX writes | GFX stream stops | Uncompressed GFX | Deferred GFX codecs | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | --- | ---: | ---: | --- | ---: | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | NSCodec selected | NSCodec writes | JPEG selected | JPEG writes | Bitmap codec stream stops | RFX selected | RDPGFX | GFX writes | GFX stream stops | Uncompressed GFX | Deferred GFX codecs | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | ---: | --- | --- | ---: | ---: | --- | ---: | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
@@ -119,7 +119,7 @@ base = pathlib.Path(sys.argv[1])
 for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "rfx-opt-in", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('bitmap_codec_stream_stop_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
