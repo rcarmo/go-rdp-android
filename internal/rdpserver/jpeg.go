@@ -47,19 +47,5 @@ func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]
 	if len(encoded) == 0 || len(encoded) > rdpgfxMaxPDUSize {
 		return nil, false
 	}
-	out := make([]byte, 0, 22+len(encoded))
-	out = appendLE16Bytes(out, surfaceCmdSetSurfaceBits)
-	out = appendLE16Bytes(out, 0) // destLeft
-	out = appendLE16Bytes(out, 0) // destTop
-	out = appendLE16Bytes(out, uint16(src.Width-1))
-	out = appendLE16Bytes(out, uint16(src.Height-1))
-	out = append(out, byte(32)) // bpp
-	out = append(out, 0)        // flags
-	out = append(out, 0)        // reserved
-	out = append(out, codecID)
-	out = appendLE16Bytes(out, uint16(src.Width))
-	out = appendLE16Bytes(out, uint16(src.Height))
-	out = appendLE32Bytes(out, uint32(len(encoded))) // #nosec G115 bounded above
-	out = append(out, encoded...)
-	return out, true
+	return buildSurfaceBitsCommand(src.Width, src.Height, codecID, encoded)
 }
