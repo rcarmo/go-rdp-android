@@ -50,6 +50,16 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 | 1280x720 | 10.02 ms | 368 MB/s | 5.91 MB | 1053 |
 | 1920x1080 | 25.11 ms | 330 MB/s | 13.28 MB | 2537 |
 
+## Graphics codec encoder microbenchmarks
+
+Codec-builder benchmarks are available in `internal/rdpserver`:
+
+```sh
+GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench 'BenchmarkBuild(RDPGFX|NSCodec|JPEG|PNG)' -benchtime=1x
+```
+
+Latest local 320x240 single-iteration smoke on 2026-05-23 showed these relative costs on the workspace host: RDPGFX uncompressed was fastest but bandwidth-heavy, NSCodec raw-plane was faster than Planar for this synthetic frame, RDPGFX Planar did more server-side compression work, JPEG was slower but smaller on the test pattern, and PNG was slowest. Treat these as local encoder-cost smoke numbers only; release decisions still require target Android device FPS/CPU/battery/bandwidth measurements and real client compatibility evidence.
+
 ## Compressed graphics path
 
 The first public APK includes a negotiated compressed graphics path rather than relying only on raw slow-path bitmap updates. RDPGFX (`Microsoft::Windows::RDS::Graphics`) over `drdynvc` is enabled by default and currently uses the Planar codec with no-alpha RLE planes. The existing slow-path 24-bit BGR bitmap transport remains as a fallback, compatibility gate, and benchmark oracle.
