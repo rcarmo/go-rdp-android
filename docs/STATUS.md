@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-22
-Current evidence commit: `2707c4f` (`Add negotiated H264 matrix case`)
-Latest referenced CI run: `26316371529` (`main` CI, success)
+Current evidence commit: `dff5eca` (`Expose RDPGFX stream stop diagnostics`)
+Latest referenced CI run: `26317417910` (`main` CI, success)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -33,7 +33,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26316371529`:
+Latest checked artifact from CI run `26317417910`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
