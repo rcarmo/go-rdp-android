@@ -42,6 +42,7 @@ interface RdpBackend {
     fun jpegCodecBytes(): Long
     fun pngCodecFrames(): Long
     fun pngCodecBytes(): Long
+    fun bitmapCodecStreamStops(): Long
     fun rdpgfxFrames(): Long
     fun rdpgfxBytes(): Long
     fun rdpgfxStreamStops(): Long

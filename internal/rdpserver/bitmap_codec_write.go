@@ -29,6 +29,7 @@ func streamExperimentalBitmapCodecUpdates(conn net.Conn, frames frame.Source, ca
 			continue
 		}
 		if err := writeExperimentalBitmapCodecUpdate(conn, metrics, cmd); err != nil {
+			metrics.recordBitmapCodecStreamStop()
 			tracef("bitmap_codec_stream_stop", "path=%s err=%v", cmd.Name, err)
 			return
 		}

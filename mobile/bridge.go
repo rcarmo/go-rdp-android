@@ -410,6 +410,16 @@ func (s *Server) PNGCodecBytes() int64 {
 	return s.server.PNGCodecBytes()
 }
 
+// BitmapCodecStreamStops returns the total number of experimental SurfaceBits bitmap-codec stream write stops observed.
+func (s *Server) BitmapCodecStreamStops() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.BitmapCodecStreamStops()
+}
+
 // RDPGFXFrames returns the total number of RDPGFX frame batches sent by the running server.
 func (s *Server) RDPGFXFrames() int64 {
 	s.mu.Lock()
@@ -594,6 +604,9 @@ func PNGCodecFrames() int64 { return defaultServer.PNGCodecFrames() }
 
 // PNGCodecBytes returns the experimental PNG bitmap-codec SurfaceBits command bytes for the default server.
 func PNGCodecBytes() int64 { return defaultServer.PNGCodecBytes() }
+
+// BitmapCodecStreamStops returns the experimental SurfaceBits bitmap-codec stream stop count for the default server.
+func BitmapCodecStreamStops() int64 { return defaultServer.BitmapCodecStreamStops() }
 
 // RDPGFXFrames returns the RDPGFX frame count for the default server.
 func RDPGFXFrames() int64 { return defaultServer.RDPGFXFrames() }

@@ -3,25 +3,26 @@ package rdpserver
 import "sync/atomic"
 
 type serverMetrics struct {
-	framesSent          *atomic.Int64
-	bitmapBytes         *atomic.Int64
-	bitmapRLEFrames     *atomic.Int64
-	bitmapRLEBytes      *atomic.Int64
-	bitmapRLESavedBytes *atomic.Int64
-	nsCodecFrames       *atomic.Int64
-	nsCodecBytes        *atomic.Int64
-	jpegCodecFrames     *atomic.Int64
-	jpegCodecBytes      *atomic.Int64
-	pngCodecFrames      *atomic.Int64
-	pngCodecBytes       *atomic.Int64
-	rdpgfxFrames        *atomic.Int64
-	rdpgfxBytes         *atomic.Int64
-	rdpgfxStreamStops   *atomic.Int64
-	rdpgfxPath          *atomic.Value
-	h264Frames          *atomic.Int64
-	h264Bytes           *atomic.Int64
-	dvcFragments        *atomic.Int64
-	h264Status          *atomic.Value
+	framesSent             *atomic.Int64
+	bitmapBytes            *atomic.Int64
+	bitmapRLEFrames        *atomic.Int64
+	bitmapRLEBytes         *atomic.Int64
+	bitmapRLESavedBytes    *atomic.Int64
+	nsCodecFrames          *atomic.Int64
+	nsCodecBytes           *atomic.Int64
+	jpegCodecFrames        *atomic.Int64
+	jpegCodecBytes         *atomic.Int64
+	pngCodecFrames         *atomic.Int64
+	pngCodecBytes          *atomic.Int64
+	bitmapCodecStreamStops *atomic.Int64
+	rdpgfxFrames           *atomic.Int64
+	rdpgfxBytes            *atomic.Int64
+	rdpgfxStreamStops      *atomic.Int64
+	rdpgfxPath             *atomic.Value
+	h264Frames             *atomic.Int64
+	h264Bytes              *atomic.Int64
+	dvcFragments           *atomic.Int64
+	h264Status             *atomic.Value
 }
 
 func (m serverMetrics) recordH264Status(status string) {
@@ -95,6 +96,12 @@ func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
 
 func (m serverMetrics) recordRDPGFXFrame(pdus [][]byte) {
 	m.recordRDPGFXFramePath(pdus, "rdpgfx-planar")
+}
+
+func (m serverMetrics) recordBitmapCodecStreamStop() {
+	if m.bitmapCodecStreamStops != nil {
+		m.bitmapCodecStreamStops.Add(1)
+	}
 }
 
 func (m serverMetrics) recordRDPGFXStreamStop() {
