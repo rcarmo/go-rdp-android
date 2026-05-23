@@ -16,7 +16,8 @@ func buildPNGSurfaceBitsCommand(src frame.Frame, codecID byte) ([]byte, bool) {
 		return nil, false
 	}
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	encoder := png.Encoder{CompressionLevel: pngCompressionLevelFromEnv()}
+	if err := encoder.Encode(&buf, img); err != nil {
 		return nil, false
 	}
 	encoded := buf.Bytes()
