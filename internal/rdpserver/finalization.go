@@ -86,8 +86,9 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				}
 			}
 			if codecID, ok := negotiatedJPEGCodecID(caps); ok {
-				if command, built := buildJPEGSurfaceBitsCommand(normalized, codecID, 80); built {
-					tracef("jpeg_codec_selected", "codec_id=%d command_bytes=%d emission=opt-in", codecID, len(command))
+				quality := jpegQualityFromEnv()
+				if command, built := buildJPEGSurfaceBitsCommand(normalized, codecID, quality); built {
+					tracef("jpeg_codec_selected", "codec_id=%d command_bytes=%d quality=%d emission=opt-in", codecID, len(command), quality)
 					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
 						return err
 					}

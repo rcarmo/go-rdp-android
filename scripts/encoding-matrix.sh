@@ -92,7 +92,7 @@ run_case() {
 run_case bitmap 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case bitmap-rle 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1' '' '/sec:nla /bpp:24'
 run_case nscodec-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_NSCODEC=1' '-test-pattern' '/sec:nla /bpp:24'
-run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
+run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1 GO_RDP_ANDROID_JPEG_QUALITY=80' '-test-pattern' '/sec:nla /bpp:24'
 run_case rfx-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RFX_CODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case rdpgfx-planar 'GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-planar-stream 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1' '-test-pattern' '/sec:nla /gfx'
@@ -241,7 +241,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"slow-path raw bitmap", "status":"implemented", "matrix_case":"bitmap"},
     {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-opt-in", "matrix_case":"bitmap-rle", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1"},
     {"name":"NSCodec", "status":"experimental-opt-in", "matrix_case":"nscodec-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_NSCODEC=1", "requires_client_advertisement":true},
-    {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "requires_client_advertisement":true},
+    {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggles":["GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "GO_RDP_ANDROID_JPEG_QUALITY=80"], "requires_client_advertisement":true},
     {"name":"RemoteFX / RFX", "status":"selection-scaffold", "matrix_case":"rfx-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_RFX_CODEC=1", "requires_client_advertisement":true, "emission":"deferred-encoder-missing"},
     {"name":"RDPGFX Planar", "status":"implemented", "matrix_case":"rdpgfx-planar"},
     {"name":"RDPGFX Planar streaming", "status":"experimental-opt-in", "matrix_case":"rdpgfx-planar-stream", "toggle":"GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1"},
