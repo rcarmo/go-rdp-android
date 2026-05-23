@@ -79,14 +79,7 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				if err := writeShareDataPDU(conn, pduType2Update, cmd.Command); err != nil {
 					return err
 				}
-				switch cmd.Name {
-				case "nscodec":
-					metrics.recordNSCodecFrame([][]byte{cmd.Command})
-				case "jpeg-codec":
-					metrics.recordJPEGCodecFrame([][]byte{cmd.Command})
-				case "png-codec":
-					metrics.recordPNGCodecFrame([][]byte{cmd.Command})
-				}
+				recordExperimentalBitmapCodecFrame(metrics, cmd)
 				traceExperimentalBitmapCodecWrite(cmd)
 				return nil
 			}
