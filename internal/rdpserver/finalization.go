@@ -74,39 +74,21 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		select {
 		case fr := <-frames.Frames():
 			normalized := normalizeFrameForDesktop(fr, width, height)
-			if codecID, ok := negotiatedNSCodecID(caps); ok {
-				if command, built := buildNSCodecSurfaceBitsCommand(normalized, codecID); built {
-					tracef("nscodec_selected", "codec_id=%d command_bytes=%d emission=opt-in", codecID, len(command))
-					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
-						return err
-					}
-					metrics.recordNSCodecFrame([][]byte{command})
-					tracef("nscodec_write", "codec_id=%d bytes=%d", codecID, len(command))
-					return nil
+			if cmd, ok := buildExperimentalBitmapCodecCommand(normalized, caps); ok {
+				traceExperimentalBitmapCodecSelected(cmd)
+				if err := writeShareDataPDU(conn, pduType2Update, cmd.Command); err != nil {
+					return err
 				}
-			}
-			if codecID, ok := negotiatedJPEGCodecID(caps); ok {
-				quality := jpegQualityFromEnv()
-				if command, built := buildJPEGSurfaceBitsCommand(normalized, codecID, quality); built {
-					tracef("jpeg_codec_selected", "codec_id=%d command_bytes=%d quality=%d emission=opt-in", codecID, len(command), quality)
-					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
-						return err
-					}
-					metrics.recordJPEGCodecFrame([][]byte{command})
-					tracef("jpeg_codec_write", "codec_id=%d bytes=%d", codecID, len(command))
-					return nil
+				switch cmd.Name {
+				case "nscodec":
+					metrics.recordNSCodecFrame([][]byte{cmd.Command})
+				case "jpeg-codec":
+					metrics.recordJPEGCodecFrame([][]byte{cmd.Command})
+				case "png-codec":
+					metrics.recordPNGCodecFrame([][]byte{cmd.Command})
 				}
-			}
-			if codecID, ok := negotiatedPNGCodecID(); ok {
-				if command, built := buildPNGSurfaceBitsCommand(normalized, codecID); built {
-					tracef("png_codec_selected", "codec_id=%d command_bytes=%d emission=operator-override", codecID, len(command))
-					if err := writeShareDataPDU(conn, pduType2Update, command); err != nil {
-						return err
-					}
-					metrics.recordPNGCodecFrame([][]byte{command})
-					tracef("png_codec_write", "codec_id=%d bytes=%d", codecID, len(command))
-					return nil
-				}
+				traceExperimentalBitmapCodecWrite(cmd)
+				return nil
 			}
 			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
 				tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
