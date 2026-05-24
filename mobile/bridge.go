@@ -370,6 +370,26 @@ func (s *Server) NSCodecBytes() int64 {
 	return s.server.NSCodecBytes()
 }
 
+// NSCodecRawBytes returns the estimated raw source bytes represented by experimental NSCodec SurfaceBits commands.
+func (s *Server) NSCodecRawBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.NSCodecRawBytes()
+}
+
+// NSCodecSavedBytes returns the estimated bytes saved by experimental NSCodec SurfaceBits commands.
+func (s *Server) NSCodecSavedBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.NSCodecSavedBytes()
+}
+
 // JPEGCodecFrames returns the total number of experimental JPEG bitmap-codec update batches sent by the running server.
 func (s *Server) JPEGCodecFrames() int64 {
 	s.mu.Lock()
@@ -390,6 +410,26 @@ func (s *Server) JPEGCodecBytes() int64 {
 	return s.server.JPEGCodecBytes()
 }
 
+// JPEGCodecRawBytes returns the estimated raw source bytes represented by experimental JPEG SurfaceBits commands.
+func (s *Server) JPEGCodecRawBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.JPEGCodecRawBytes()
+}
+
+// JPEGCodecSavedBytes returns the estimated bytes saved by experimental JPEG SurfaceBits commands.
+func (s *Server) JPEGCodecSavedBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.JPEGCodecSavedBytes()
+}
+
 // PNGCodecFrames returns the total number of experimental PNG bitmap-codec update batches sent by the running server.
 func (s *Server) PNGCodecFrames() int64 {
 	s.mu.Lock()
@@ -408,6 +448,66 @@ func (s *Server) PNGCodecBytes() int64 {
 		return 0
 	}
 	return s.server.PNGCodecBytes()
+}
+
+// PNGCodecRawBytes returns the estimated raw source bytes represented by experimental PNG SurfaceBits commands.
+func (s *Server) PNGCodecRawBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.PNGCodecRawBytes()
+}
+
+// PNGCodecSavedBytes returns the estimated bytes saved by experimental PNG SurfaceBits commands.
+func (s *Server) PNGCodecSavedBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.PNGCodecSavedBytes()
+}
+
+// RFXCodecFrames returns the experimental RemoteFX update-batch count for the running server.
+func (s *Server) RFXCodecFrames() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RFXCodecFrames()
+}
+
+// RFXCodecBytes returns the experimental RemoteFX SurfaceBits command bytes for the running server.
+func (s *Server) RFXCodecBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RFXCodecBytes()
+}
+
+// RFXCodecRawBytes returns the experimental RemoteFX raw-byte estimate for the running server.
+func (s *Server) RFXCodecRawBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RFXCodecRawBytes()
+}
+
+// RFXCodecSavedBytes returns the experimental RemoteFX saved-byte estimate for the running server.
+func (s *Server) RFXCodecSavedBytes() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.server == nil {
+		return 0
+	}
+	return s.server.RFXCodecSavedBytes()
 }
 
 // BitmapCodecStreamStops returns the total number of experimental SurfaceBits bitmap-codec stream write stops observed.
@@ -593,17 +693,47 @@ func NSCodecFrames() int64 { return defaultServer.NSCodecFrames() }
 // NSCodecBytes returns the experimental NSCodec SurfaceBits command bytes for the default server.
 func NSCodecBytes() int64 { return defaultServer.NSCodecBytes() }
 
+// NSCodecRawBytes returns the experimental NSCodec raw-byte estimate for the default server.
+func NSCodecRawBytes() int64 { return defaultServer.NSCodecRawBytes() }
+
+// NSCodecSavedBytes returns the experimental NSCodec saved-byte estimate for the default server.
+func NSCodecSavedBytes() int64 { return defaultServer.NSCodecSavedBytes() }
+
 // JPEGCodecFrames returns the experimental JPEG bitmap-codec update count for the default server.
 func JPEGCodecFrames() int64 { return defaultServer.JPEGCodecFrames() }
 
 // JPEGCodecBytes returns the experimental JPEG bitmap-codec SurfaceBits command bytes for the default server.
 func JPEGCodecBytes() int64 { return defaultServer.JPEGCodecBytes() }
 
+// JPEGCodecRawBytes returns the experimental JPEG raw-byte estimate for the default server.
+func JPEGCodecRawBytes() int64 { return defaultServer.JPEGCodecRawBytes() }
+
+// JPEGCodecSavedBytes returns the experimental JPEG saved-byte estimate for the default server.
+func JPEGCodecSavedBytes() int64 { return defaultServer.JPEGCodecSavedBytes() }
+
 // PNGCodecFrames returns the experimental PNG bitmap-codec update count for the default server.
 func PNGCodecFrames() int64 { return defaultServer.PNGCodecFrames() }
 
 // PNGCodecBytes returns the experimental PNG bitmap-codec SurfaceBits command bytes for the default server.
 func PNGCodecBytes() int64 { return defaultServer.PNGCodecBytes() }
+
+// PNGCodecRawBytes returns the experimental PNG raw-byte estimate for the default server.
+func PNGCodecRawBytes() int64 { return defaultServer.PNGCodecRawBytes() }
+
+// PNGCodecSavedBytes returns the experimental PNG saved-byte estimate for the default server.
+func PNGCodecSavedBytes() int64 { return defaultServer.PNGCodecSavedBytes() }
+
+// RFXCodecFrames returns the experimental RemoteFX update-batch count for the default server.
+func RFXCodecFrames() int64 { return defaultServer.RFXCodecFrames() }
+
+// RFXCodecBytes returns the experimental RemoteFX SurfaceBits command bytes for the default server.
+func RFXCodecBytes() int64 { return defaultServer.RFXCodecBytes() }
+
+// RFXCodecRawBytes returns the experimental RemoteFX raw-byte estimate for the default server.
+func RFXCodecRawBytes() int64 { return defaultServer.RFXCodecRawBytes() }
+
+// RFXCodecSavedBytes returns the experimental RemoteFX saved-byte estimate for the default server.
+func RFXCodecSavedBytes() int64 { return defaultServer.RFXCodecSavedBytes() }
 
 // BitmapCodecStreamStops returns the experimental SurfaceBits bitmap-codec stream stop count for the default server.
 func BitmapCodecStreamStops() int64 { return defaultServer.BitmapCodecStreamStops() }

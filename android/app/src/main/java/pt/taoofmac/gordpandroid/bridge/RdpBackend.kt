@@ -38,10 +38,20 @@ interface RdpBackend {
     fun bitmapRleSavedBytes(): Long
     fun nsCodecFrames(): Long
     fun nsCodecBytes(): Long
+    fun nsCodecRawBytes(): Long
+    fun nsCodecSavedBytes(): Long
     fun jpegCodecFrames(): Long
     fun jpegCodecBytes(): Long
+    fun jpegCodecRawBytes(): Long
+    fun jpegCodecSavedBytes(): Long
     fun pngCodecFrames(): Long
     fun pngCodecBytes(): Long
+    fun pngCodecRawBytes(): Long
+    fun pngCodecSavedBytes(): Long
+    fun rfxCodecFrames(): Long
+    fun rfxCodecBytes(): Long
+    fun rfxCodecRawBytes(): Long
+    fun rfxCodecSavedBytes(): Long
     fun bitmapCodecStreamStops(): Long
     fun rdpgfxFrames(): Long
     fun rdpgfxBytes(): Long

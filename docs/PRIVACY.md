@@ -5,7 +5,7 @@
 ## What is captured
 
 - Screen capture uses Android MediaProjection after explicit user consent.
-- When screen capture mode is active, the current Android display is copied into the native bridge and encoded for the selected RDP graphics path: RDPGFX Planar when negotiated, slow-path bitmap fallback otherwise, experimental opt-in bitmap RLE fallback only when explicitly enabled, or experimental H.264 capture/AVC transport only for direct-service test runs.
+- When screen capture mode is active, the current Android display is copied into the native bridge and encoded for the selected RDP graphics path: RDPGFX Planar when negotiated, slow-path bitmap fallback otherwise, experimental opt-in bitmap RLE or NSCodec/JPEG/PNG/RemoteFX SurfaceBits paths only when explicitly enabled for diagnostics, experimental RDPGFX codec fixture-hook paths only for operator transport tests, or experimental H.264 capture/AVC transport only for direct-service test runs.
 - Test-pattern mode sends synthetic frames only and does not capture the screen.
 - The current implementation does not capture microphone, camera, location, contacts, files, or notifications directly, but anything visible on screen can be transmitted while MediaProjection is active.
 
@@ -33,7 +33,7 @@
 ## Diagnostics
 
 - The in-app debug panel and Share Diagnostics action are bounded and redacted.
-- Diagnostics include health counters, selected graphics path, bitmap/RDPGFX/H.264 and opt-in bitmap RLE counters, selected security mode, failed-auth policy, capture scale, bounded username, password-present status, and the TLS fingerprint when the native server is running.
+- Diagnostics include health counters, selected graphics path, bitmap/RDPGFX/H.264 counters, opt-in bitmap RLE counters, opt-in SurfaceBits/RDPGFX codec byte/savings counters, selected security mode, failed-auth policy, capture scale, bounded username, password-present status, and the TLS fingerprint when the native server is running.
 - Diagnostics do not include the password or raw frame data.
 
 ## Recommended defaults before broader use

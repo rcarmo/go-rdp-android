@@ -92,13 +92,33 @@ class LoggingRdpBackend : RdpBackend {
 
     override fun nsCodecBytes(): Long = 0
 
+    override fun nsCodecRawBytes(): Long = 0
+
+    override fun nsCodecSavedBytes(): Long = 0
+
     override fun jpegCodecFrames(): Long = 0
 
     override fun jpegCodecBytes(): Long = 0
 
+    override fun jpegCodecRawBytes(): Long = 0
+
+    override fun jpegCodecSavedBytes(): Long = 0
+
     override fun pngCodecFrames(): Long = 0
 
     override fun pngCodecBytes(): Long = 0
+
+    override fun pngCodecRawBytes(): Long = 0
+
+    override fun pngCodecSavedBytes(): Long = 0
+
+    override fun rfxCodecFrames(): Long = 0
+
+    override fun rfxCodecBytes(): Long = 0
+
+    override fun rfxCodecRawBytes(): Long = 0
+
+    override fun rfxCodecSavedBytes(): Long = 0
 
     override fun bitmapCodecStreamStops(): Long = 0
 

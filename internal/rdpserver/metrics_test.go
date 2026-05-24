@@ -51,6 +51,14 @@ func TestServerGraphicsPathPrefersH264(t *testing.T) {
 	}
 }
 
+func TestServerGraphicsPathReportsRFXCodec(t *testing.T) {
+	s := &Server{}
+	s.rfxCodecFrames.Store(1)
+	if got := s.GraphicsPath(); got != "rfx-codec" {
+		t.Fatalf("GraphicsPath() = %q, want rfx-codec", got)
+	}
+}
+
 func TestServerH264Status(t *testing.T) {
 	s := &Server{}
 	if got := s.H264Status(); got != "not-observed" {

@@ -231,6 +231,60 @@ func TestMobileServerH264StatusStopped(t *testing.T) {
 	}
 }
 
+func TestMobileServerBitmapCodecDiagnosticsStopped(t *testing.T) {
+	srv := NewServer()
+	for name, got := range map[string]int64{
+		"NSCodecFrames":       srv.NSCodecFrames(),
+		"NSCodecBytes":        srv.NSCodecBytes(),
+		"NSCodecRawBytes":     srv.NSCodecRawBytes(),
+		"NSCodecSavedBytes":   srv.NSCodecSavedBytes(),
+		"JPEGCodecFrames":     srv.JPEGCodecFrames(),
+		"JPEGCodecBytes":      srv.JPEGCodecBytes(),
+		"JPEGCodecRawBytes":   srv.JPEGCodecRawBytes(),
+		"JPEGCodecSavedBytes": srv.JPEGCodecSavedBytes(),
+		"PNGCodecFrames":      srv.PNGCodecFrames(),
+		"PNGCodecBytes":       srv.PNGCodecBytes(),
+		"PNGCodecRawBytes":    srv.PNGCodecRawBytes(),
+		"PNGCodecSavedBytes":  srv.PNGCodecSavedBytes(),
+		"RFXCodecFrames":      srv.RFXCodecFrames(),
+		"RFXCodecBytes":       srv.RFXCodecBytes(),
+		"RFXCodecRawBytes":    srv.RFXCodecRawBytes(),
+		"RFXCodecSavedBytes":  srv.RFXCodecSavedBytes(),
+	} {
+		if got != 0 {
+			t.Fatalf("%s stopped value = %d, want 0", name, got)
+		}
+	}
+}
+
+func TestDefaultMobileServerBitmapCodecDiagnosticsStopped(t *testing.T) {
+	if err := StopServer(); err != nil {
+		t.Fatal(err)
+	}
+	for name, got := range map[string]int64{
+		"NSCodecFrames":       NSCodecFrames(),
+		"NSCodecBytes":        NSCodecBytes(),
+		"NSCodecRawBytes":     NSCodecRawBytes(),
+		"NSCodecSavedBytes":   NSCodecSavedBytes(),
+		"JPEGCodecFrames":     JPEGCodecFrames(),
+		"JPEGCodecBytes":      JPEGCodecBytes(),
+		"JPEGCodecRawBytes":   JPEGCodecRawBytes(),
+		"JPEGCodecSavedBytes": JPEGCodecSavedBytes(),
+		"PNGCodecFrames":      PNGCodecFrames(),
+		"PNGCodecBytes":       PNGCodecBytes(),
+		"PNGCodecRawBytes":    PNGCodecRawBytes(),
+		"PNGCodecSavedBytes":  PNGCodecSavedBytes(),
+		"RFXCodecFrames":      RFXCodecFrames(),
+		"RFXCodecBytes":       RFXCodecBytes(),
+		"RFXCodecRawBytes":    RFXCodecRawBytes(),
+		"RFXCodecSavedBytes":  RFXCodecSavedBytes(),
+	} {
+		if got != 0 {
+			t.Fatalf("%s default stopped value = %d, want 0", name, got)
+		}
+	}
+}
+
 func TestMobileServerSubmitFrameValidation(t *testing.T) {
 	srv := NewServer()
 	cases := []struct {

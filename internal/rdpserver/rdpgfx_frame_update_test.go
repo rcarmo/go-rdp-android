@@ -12,7 +12,7 @@ func TestBuildRDPGFXFrameUpdatePDUsSelectsPlanarByDefault(t *testing.T) {
 		0xff, 0x00, 0x00, 0xff,
 		0x00, 0xff, 0x00, 0xff,
 	}}
-	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(4, 9, fr, 2, 1)
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(4, 9, fr, 2, 1, serverMetrics{}, rdpgfxCapabilitySet{})
 	if !ok || len(pdus) != 3 {
 		t.Fatalf("buildRDPGFXFrameUpdatePDUs len=%d path=%q ok=%t", len(pdus), path, ok)
 	}
@@ -34,7 +34,7 @@ func TestBuildRDPGFXFrameUpdatePDUsSelectsUncompressedWhenEnabled(t *testing.T) 
 		0xff, 0x00, 0x00, 0xff,
 		0x00, 0xff, 0x00, 0xff,
 	}}
-	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(4, 9, fr, 2, 1)
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(4, 9, fr, 2, 1, serverMetrics{}, rdpgfxCapabilitySet{})
 	if !ok || len(pdus) != 3 {
 		t.Fatalf("buildRDPGFXFrameUpdatePDUs len=%d path=%q ok=%t", len(pdus), path, ok)
 	}
@@ -48,7 +48,7 @@ func TestBuildRDPGFXFrameUpdatePDUsSelectsUncompressedWhenEnabled(t *testing.T) 
 }
 
 func TestBuildRDPGFXFrameUpdatePDUsRejectsInvalidFrame(t *testing.T) {
-	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 1, frame.Frame{Width: 1, Height: 1, Stride: 3, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3}}, 1, 1)
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 1, frame.Frame{Width: 1, Height: 1, Stride: 3, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3}}, 1, 1, serverMetrics{}, rdpgfxCapabilitySet{})
 	if ok || pdus != nil || path != "" {
 		t.Fatalf("invalid frame built pdus=%d path=%q ok=%t", len(pdus), path, ok)
 	}

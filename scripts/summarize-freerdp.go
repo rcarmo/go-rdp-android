@@ -12,61 +12,82 @@ import (
 )
 
 type summary struct {
-	ExitCode                   string   `json:"exit_code"`
-	TCPSeen                    bool     `json:"tcp_seen"`
-	X224Seen                   bool     `json:"x224_seen"`
-	MCSSeen                    bool     `json:"mcs_seen"`
-	BitmapSeen                 bool     `json:"bitmap_seen"`
-	BitmapRLESeen              bool     `json:"bitmap_rle_seen"`
-	BitmapRLECount             int      `json:"bitmap_rle_count,omitempty"`
-	BitmapRLEBytes             int      `json:"bitmap_rle_bytes,omitempty"`
-	BitmapRLESavedBytes        int      `json:"bitmap_rle_saved_bytes,omitempty"`
-	NSCodecSelected            bool     `json:"nscodec_selected,omitempty"`
-	NSCodecWriteSeen           bool     `json:"nscodec_write_seen,omitempty"`
-	NSCodecWriteCount          int      `json:"nscodec_write_count,omitempty"`
-	NSCodecWriteBytes          int      `json:"nscodec_write_bytes,omitempty"`
-	NSCodecSavedBytes          int      `json:"nscodec_saved_bytes,omitempty"`
-	JPEGCodecSelected          bool     `json:"jpeg_codec_selected,omitempty"`
-	JPEGCodecWriteSeen         bool     `json:"jpeg_codec_write_seen,omitempty"`
-	JPEGCodecWriteCount        int      `json:"jpeg_codec_write_count,omitempty"`
-	JPEGCodecWriteBytes        int      `json:"jpeg_codec_write_bytes,omitempty"`
-	JPEGCodecSavedBytes        int      `json:"jpeg_codec_saved_bytes,omitempty"`
-	PNGCodecSelected           bool     `json:"png_codec_selected,omitempty"`
-	PNGCodecWriteSeen          bool     `json:"png_codec_write_seen,omitempty"`
-	PNGCodecWriteCount         int      `json:"png_codec_write_count,omitempty"`
-	PNGCodecWriteBytes         int      `json:"png_codec_write_bytes,omitempty"`
-	PNGCodecSavedBytes         int      `json:"png_codec_saved_bytes,omitempty"`
-	BitmapCodecStreamStopSeen  bool     `json:"bitmap_codec_stream_stop_seen,omitempty"`
-	BitmapCodecStreamStopCount int      `json:"bitmap_codec_stream_stop_count,omitempty"`
-	RFXCodecSelected           bool     `json:"rfx_codec_selected,omitempty"`
-	RDPGFXUncompressedSelected bool     `json:"rdpgfx_uncompressed_selected,omitempty"`
-	RDPGFXClearCodecSelected   bool     `json:"rdpgfx_clearcodec_selected,omitempty"`
-	RDPGFXProgressiveSelected  bool     `json:"rdpgfx_progressive_selected,omitempty"`
-	RDPGFXAVC444Selected       bool     `json:"rdpgfx_avc444_selected,omitempty"`
-	RDPGFXAVC444v2Selected     bool     `json:"rdpgfx_avc444v2_selected,omitempty"`
-	RDPGFXFrameWriteSeen       bool     `json:"rdpgfx_frame_write_seen,omitempty"`
-	RDPGFXFrameWriteCount      int      `json:"rdpgfx_frame_write_count,omitempty"`
-	RDPGFXFrameWriteBytes      int      `json:"rdpgfx_frame_write_bytes,omitempty"`
-	RDPGFXFrameStreamStopSeen  bool     `json:"rdpgfx_frame_stream_stop_seen,omitempty"`
-	RDPGFXFrameStreamStopCount int      `json:"rdpgfx_frame_stream_stop_count,omitempty"`
-	RDPGFXSeen                 bool     `json:"rdpgfx_seen"`
-	H264StatusSeen             bool     `json:"h264_status_seen"`
-	H264WriteSeen              bool     `json:"h264_write_seen"`
-	H264WriteCount             int      `json:"h264_write_count,omitempty"`
-	H264WriteBytes             int      `json:"h264_write_bytes,omitempty"`
-	H264Ready                  string   `json:"h264_ready,omitempty"`
-	H264Version                string   `json:"h264_version,omitempty"`
-	H264Flags                  string   `json:"h264_flags,omitempty"`
-	H264Reason                 string   `json:"h264_reason,omitempty"`
-	AVC420ExitCode             string   `json:"avc420_exit_code,omitempty"`
-	ActiveSeen                 bool     `json:"active_seen"`
-	FastPathSeen               bool     `json:"fastpath_seen"`
-	ErrorLines                 []string `json:"error_lines"`
-	ServerPhases               []string `json:"server_phases"`
-	ScreenshotPNG              bool     `json:"screenshot_png"`
-	ScreenshotXWD              bool     `json:"screenshot_xwd"`
-	FreeRDPLogSize             int      `json:"freerdp_log_size"`
-	ServerLogSize              int      `json:"server_log_size"`
+	ExitCode                    string   `json:"exit_code"`
+	TCPSeen                     bool     `json:"tcp_seen"`
+	X224Seen                    bool     `json:"x224_seen"`
+	MCSSeen                     bool     `json:"mcs_seen"`
+	BitmapSeen                  bool     `json:"bitmap_seen"`
+	BitmapRLESeen               bool     `json:"bitmap_rle_seen"`
+	BitmapRLECount              int      `json:"bitmap_rle_count,omitempty"`
+	BitmapRLEBytes              int      `json:"bitmap_rle_bytes,omitempty"`
+	BitmapRLESavedBytes         int      `json:"bitmap_rle_saved_bytes,omitempty"`
+	NSCodecSelected             bool     `json:"nscodec_selected,omitempty"`
+	NSCodecWriteSeen            bool     `json:"nscodec_write_seen,omitempty"`
+	NSCodecWriteCount           int      `json:"nscodec_write_count,omitempty"`
+	NSCodecWriteBytes           int      `json:"nscodec_write_bytes,omitempty"`
+	NSCodecRawBytes             int      `json:"nscodec_raw_bytes,omitempty"`
+	NSCodecSavedBytes           int      `json:"nscodec_saved_bytes,omitempty"`
+	NSCodecSavedPercent         float64  `json:"nscodec_saved_percent,omitempty"`
+	JPEGCodecSelected           bool     `json:"jpeg_codec_selected,omitempty"`
+	JPEGCodecWriteSeen          bool     `json:"jpeg_codec_write_seen,omitempty"`
+	JPEGCodecWriteCount         int      `json:"jpeg_codec_write_count,omitempty"`
+	JPEGCodecWriteBytes         int      `json:"jpeg_codec_write_bytes,omitempty"`
+	JPEGCodecRawBytes           int      `json:"jpeg_codec_raw_bytes,omitempty"`
+	JPEGCodecSavedBytes         int      `json:"jpeg_codec_saved_bytes,omitempty"`
+	JPEGCodecSavedPercent       float64  `json:"jpeg_codec_saved_percent,omitempty"`
+	PNGCodecSelected            bool     `json:"png_codec_selected,omitempty"`
+	PNGCodecWriteSeen           bool     `json:"png_codec_write_seen,omitempty"`
+	PNGCodecWriteCount          int      `json:"png_codec_write_count,omitempty"`
+	PNGCodecWriteBytes          int      `json:"png_codec_write_bytes,omitempty"`
+	PNGCodecRawBytes            int      `json:"png_codec_raw_bytes,omitempty"`
+	PNGCodecSavedBytes          int      `json:"png_codec_saved_bytes,omitempty"`
+	PNGCodecSavedPercent        float64  `json:"png_codec_saved_percent,omitempty"`
+	BitmapCodecStreamStopSeen   bool     `json:"bitmap_codec_stream_stop_seen,omitempty"`
+	BitmapCodecStreamStopCount  int      `json:"bitmap_codec_stream_stop_count,omitempty"`
+	RFXCodecSelected            bool     `json:"rfx_codec_selected,omitempty"`
+	RFXCodecWriteSeen           bool     `json:"rfx_codec_write_seen,omitempty"`
+	RFXCodecWriteCount          int      `json:"rfx_codec_write_count,omitempty"`
+	RFXCodecWriteBytes          int      `json:"rfx_codec_write_bytes,omitempty"`
+	RFXCodecRawBytes            int      `json:"rfx_codec_raw_bytes,omitempty"`
+	RFXCodecSavedBytes          int      `json:"rfx_codec_saved_bytes,omitempty"`
+	RFXCodecSavedPercent        float64  `json:"rfx_codec_saved_percent,omitempty"`
+	RFXCodecReason              string   `json:"rfx_codec_reason,omitempty"`
+	RDPGFXUncompressedSelected  bool     `json:"rdpgfx_uncompressed_selected,omitempty"`
+	RDPGFXClearCodecSelected    bool     `json:"rdpgfx_clearcodec_selected,omitempty"`
+	RDPGFXClearCodecReason      string   `json:"rdpgfx_clearcodec_reason,omitempty"`
+	RDPGFXProgressiveSelected   bool     `json:"rdpgfx_progressive_selected,omitempty"`
+	RDPGFXProgressiveReason     string   `json:"rdpgfx_progressive_reason,omitempty"`
+	RDPGFXAVC444Selected        bool     `json:"rdpgfx_avc444_selected,omitempty"`
+	RDPGFXAVC444Reason          string   `json:"rdpgfx_avc444_reason,omitempty"`
+	RDPGFXAVC444v2Selected      bool     `json:"rdpgfx_avc444v2_selected,omitempty"`
+	RDPGFXAVC444v2Reason        string   `json:"rdpgfx_avc444v2_reason,omitempty"`
+	RDPGFXFrameWriteSeen        bool     `json:"rdpgfx_frame_write_seen,omitempty"`
+	RDPGFXFrameWriteCount       int      `json:"rdpgfx_frame_write_count,omitempty"`
+	RDPGFXFrameWriteBytes       int      `json:"rdpgfx_frame_write_bytes,omitempty"`
+	RDPGFXClearCodecWriteCount  int      `json:"rdpgfx_clearcodec_write_count,omitempty"`
+	RDPGFXProgressiveWriteCount int      `json:"rdpgfx_progressive_write_count,omitempty"`
+	RDPGFXAVC444WriteCount      int      `json:"rdpgfx_avc444_write_count,omitempty"`
+	RDPGFXAVC444v2WriteCount    int      `json:"rdpgfx_avc444v2_write_count,omitempty"`
+	RDPGFXFrameStreamStopSeen   bool     `json:"rdpgfx_frame_stream_stop_seen,omitempty"`
+	RDPGFXFrameStreamStopCount  int      `json:"rdpgfx_frame_stream_stop_count,omitempty"`
+	RDPGFXSeen                  bool     `json:"rdpgfx_seen"`
+	H264StatusSeen              bool     `json:"h264_status_seen"`
+	H264WriteSeen               bool     `json:"h264_write_seen"`
+	H264WriteCount              int      `json:"h264_write_count,omitempty"`
+	H264WriteBytes              int      `json:"h264_write_bytes,omitempty"`
+	H264Ready                   string   `json:"h264_ready,omitempty"`
+	H264Version                 string   `json:"h264_version,omitempty"`
+	H264Flags                   string   `json:"h264_flags,omitempty"`
+	H264Reason                  string   `json:"h264_reason,omitempty"`
+	AVC420ExitCode              string   `json:"avc420_exit_code,omitempty"`
+	ActiveSeen                  bool     `json:"active_seen"`
+	FastPathSeen                bool     `json:"fastpath_seen"`
+	ErrorLines                  []string `json:"error_lines"`
+	ServerPhases                []string `json:"server_phases"`
+	ScreenshotPNG               bool     `json:"screenshot_png"`
+	ScreenshotXWD               bool     `json:"screenshot_xwd"`
+	FreeRDPLogSize              int      `json:"freerdp_log_size"`
+	ServerLogSize               int      `json:"server_log_size"`
 }
 
 func main() {
@@ -88,25 +109,45 @@ func main() {
 	s.NSCodecSelected = strings.Contains(sv, "nscodec_selected")
 	s.NSCodecWriteSeen = strings.Contains(sv, "nscodec_write")
 	s.NSCodecWriteCount, s.NSCodecWriteBytes = traceCountAndSum(sv, "nscodec_write", "bytes")
+	_, s.NSCodecRawBytes = traceCountAndSum(sv, "nscodec_write", "raw_bytes")
 	_, s.NSCodecSavedBytes = traceCountAndSum(sv, "nscodec_write", "saved_bytes")
+	s.NSCodecSavedPercent = savedPercent(s.NSCodecRawBytes, s.NSCodecSavedBytes)
 	s.JPEGCodecSelected = strings.Contains(sv, "jpeg_codec_selected")
 	s.JPEGCodecWriteSeen = strings.Contains(sv, "jpeg_codec_write")
 	s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes = traceCountAndSum(sv, "jpeg_codec_write", "bytes")
+	_, s.JPEGCodecRawBytes = traceCountAndSum(sv, "jpeg_codec_write", "raw_bytes")
 	_, s.JPEGCodecSavedBytes = traceCountAndSum(sv, "jpeg_codec_write", "saved_bytes")
+	s.JPEGCodecSavedPercent = savedPercent(s.JPEGCodecRawBytes, s.JPEGCodecSavedBytes)
 	s.PNGCodecSelected = strings.Contains(sv, "png_codec_selected")
 	s.PNGCodecWriteSeen = strings.Contains(sv, "png_codec_write")
 	s.PNGCodecWriteCount, s.PNGCodecWriteBytes = traceCountAndSum(sv, "png_codec_write", "bytes")
+	_, s.PNGCodecRawBytes = traceCountAndSum(sv, "png_codec_write", "raw_bytes")
 	_, s.PNGCodecSavedBytes = traceCountAndSum(sv, "png_codec_write", "saved_bytes")
+	s.PNGCodecSavedPercent = savedPercent(s.PNGCodecRawBytes, s.PNGCodecSavedBytes)
 	s.BitmapCodecStreamStopSeen = strings.Contains(sv, "bitmap_codec_stream_stop")
 	s.BitmapCodecStreamStopCount = strings.Count(sv, "trace phase=bitmap_codec_stream_stop")
 	s.RFXCodecSelected = strings.Contains(sv, "rfx_codec_selected")
+	s.RFXCodecWriteSeen = strings.Contains(sv, "rfx_codec_write")
+	s.RFXCodecWriteCount, s.RFXCodecWriteBytes = traceCountAndSum(sv, "rfx_codec_write", "bytes")
+	_, s.RFXCodecRawBytes = traceCountAndSum(sv, "rfx_codec_write", "raw_bytes")
+	_, s.RFXCodecSavedBytes = traceCountAndSum(sv, "rfx_codec_write", "saved_bytes")
+	s.RFXCodecSavedPercent = savedPercent(s.RFXCodecRawBytes, s.RFXCodecSavedBytes)
+	s.RFXCodecReason = lastTraceValue(sv, "rfx_codec_selected", "reason")
 	s.RDPGFXUncompressedSelected = strings.Contains(sv, "rdpgfx_uncompressed_selected")
 	s.RDPGFXClearCodecSelected = strings.Contains(sv, "rdpgfx_clearcodec_selected")
+	s.RDPGFXClearCodecReason = lastTraceValue(sv, "rdpgfx_clearcodec_selected", "reason")
 	s.RDPGFXProgressiveSelected = strings.Contains(sv, "rdpgfx_progressive_selected")
+	s.RDPGFXProgressiveReason = lastTraceValue(sv, "rdpgfx_progressive_selected", "reason")
 	s.RDPGFXAVC444Selected = strings.Contains(sv, "rdpgfx_avc444_selected")
+	s.RDPGFXAVC444Reason = lastTraceValue(sv, "rdpgfx_avc444_selected", "reason")
 	s.RDPGFXAVC444v2Selected = strings.Contains(sv, "rdpgfx_avc444v2_selected")
+	s.RDPGFXAVC444v2Reason = lastTraceValue(sv, "rdpgfx_avc444v2_selected", "reason")
 	s.RDPGFXFrameWriteSeen = strings.Contains(sv, "rdpgfx_frame_write")
 	s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes = traceCountAndSum(sv, "rdpgfx_frame_write", "bytes")
+	s.RDPGFXClearCodecWriteCount = traceCountWithFieldValue(sv, "rdpgfx_frame_write", "path", "rdpgfx-clearcodec")
+	s.RDPGFXProgressiveWriteCount = traceCountWithFieldValue(sv, "rdpgfx_frame_write", "path", "rdpgfx-progressive")
+	s.RDPGFXAVC444WriteCount = traceCountWithFieldValue(sv, "rdpgfx_frame_write", "path", "rdpgfx-avc444")
+	s.RDPGFXAVC444v2WriteCount = traceCountWithFieldValue(sv, "rdpgfx_frame_write", "path", "rdpgfx-avc444v2")
 	s.RDPGFXFrameStreamStopSeen = strings.Contains(sv, "rdpgfx_frame_stream_stop")
 	s.RDPGFXFrameStreamStopCount, _ = traceCountAndSum(sv, "rdpgfx_frame_stream_stop", "bytes")
 	if s.RDPGFXFrameStreamStopSeen && s.RDPGFXFrameStreamStopCount == 0 {
@@ -156,28 +197,49 @@ func main() {
 		"- NSCodec write trace seen: `%v`\n"+
 		"- NSCodec write trace count: `%d`\n"+
 		"- NSCodec write trace bytes: `%d`\n"+
+		"- NSCodec raw bytes: `%d`\n"+
 		"- NSCodec saved bytes: `%d`\n"+
+		"- NSCodec saved percent: `%.1f`\n"+
 		"- JPEG codec selected trace seen: `%v`\n"+
 		"- JPEG codec write trace seen: `%v`\n"+
 		"- JPEG codec write trace count: `%d`\n"+
 		"- JPEG codec write trace bytes: `%d`\n"+
+		"- JPEG codec raw bytes: `%d`\n"+
 		"- JPEG codec saved bytes: `%d`\n"+
+		"- JPEG codec saved percent: `%.1f`\n"+
 		"- PNG codec selected trace seen: `%v`\n"+
 		"- PNG codec write trace seen: `%v`\n"+
 		"- PNG codec write trace count: `%d`\n"+
 		"- PNG codec write trace bytes: `%d`\n"+
+		"- PNG codec raw bytes: `%d`\n"+
 		"- PNG codec saved bytes: `%d`\n"+
+		"- PNG codec saved percent: `%.1f`\n"+
 		"- Bitmap codec stream stop trace seen: `%v`\n"+
 		"- Bitmap codec stream stop trace count: `%d`\n"+
 		"- RemoteFX selected trace seen: `%v`\n"+
+		"- RemoteFX write trace seen: `%v`\n"+
+		"- RemoteFX write trace count: `%d`\n"+
+		"- RemoteFX write trace bytes: `%d`\n"+
+		"- RemoteFX raw bytes: `%d`\n"+
+		"- RemoteFX saved bytes: `%d`\n"+
+		"- RemoteFX saved percent: `%.1f`\n"+
+		"- RemoteFX selected reason: `%s`\n"+
 		"- RDPGFX uncompressed selected trace seen: `%v`\n"+
 		"- RDPGFX ClearCodec selected trace seen: `%v`\n"+
+		"- RDPGFX ClearCodec selected reason: `%s`\n"+
 		"- RDPGFX Progressive selected trace seen: `%v`\n"+
+		"- RDPGFX Progressive selected reason: `%s`\n"+
 		"- RDPGFX AVC444 selected trace seen: `%v`\n"+
+		"- RDPGFX AVC444 selected reason: `%s`\n"+
 		"- RDPGFX AVC444v2 selected trace seen: `%v`\n"+
+		"- RDPGFX AVC444v2 selected reason: `%s`\n"+
 		"- RDPGFX frame write trace seen: `%v`\n"+
 		"- RDPGFX frame write trace count: `%d`\n"+
 		"- RDPGFX frame write trace bytes: `%d`\n"+
+		"- RDPGFX ClearCodec write trace count: `%d`\n"+
+		"- RDPGFX Progressive write trace count: `%d`\n"+
+		"- RDPGFX AVC444 write trace count: `%d`\n"+
+		"- RDPGFX AVC444v2 write trace count: `%d`\n"+
 		"- RDPGFX frame stream stop trace seen: `%v`\n"+
 		"- RDPGFX frame stream stop trace count: `%d`\n"+
 		"- RDPGFX trace seen: `%v`\n"+
@@ -198,9 +260,16 @@ func main() {
 		"- XWD screenshot: `%v`\n\n"+
 		"## Recent server trace phases\n\n%s\n\n"+
 		"## FreeRDP warning/error lines\n\n%s\n",
-		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.NSCodecSavedBytes, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.JPEGCodecSavedBytes, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.PNGCodecSavedBytes, s.BitmapCodecStreamStopSeen, s.BitmapCodecStreamStopCount, s.RFXCodecSelected, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXProgressiveSelected, s.RDPGFXAVC444Selected, s.RDPGFXAVC444v2Selected, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXFrameStreamStopSeen, s.RDPGFXFrameStreamStopCount, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
+		s.ExitCode, s.TCPSeen, s.X224Seen, s.MCSSeen, s.BitmapSeen, s.BitmapRLESeen, s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes, s.NSCodecSelected, s.NSCodecWriteSeen, s.NSCodecWriteCount, s.NSCodecWriteBytes, s.NSCodecRawBytes, s.NSCodecSavedBytes, s.NSCodecSavedPercent, s.JPEGCodecSelected, s.JPEGCodecWriteSeen, s.JPEGCodecWriteCount, s.JPEGCodecWriteBytes, s.JPEGCodecRawBytes, s.JPEGCodecSavedBytes, s.JPEGCodecSavedPercent, s.PNGCodecSelected, s.PNGCodecWriteSeen, s.PNGCodecWriteCount, s.PNGCodecWriteBytes, s.PNGCodecRawBytes, s.PNGCodecSavedBytes, s.PNGCodecSavedPercent, s.BitmapCodecStreamStopSeen, s.BitmapCodecStreamStopCount, s.RFXCodecSelected, s.RFXCodecWriteSeen, s.RFXCodecWriteCount, s.RFXCodecWriteBytes, s.RFXCodecRawBytes, s.RFXCodecSavedBytes, s.RFXCodecSavedPercent, s.RFXCodecReason, s.RDPGFXUncompressedSelected, s.RDPGFXClearCodecSelected, s.RDPGFXClearCodecReason, s.RDPGFXProgressiveSelected, s.RDPGFXProgressiveReason, s.RDPGFXAVC444Selected, s.RDPGFXAVC444Reason, s.RDPGFXAVC444v2Selected, s.RDPGFXAVC444v2Reason, s.RDPGFXFrameWriteSeen, s.RDPGFXFrameWriteCount, s.RDPGFXFrameWriteBytes, s.RDPGFXClearCodecWriteCount, s.RDPGFXProgressiveWriteCount, s.RDPGFXAVC444WriteCount, s.RDPGFXAVC444v2WriteCount, s.RDPGFXFrameStreamStopSeen, s.RDPGFXFrameStreamStopCount, s.RDPGFXSeen, s.H264StatusSeen, s.H264WriteSeen, s.H264WriteCount, s.H264WriteBytes, s.H264Ready, s.H264Version, s.H264Flags, s.H264Reason, s.AVC420ExitCode, s.ActiveSeen, s.FastPathSeen, s.FreeRDPLogSize, s.ServerLogSize, s.ScreenshotPNG, s.ScreenshotXWD, bullet(s.ServerPhases), bullet(s.ErrorLines))
 	must(os.WriteFile(filepath.Join(dir, "summary.md"), []byte(md), 0o644))
 	fmt.Println("wrote FreeRDP summaries")
+}
+
+func savedPercent(rawBytes, savedBytes int) float64 {
+	if rawBytes <= 0 || savedBytes <= 0 {
+		return 0
+	}
+	return float64(savedBytes) * 100 / float64(rawBytes)
 }
 
 func bitmapRLETraceStats(logText string) (int, int, int) {
@@ -240,6 +309,24 @@ func traceCountAndSum(logText, phase, key string) (int, int) {
 		}
 	}
 	return count, sum
+}
+
+func traceCountWithFieldValue(logText, phase, key, value string) int {
+	needle := "trace phase=" + phase
+	prefix := key + "="
+	count := 0
+	for _, line := range strings.Split(logText, "\n") {
+		if !strings.Contains(line, needle) {
+			continue
+		}
+		for _, field := range strings.Fields(line) {
+			if strings.HasPrefix(field, prefix) && strings.TrimPrefix(field, prefix) == value {
+				count++
+				break
+			}
+		}
+	}
+	return count
 }
 
 func lastTraceValue(logText, phase, key string) string {

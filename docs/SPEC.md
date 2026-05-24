@@ -119,7 +119,7 @@ Deliberately skip initially:
 - Start with raw bitmap updates. ✅ (slow-path fallback and benchmark oracle)
 - Add dirty-region detection. ✅
 - Add RDPGFX Planar over `drdynvc`. ✅ (FreeRDP `/sec:nla /gfx` CI proof)
-- Add NSCodec, RemoteFX/RFX, RDPGFX AVC444/AVC444v2, ClearCodec, progressive codecs, or JPEG/PNG bitmap codecs only if client capability evidence shows they materially improve compatibility/performance; they are explicitly not implemented in the current server. Legacy bitmap RLE is implemented only as an experimental opt-in fallback (`GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`) with saved-byte diagnostics, not as a negotiated/default release path.
+- Add NSCodec, RemoteFX/RFX, RDPGFX AVC444/AVC444v2, ClearCodec, progressive codecs, or JPEG/PNG bitmap codecs only if client capability evidence shows they materially improve compatibility/performance. Legacy bitmap RLE is implemented only as an experimental opt-in fallback (`GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`) with saved-byte diagnostics, not as a negotiated/default release path. NSCodec/JPEG/PNG SurfaceBits emitters are also experimental/opt-in with selected/write/raw/saved/percent diagnostics. RemoteFX/RFX, AVC444/AVC444v2, ClearCodec, and progressive paths now have bounded transport wrappers and internal encoder hooks plus fixture-payload matrix cases, but production encoders/transports remain deferred.
 - Add full-spectrum H.264/AVC using Android `MediaCodec` as the next top-priority graphics workstream, layered ahead of RDPGFX only when protocol/client support is negotiated. ✅/experimental (encoder, queue, RDPGFX AVC420 wrapping/streaming, diagnostics, and non-blocking CI artifact exist; true client proof is still pending)
 
 ## Screen pipeline choices
@@ -133,11 +133,11 @@ MediaProjection → VirtualDisplay → ImageReader RGBA/YUV
   → Kotlin frame callback
   → Go buffer
   → RDPGFX Planar when negotiated
-  → RDP bitmap update fallback / optional bitmap RLE diagnostic fallback / future NSCodec if justified
+  → RDP bitmap update fallback / optional bitmap RLE or SurfaceBits codec diagnostic fallbacks
 ```
 
 Pros:
-- works with classic RDP bitmap updates, opt-in bitmap RLE diagnostics, and RDPGFX Planar without requiring Android hardware encoder surfaces
+- works with classic RDP bitmap updates, opt-in bitmap RLE/SurfaceBits diagnostics, and RDPGFX Planar without requiring Android hardware encoder surfaces
 - avoids RDP H.264 complexity
 
 Cons:

@@ -10,10 +10,20 @@ type serverMetrics struct {
 	bitmapRLESavedBytes    *atomic.Int64
 	nsCodecFrames          *atomic.Int64
 	nsCodecBytes           *atomic.Int64
+	nsCodecRawBytes        *atomic.Int64
+	nsCodecSavedBytes      *atomic.Int64
 	jpegCodecFrames        *atomic.Int64
 	jpegCodecBytes         *atomic.Int64
+	jpegCodecRawBytes      *atomic.Int64
+	jpegCodecSavedBytes    *atomic.Int64
 	pngCodecFrames         *atomic.Int64
 	pngCodecBytes          *atomic.Int64
+	pngCodecRawBytes       *atomic.Int64
+	pngCodecSavedBytes     *atomic.Int64
+	rfxCodecFrames         *atomic.Int64
+	rfxCodecBytes          *atomic.Int64
+	rfxCodecRawBytes       *atomic.Int64
+	rfxCodecSavedBytes     *atomic.Int64
 	bitmapCodecStreamStops *atomic.Int64
 	rdpgfxFrames           *atomic.Int64
 	rdpgfxBytes            *atomic.Int64
@@ -23,6 +33,11 @@ type serverMetrics struct {
 	h264Bytes              *atomic.Int64
 	dvcFragments           *atomic.Int64
 	h264Status             *atomic.Value
+	rfxEncoder             RFXEncoder
+	clearCodecEncoder      RDPGFXFrameEncoder
+	progressiveEncoder     RDPGFXFrameEncoder
+	avc444Encoder          RDPGFXFrameEncoder
+	avc444v2Encoder        RDPGFXFrameEncoder
 }
 
 func (m serverMetrics) recordH264Status(status string) {
@@ -59,6 +74,10 @@ func (m serverMetrics) recordBitmapFrame(updates [][]byte) {
 }
 
 func (m serverMetrics) recordNSCodecFrame(commands [][]byte) {
+	m.recordNSCodecFrameSavings(commands, 0, 0)
+}
+
+func (m serverMetrics) recordNSCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
@@ -68,9 +87,19 @@ func (m serverMetrics) recordNSCodecFrame(commands [][]byte) {
 	if m.nsCodecBytes != nil {
 		m.nsCodecBytes.Add(totalPayloadBytes(commands))
 	}
+	if rawBytes > 0 && m.nsCodecRawBytes != nil {
+		m.nsCodecRawBytes.Add(rawBytes)
+	}
+	if savedBytes > 0 && m.nsCodecSavedBytes != nil {
+		m.nsCodecSavedBytes.Add(savedBytes)
+	}
 }
 
 func (m serverMetrics) recordJPEGCodecFrame(commands [][]byte) {
+	m.recordJPEGCodecFrameSavings(commands, 0, 0)
+}
+
+func (m serverMetrics) recordJPEGCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
@@ -80,9 +109,19 @@ func (m serverMetrics) recordJPEGCodecFrame(commands [][]byte) {
 	if m.jpegCodecBytes != nil {
 		m.jpegCodecBytes.Add(totalPayloadBytes(commands))
 	}
+	if rawBytes > 0 && m.jpegCodecRawBytes != nil {
+		m.jpegCodecRawBytes.Add(rawBytes)
+	}
+	if savedBytes > 0 && m.jpegCodecSavedBytes != nil {
+		m.jpegCodecSavedBytes.Add(savedBytes)
+	}
 }
 
 func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
+	m.recordPNGCodecFrameSavings(commands, 0, 0)
+}
+
+func (m serverMetrics) recordPNGCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
@@ -91,6 +130,30 @@ func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
 	}
 	if m.pngCodecBytes != nil {
 		m.pngCodecBytes.Add(totalPayloadBytes(commands))
+	}
+	if rawBytes > 0 && m.pngCodecRawBytes != nil {
+		m.pngCodecRawBytes.Add(rawBytes)
+	}
+	if savedBytes > 0 && m.pngCodecSavedBytes != nil {
+		m.pngCodecSavedBytes.Add(savedBytes)
+	}
+}
+
+func (m serverMetrics) recordRFXCodecFrame(commands [][]byte, rawBytes, savedBytes int64) {
+	if m.framesSent != nil {
+		m.framesSent.Add(1)
+	}
+	if m.rfxCodecFrames != nil {
+		m.rfxCodecFrames.Add(1)
+	}
+	if m.rfxCodecBytes != nil {
+		m.rfxCodecBytes.Add(totalPayloadBytes(commands))
+	}
+	if rawBytes > 0 && m.rfxCodecRawBytes != nil {
+		m.rfxCodecRawBytes.Add(rawBytes)
+	}
+	if savedBytes > 0 && m.rfxCodecSavedBytes != nil {
+		m.rfxCodecSavedBytes.Add(savedBytes)
 	}
 }
 

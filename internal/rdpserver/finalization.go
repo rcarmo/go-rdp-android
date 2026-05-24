@@ -84,7 +84,23 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				return nil
 			}
 			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
-				tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
+				if metrics.rfxEncoder == nil {
+					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
+				} else if encoded, encodedOK := metrics.rfxEncoder.EncodeRFX(normalized, width, height); encodedOK {
+					if cmd, built := buildRFXSurfaceBitsCommand(normalized.Width, normalized.Height, codecID, encoded); built {
+						rfxCmd := bitmapCodecCommand{Name: "rfx-codec", CodecID: codecID, Command: cmd, Trace: "rfx_codec", RawBytes: normalized.Width * normalized.Height * 4}
+						tracef("rfx_codec_selected", "codec_id=%d command_bytes=%d raw_bytes=%d saved_bytes=%d emission=opt-in", codecID, len(cmd), rfxCmd.RawBytes, rfxCmd.savedBytes())
+						if err := writeShareDataPDU(conn, pduType2Update, cmd); err != nil {
+							return err
+						}
+						metrics.recordRFXCodecFrame([][]byte{cmd}, int64(rfxCmd.RawBytes), int64(rfxCmd.savedBytes()))
+						tracef("rfx_codec_write", "codec_id=%d bytes=%d raw_bytes=%d saved_bytes=%d", codecID, len(cmd), rfxCmd.RawBytes, rfxCmd.savedBytes())
+						return nil
+					}
+					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=surfacebits-build-failed", codecID)
+				} else {
+					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-rejected-frame", codecID)
+				}
 			}
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
@@ -193,7 +209,7 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	if frames != nil {
 		select {
 		case fr := <-frames.Frames():
-			pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height)
+			pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height, metrics, dvc.rdpgfxCapability)
 			if ok {
 				for _, pdu := range pdus {
 					if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
@@ -216,7 +232,11 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	return nil
 }
 
-func buildRDPGFXFrameUpdatePDUs(surfaceID uint16, frameID uint32, fr frame.Frame, width, height int) ([][]byte, string, bool) {
+func buildRDPGFXFrameUpdatePDUs(surfaceID uint16, frameID uint32, fr frame.Frame, width, height int, metrics serverMetrics, cap rdpgfxCapabilitySet) ([][]byte, string, bool) {
+	if pdus, path, ok := buildSelectedRDPGFXEncodedFramePDUs(surfaceID, frameID, fr, width, height, cap, metrics); ok {
+		return pdus, path, true
+	}
+
 	if rdpgfxUncompressedEnabledFromEnv() {
 		pdus, ok := buildRDPGFXUncompressedFramePDUs(surfaceID, frameID, fr, width, height)
 		if ok {
@@ -238,7 +258,7 @@ func streamRDPGFXFrameUpdates(conn net.Conn, frames frame.Source, dvc *drdynvcMa
 	frameCh := frames.Frames()
 	for fr := range frameCh {
 		fr = latestAvailableFrame(frameCh, fr)
-		pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height)
+		pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, nextFrameID, fr, width, height, metrics, dvc.rdpgfxCapability)
 		if !ok || len(pdus) == 0 {
 			continue
 		}

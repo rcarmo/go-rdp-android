@@ -78,7 +78,7 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 - Android package/application ID: `io.carmo.go.rdp.android`
 - Android versionCode: `2`
 
-Checked on 2026-05-21: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations remain covered by the blocking `/sec:nla /gfx` proof gate. H.264/AVC release wording keeps forced AVC420 CI artifacts explicitly non-blocking until true client support is proven, and bitmap RLE remains an opt-in diagnostic fallback rather than a release-default graphics path.
+Checked on 2026-05-27: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations remain covered by the blocking `/sec:nla /gfx` proof gate. H.264/AVC release wording keeps forced AVC420 CI artifacts explicitly non-blocking until true client support is proven. Bitmap RLE, NSCodec/JPEG/PNG SurfaceBits, RemoteFX fixture hooks, and RDPGFX ClearCodec/Progressive/AVC444/AVC444v2 fixture hooks remain opt-in diagnostic/transport experiments rather than release-default graphics paths.
 
 ## Notes
 

@@ -54,25 +54,31 @@ func TestBuildExperimentalBitmapCodecCommandNoSelection(t *testing.T) {
 func TestRecordExperimentalBitmapCodecFrame(t *testing.T) {
 	var nsFrames atomic.Int64
 	var nsBytes atomic.Int64
+	var nsRaw atomic.Int64
+	var nsSaved atomic.Int64
 	var jpegFrames atomic.Int64
 	var jpegBytes atomic.Int64
+	var jpegRaw atomic.Int64
+	var jpegSaved atomic.Int64
 	var pngFrames atomic.Int64
 	var pngBytes atomic.Int64
-	metrics := serverMetrics{nsCodecFrames: &nsFrames, nsCodecBytes: &nsBytes, jpegCodecFrames: &jpegFrames, jpegCodecBytes: &jpegBytes, pngCodecFrames: &pngFrames, pngCodecBytes: &pngBytes}
+	var pngRaw atomic.Int64
+	var pngSaved atomic.Int64
+	metrics := serverMetrics{nsCodecFrames: &nsFrames, nsCodecBytes: &nsBytes, nsCodecRawBytes: &nsRaw, nsCodecSavedBytes: &nsSaved, jpegCodecFrames: &jpegFrames, jpegCodecBytes: &jpegBytes, jpegCodecRawBytes: &jpegRaw, jpegCodecSavedBytes: &jpegSaved, pngCodecFrames: &pngFrames, pngCodecBytes: &pngBytes, pngCodecRawBytes: &pngRaw, pngCodecSavedBytes: &pngSaved}
 
-	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "nscodec", Command: []byte{1, 2}}) {
+	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "nscodec", Command: []byte{1, 2}, RawBytes: 6}) {
 		t.Fatal("record nscodec = false")
 	}
-	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "jpeg-codec", Command: []byte{1, 2, 3}}) {
+	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "jpeg-codec", Command: []byte{1, 2, 3}, RawBytes: 8}) {
 		t.Fatal("record jpeg = false")
 	}
-	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "png-codec", Command: []byte{1, 2, 3, 4}}) {
+	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "png-codec", Command: []byte{1, 2, 3, 4}, RawBytes: 10}) {
 		t.Fatal("record png = false")
 	}
 	if recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "unknown", Command: []byte{1}}) {
 		t.Fatal("record unknown = true")
 	}
-	if nsFrames.Load() != 1 || nsBytes.Load() != 2 || jpegFrames.Load() != 1 || jpegBytes.Load() != 3 || pngFrames.Load() != 1 || pngBytes.Load() != 4 {
-		t.Fatalf("unexpected metrics ns=%d/%d jpeg=%d/%d png=%d/%d", nsFrames.Load(), nsBytes.Load(), jpegFrames.Load(), jpegBytes.Load(), pngFrames.Load(), pngBytes.Load())
+	if nsFrames.Load() != 1 || nsBytes.Load() != 2 || nsRaw.Load() != 6 || nsSaved.Load() != 4 || jpegFrames.Load() != 1 || jpegBytes.Load() != 3 || jpegRaw.Load() != 8 || jpegSaved.Load() != 5 || pngFrames.Load() != 1 || pngBytes.Load() != 4 || pngRaw.Load() != 10 || pngSaved.Load() != 6 {
+		t.Fatalf("unexpected metrics ns=%d/%d/%d/%d jpeg=%d/%d/%d/%d png=%d/%d/%d/%d", nsFrames.Load(), nsBytes.Load(), nsRaw.Load(), nsSaved.Load(), jpegFrames.Load(), jpegBytes.Load(), jpegRaw.Load(), jpegSaved.Load(), pngFrames.Load(), pngBytes.Load(), pngRaw.Load(), pngSaved.Load())
 	}
 }

@@ -35,13 +35,13 @@ func buildExperimentalBitmapCodecCommand(src frame.Frame, caps confirmActiveCapa
 func recordExperimentalBitmapCodecFrame(metrics serverMetrics, cmd bitmapCodecCommand) bool {
 	switch cmd.Name {
 	case "nscodec":
-		metrics.recordNSCodecFrame([][]byte{cmd.Command})
+		metrics.recordNSCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	case "jpeg-codec":
-		metrics.recordJPEGCodecFrame([][]byte{cmd.Command})
+		metrics.recordJPEGCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	case "png-codec":
-		metrics.recordPNGCodecFrame([][]byte{cmd.Command})
+		metrics.recordPNGCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	default:
 		return false

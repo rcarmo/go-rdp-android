@@ -25,6 +25,11 @@ type Config struct {
 	Policy        AccessPolicy
 	TLS           TLSSettings
 	H264          H264Source
+	RFX           RFXEncoder
+	ClearCodec    RDPGFXFrameEncoder
+	Progressive   RDPGFXFrameEncoder
+	AVC444        RDPGFXFrameEncoder
+	AVC444v2      RDPGFXFrameEncoder
 }
 
 // Server is the native Android RDP server core.
@@ -49,10 +54,20 @@ type Server struct {
 	bitmapRLESavedBytes    atomic.Int64
 	nsCodecFrames          atomic.Int64
 	nsCodecBytes           atomic.Int64
+	nsCodecRawBytes        atomic.Int64
+	nsCodecSavedBytes      atomic.Int64
 	jpegCodecFrames        atomic.Int64
 	jpegCodecBytes         atomic.Int64
+	jpegCodecRawBytes      atomic.Int64
+	jpegCodecSavedBytes    atomic.Int64
 	pngCodecFrames         atomic.Int64
 	pngCodecBytes          atomic.Int64
+	pngCodecRawBytes       atomic.Int64
+	pngCodecSavedBytes     atomic.Int64
+	rfxCodecFrames         atomic.Int64
+	rfxCodecBytes          atomic.Int64
+	rfxCodecRawBytes       atomic.Int64
+	rfxCodecSavedBytes     atomic.Int64
 	bitmapCodecStreamStops atomic.Int64
 	rdpgfxFrames           atomic.Int64
 	rdpgfxBytes            atomic.Int64
@@ -62,6 +77,11 @@ type Server struct {
 	h264Bytes              atomic.Int64
 	dvcFragments           atomic.Int64
 	h264Status             atomic.Value
+	rfxEncoder             RFXEncoder
+	clearCodecEncoder      RDPGFXFrameEncoder
+	progressiveEncoder     RDPGFXFrameEncoder
+	avc444Encoder          RDPGFXFrameEncoder
+	avc444v2Encoder        RDPGFXFrameEncoder
 
 	mu sync.Mutex
 	ln net.Listener
@@ -84,7 +104,7 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy)}, nil
+	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy), rfxEncoder: cfg.RFX, clearCodecEncoder: cfg.ClearCodec, progressiveEncoder: cfg.Progressive, avc444Encoder: cfg.AVC444, avc444v2Encoder: cfg.AVC444v2}, nil
 }
 
 // Listen starts accepting TCP connections.
@@ -189,17 +209,47 @@ func (s *Server) NSCodecFrames() int64 { return s.nsCodecFrames.Load() }
 // NSCodecBytes returns the total number of experimental NSCodec SurfaceBits command bytes sent to clients.
 func (s *Server) NSCodecBytes() int64 { return s.nsCodecBytes.Load() }
 
+// NSCodecRawBytes returns the estimated raw source bytes represented by experimental NSCodec SurfaceBits commands.
+func (s *Server) NSCodecRawBytes() int64 { return s.nsCodecRawBytes.Load() }
+
+// NSCodecSavedBytes returns the estimated bytes saved by experimental NSCodec SurfaceBits commands.
+func (s *Server) NSCodecSavedBytes() int64 { return s.nsCodecSavedBytes.Load() }
+
 // JPEGCodecFrames returns the total number of experimental JPEG bitmap-codec update batches sent to clients.
 func (s *Server) JPEGCodecFrames() int64 { return s.jpegCodecFrames.Load() }
 
 // JPEGCodecBytes returns the total number of experimental JPEG bitmap-codec SurfaceBits command bytes sent to clients.
 func (s *Server) JPEGCodecBytes() int64 { return s.jpegCodecBytes.Load() }
 
+// JPEGCodecRawBytes returns the estimated raw source bytes represented by experimental JPEG SurfaceBits commands.
+func (s *Server) JPEGCodecRawBytes() int64 { return s.jpegCodecRawBytes.Load() }
+
+// JPEGCodecSavedBytes returns the estimated bytes saved by experimental JPEG SurfaceBits commands.
+func (s *Server) JPEGCodecSavedBytes() int64 { return s.jpegCodecSavedBytes.Load() }
+
 // PNGCodecFrames returns the total number of experimental PNG bitmap-codec update batches sent to clients.
 func (s *Server) PNGCodecFrames() int64 { return s.pngCodecFrames.Load() }
 
 // PNGCodecBytes returns the total number of experimental PNG bitmap-codec SurfaceBits command bytes sent to clients.
 func (s *Server) PNGCodecBytes() int64 { return s.pngCodecBytes.Load() }
+
+// PNGCodecRawBytes returns the estimated raw source bytes represented by experimental PNG SurfaceBits commands.
+func (s *Server) PNGCodecRawBytes() int64 { return s.pngCodecRawBytes.Load() }
+
+// PNGCodecSavedBytes returns the estimated bytes saved by experimental PNG SurfaceBits commands.
+func (s *Server) PNGCodecSavedBytes() int64 { return s.pngCodecSavedBytes.Load() }
+
+// RFXCodecFrames returns the total number of experimental RemoteFX update batches sent to clients.
+func (s *Server) RFXCodecFrames() int64 { return s.rfxCodecFrames.Load() }
+
+// RFXCodecBytes returns the total number of experimental RemoteFX SurfaceBits command bytes sent to clients.
+func (s *Server) RFXCodecBytes() int64 { return s.rfxCodecBytes.Load() }
+
+// RFXCodecRawBytes returns the estimated raw source bytes represented by experimental RemoteFX SurfaceBits commands.
+func (s *Server) RFXCodecRawBytes() int64 { return s.rfxCodecRawBytes.Load() }
+
+// RFXCodecSavedBytes returns the estimated bytes saved by experimental RemoteFX SurfaceBits commands.
+func (s *Server) RFXCodecSavedBytes() int64 { return s.rfxCodecSavedBytes.Load() }
 
 // BitmapCodecStreamStops returns the total number of experimental SurfaceBits bitmap-codec stream write stops observed.
 func (s *Server) BitmapCodecStreamStops() int64 { return s.bitmapCodecStreamStops.Load() }
@@ -246,6 +296,9 @@ func (s *Server) GraphicsPath() string {
 	}
 	if s.pngCodecFrames.Load() > 0 {
 		return "png-codec"
+	}
+	if s.rfxCodecFrames.Load() > 0 {
+		return "rfx-codec"
 	}
 	if s.bitmapRLEFrames.Load() > 0 {
 		return "bitmap-rle"
@@ -333,7 +386,7 @@ func (s *Server) handleConn(conn net.Conn) {
 	}
 	log.Printf("rdp MCS Connect-Response sent to %s", conn.RemoteAddr())
 	countingSink := &countingInputSink{sink: s.input, inputEvents: &s.inputEvents, rdpeiContacts: &s.rdpeiContacts}
-	metrics := serverMetrics{framesSent: &s.framesSent, bitmapBytes: &s.bitmapBytes, bitmapRLEFrames: &s.bitmapRLEFrames, bitmapRLEBytes: &s.bitmapRLEBytes, bitmapRLESavedBytes: &s.bitmapRLESavedBytes, nsCodecFrames: &s.nsCodecFrames, nsCodecBytes: &s.nsCodecBytes, jpegCodecFrames: &s.jpegCodecFrames, jpegCodecBytes: &s.jpegCodecBytes, pngCodecFrames: &s.pngCodecFrames, pngCodecBytes: &s.pngCodecBytes, bitmapCodecStreamStops: &s.bitmapCodecStreamStops, rdpgfxFrames: &s.rdpgfxFrames, rdpgfxBytes: &s.rdpgfxBytes, rdpgfxStreamStops: &s.rdpgfxStreamStops, rdpgfxPath: &s.rdpgfxPath, h264Frames: &s.h264Frames, h264Bytes: &s.h264Bytes, dvcFragments: &s.dvcFragments, h264Status: &s.h264Status}
+	metrics := s.metrics()
 	if err := handleMCSDomainSequence(conn, s.frames, s.cfg.H264, countingSink, sessionWidth, sessionHeight, s.cfg.Authenticator, s.cfg.Policy, s.authLimiter, info.SelectedProtocol, mcsInfo.ClientChannels, metrics); err != nil {
 		if errors.Is(err, errAuthFailure) {
 			s.authFailures.Add(1)
