@@ -167,14 +167,14 @@ func rfxDWT53Line(line []int32) {
 		left := lo[i]
 		right := lo[i]
 		if i+1 < half {
-			right = lo[i+1]
+			right = lo[i+1] // #nosec G602 -- guarded by i+1 < half
 		}
 		hi[i] -= (left + right) >> 1
 	}
 	for i := 0; i < half; i++ {
 		left := hi[i]
 		if i > 0 {
-			left = hi[i-1]
+			left = hi[i-1] // #nosec G602 -- guarded by i > 0
 		}
 		right := hi[i]
 		lo[i] += (left + right + 2) >> 2
