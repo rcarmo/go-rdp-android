@@ -32,6 +32,7 @@ func TestEncodingMatrixIncludesRDPGFXFixtureCases(t *testing.T) {
 	}
 	text := string(data)
 	for _, want := range []string{
+		"run_case rdpgfx-clearcodec-encoded",
 		"run_case rdpgfx-clearcodec-fixture",
 		"-clearcodec-file $OUT/codec-fixture.bin",
 		"run_case rdpgfx-progressive-fixture",
@@ -105,7 +106,6 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444v2")
-	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX ClearCodec")
 	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertStringPresent(t, coverage.ReleaseDefaults, "RDPGFX Planar")
 	assertStringPresent(t, coverage.NonDefaultExperimentalEmitters, "PNG bitmap codec")
