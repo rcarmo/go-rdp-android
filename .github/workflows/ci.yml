@@ -487,6 +487,32 @@ jobs:
           name: freerdp-compat-probe
           path: freerdp-artifacts/**
 
+  encoding-matrix:
+    name: Encoding matrix (CI)
+    needs: release-cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+      - name: Install FreeRDP/X11 tools for matrix
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y freerdp2-x11 xvfb x11-apps imagemagick || sudo apt-get install -y freerdp3-x11 xvfb x11-apps imagemagick
+      - name: Run encoding matrix
+        run: |
+          set -euo pipefail
+          mkdir -p .gotmp
+          GOTMPDIR="$PWD/.gotmp" make encoding-matrix
+      - name: Upload encoding matrix artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: encoding-matrix-artifacts
+          path: encoding-matrix-artifacts/**
+
   android-emulator:
     name: Android emulator smoke
     needs: release-cleanup
