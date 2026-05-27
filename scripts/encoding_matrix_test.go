@@ -7,13 +7,14 @@ import (
 	"testing"
 )
 
-func TestEncodingMatrixIncludesRFXFixtureCase(t *testing.T) {
+func TestEncodingMatrixIncludesRFXProductionAndFixtureCases(t *testing.T) {
 	data, err := os.ReadFile("encoding-matrix.sh")
 	if err != nil {
 		t.Fatalf("read encoding-matrix.sh: %v", err)
 	}
 	text := string(data)
 	for _, want := range []string{
+		"run_case rfx-encoded",
 		"run_case rfx-fixture",
 		"-rfx-file $OUT/codec-fixture.bin",
 		"rfx-fixture\", \"rdpgfx-planar",
@@ -56,7 +57,7 @@ func TestEncodingMatrixIncludesPNGOptInCase(t *testing.T) {
 		"run_case png-opt-in",
 		"GO_RDP_ANDROID_ENABLE_PNG_CODEC_ID=9",
 		"GO_RDP_ANDROID_PNG_COMPRESSION_LEVEL=-3",
-		"png-opt-in\", \"rfx-opt-in",
+		"png-opt-in\", \"rfx-encoded",
 		"PNG opt-in should at least reach active state",
 	} {
 		if !strings.Contains(text, want) {
@@ -104,7 +105,6 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444v2")
-	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RemoteFX / RFX")
 	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX ClearCodec")
 	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertStringPresent(t, coverage.ReleaseDefaults, "RDPGFX Planar")

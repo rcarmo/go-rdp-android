@@ -42,6 +42,51 @@ func TestWriteInitialBitmapUpdateUsesRFXEncoderWhenAvailable(t *testing.T) {
 	}
 }
 
+func TestProductionRFXEncoderEncodeRFX(t *testing.T) {
+	enc := productionRFXEncoder{}
+	src := frame.Frame{
+		Width:  rfxTileSize,
+		Height: rfxTileSize,
+		Stride: rfxTileSize * 4,
+		Format: frame.PixelFormatRGBA8888,
+		Data:   solidRGBA(rfxTileSize, rfxTileSize, 0x11, 0x22, 0x33, 0xff),
+	}
+	payload, ok := enc.EncodeRFX(src, rfxTileSize, rfxTileSize)
+	if !ok || len(payload) == 0 {
+		t.Fatalf("EncodeRFX len=%d ok=%t", len(payload), ok)
+	}
+	if payload[0] != 0xC0 || payload[1] != 0xCC {
+		t.Fatalf("first block type bytes=%02x %02x, want sync block", payload[0], payload[1])
+	}
+	if _, ok := enc.EncodeRFX(src, 32, 32); ok {
+		t.Fatalf("EncodeRFX accepted sub-tile desktop")
+	}
+}
+
+func TestWriteInitialBitmapUpdateUsesProductionRFXEncoderWhenNegotiated(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_RFX_CODEC", "1")
+	frames := make(chan frame.Frame, 1)
+	frames <- frame.Frame{Width: rfxTileSize, Height: rfxTileSize, Stride: rfxTileSize * 4, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(rfxTileSize, rfxTileSize, 0x11, 0x22, 0x33, 0xff)}
+	close(frames)
+	var rfxFrames atomic.Int64
+	var rfxBytes atomic.Int64
+	var rfxRawBytes atomic.Int64
+	var rfxSavedBytes atomic.Int64
+	metrics := serverMetrics{rfxCodecFrames: &rfxFrames, rfxCodecBytes: &rfxBytes, rfxCodecRawBytes: &rfxRawBytes, rfxCodecSavedBytes: &rfxSavedBytes, rfxEncoder: productionRFXEncoder{}}
+	caps := confirmActiveCapabilities{BitmapCodecs: bitmapCodecsCapabilityInfo{Present: true, Codecs: []bitmapCodecInfo{{GUID: rdpcodec.RemoteFXGUID, ID: 4, Name: rdpcodec.BitmapCodecNameRemoteFX}}}}
+	conn := &captureConn{}
+
+	if err := writeInitialBitmapUpdate(conn, channelFrameSource{ch: frames}, rfxTileSize, rfxTileSize, caps, metrics); err != nil {
+		t.Fatalf("writeInitialBitmapUpdate: %v", err)
+	}
+	if conn.writes.Load() <= 0 {
+		t.Fatalf("writes = %d, want positive", conn.writes.Load())
+	}
+	if rfxFrames.Load() != 1 || rfxBytes.Load() <= 0 || rfxRawBytes.Load() != int64(rfxTileSize*rfxTileSize*4) || rfxSavedBytes.Load() <= 0 {
+		t.Fatalf("production rfx metrics frames=%d bytes=%d raw=%d saved=%d", rfxFrames.Load(), rfxBytes.Load(), rfxRawBytes.Load(), rfxSavedBytes.Load())
+	}
+}
+
 func TestWriteInitialBitmapUpdateFallsBackWhenRFXEncoderRejects(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_ENABLE_RFX_CODEC", "1")
 	frames := make(chan frame.Frame, 1)
