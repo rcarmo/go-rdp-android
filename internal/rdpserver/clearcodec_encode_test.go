@@ -49,6 +49,73 @@ func TestClearCodecEncoderRawRectRGB565(t *testing.T) {
 	if len(payload) >= 8*8*4 {
 		t.Fatalf("payload len=%d should be smaller than raw=%d", len(payload), 8*8*4)
 	}
+	rects, ok := parseClearCodecRectHeaders(payload)
+	if !ok || len(rects) != 1 {
+		t.Fatalf("parseClearCodecRectHeaders len=%d ok=%t", len(rects), ok)
+	}
+}
+
+func TestClearCodecEncoderLargeFrameSplitsRects(t *testing.T) {
+	enc := clearCodecEncoder{}
+	w, h := 1024, 256
+	data := make([]byte, w*h*4)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			i := (y*w + x) * 4
+			data[i+0] = byte((x + y) & 0xff)
+			data[i+1] = byte((x * 3) & 0xff)
+			data[i+2] = byte((y * 5) & 0xff)
+			data[i+3] = 0xff
+		}
+	}
+	src := frame.Frame{Width: w, Height: h, Stride: w * 4, Format: frame.PixelFormatRGBA8888, Data: data}
+	payload, ok := enc.EncodeRDPGFX(src, w, h)
+	if !ok || len(payload) == 0 {
+		t.Fatalf("EncodeRDPGFX large len=%d ok=%t", len(payload), ok)
+	}
+	rects, ok := parseClearCodecRectHeaders(payload)
+	if !ok || len(rects) <= 1 {
+		t.Fatalf("expected split rectangles, got len=%d ok=%t", len(rects), ok)
+	}
+	for i, r := range rects {
+		if int(r[0])+int(r[2]) > w || int(r[1])+int(r[3]) > h {
+			t.Fatalf("rect %d out of bounds: %+v", i, r)
+		}
+	}
+}
+
+func parseClearCodecRectHeaders(payload []byte) ([][4]uint16, bool) {
+	if len(payload) < 10 || string(payload[:4]) != clearCodecMagic {
+		return nil, false
+	}
+	rectCount := int(binary.LittleEndian.Uint16(payload[8:10]))
+	off := 10
+	rects := make([][4]uint16, 0, rectCount)
+	for i := 0; i < rectCount; i++ {
+		if off+13 > len(payload) {
+			return nil, false
+		}
+		op := payload[off]
+		x := binary.LittleEndian.Uint16(payload[off+1 : off+3])
+		y := binary.LittleEndian.Uint16(payload[off+3 : off+5])
+		w := binary.LittleEndian.Uint16(payload[off+5 : off+7])
+		h := binary.LittleEndian.Uint16(payload[off+7 : off+9])
+		l := int(binary.LittleEndian.Uint32(payload[off+9 : off+13]))
+		off += 13
+		if op != clearCodecOpRawRect && op != clearCodecOpSolidRect {
+			return nil, false
+		}
+		rects = append(rects, [4]uint16{x, y, w, h})
+		if op == clearCodecOpSolidRect {
+			off += 3
+		} else {
+			off += l
+		}
+		if off > len(payload) {
+			return nil, false
+		}
+	}
+	return rects, true
 }
 
 func TestClearCodecEncoderRejectsInvalid(t *testing.T) {
