@@ -36,3 +36,16 @@ func TestNewSetsTLSFingerprint(t *testing.T) {
 		t.Fatal("expected TLS fingerprint")
 	}
 }
+
+func TestNewSetsDefaultProductionEncoders(t *testing.T) {
+	s, err := New(Config{Width: 100, Height: 100}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.rfxEncoder == nil {
+		t.Fatal("expected default production RFX encoder")
+	}
+	if s.clearCodecEncoder == nil {
+		t.Fatal("expected default ClearCodec encoder")
+	}
+}
