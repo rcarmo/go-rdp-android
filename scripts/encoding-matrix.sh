@@ -179,6 +179,30 @@ if not uncompressed_gfx.get("active_seen") or not uncompressed_gfx.get("rdpgfx_s
 deferred_gfx = load("rdpgfx-deferred-codecs")
 if not deferred_gfx.get("active_seen") or not deferred_gfx.get("rdpgfx_seen"):
     failures.append("RDPGFX deferred-codec probe did not produce active RDPGFX evidence")
+
+clearcodec_fixture = load("rdpgfx-clearcodec-fixture")
+if not clearcodec_fixture.get("active_seen") or not clearcodec_fixture.get("rdpgfx_seen"):
+    failures.append("ClearCodec fixture case did not produce active RDPGFX evidence")
+if clearcodec_fixture.get("rdpgfx_clearcodec_selected") and clearcodec_fixture.get("rdpgfx_clearcodec_write_count", 0) <= 0:
+    failures.append("ClearCodec fixture case selected codec but did not emit write evidence")
+
+progressive_fixture = load("rdpgfx-progressive-fixture")
+if not progressive_fixture.get("active_seen") or not progressive_fixture.get("rdpgfx_seen"):
+    failures.append("Progressive fixture case did not produce active RDPGFX evidence")
+if progressive_fixture.get("rdpgfx_progressive_selected") and progressive_fixture.get("rdpgfx_progressive_write_count", 0) <= 0:
+    failures.append("Progressive fixture case selected codec but did not emit write evidence")
+
+avc444_fixture = load("rdpgfx-avc444-fixture")
+if not avc444_fixture.get("active_seen") or not avc444_fixture.get("rdpgfx_seen"):
+    failures.append("AVC444 fixture case did not produce active RDPGFX evidence")
+if avc444_fixture.get("rdpgfx_avc444_selected") and avc444_fixture.get("rdpgfx_avc444_write_count", 0) <= 0:
+    failures.append("AVC444 fixture case selected codec but did not emit write evidence")
+
+avc444v2_fixture = load("rdpgfx-avc444v2-fixture")
+if not avc444v2_fixture.get("active_seen") or not avc444v2_fixture.get("rdpgfx_seen"):
+    failures.append("AVC444v2 fixture case did not produce active RDPGFX evidence")
+if avc444v2_fixture.get("rdpgfx_avc444v2_selected") and avc444v2_fixture.get("rdpgfx_avc444v2_write_count", 0) <= 0:
+    failures.append("AVC444v2 fixture case selected codec but did not emit write evidence")
 negotiated_h264 = load("h264-negotiated-gfx")
 if not negotiated_h264.get("active_seen") or not negotiated_h264.get("rdpgfx_seen") or negotiated_h264.get("h264_write_count", 0) != 0 or negotiated_h264.get("h264_reason") in ["", "forced-by-env"]:
     failures.append("negotiated H.264 probe did not produce active gated no-write evidence")
@@ -210,7 +234,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX Planar stream probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_STREAM=1` while keeping Planar encoding and no H.264 writes; `GFX stream stops` records whether the client closed the graphics DVC after the first frame.
 - RDPGFX uncompressed probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1` and should show `rdpgfx_uncompressed_selected=true` while remaining diagnostic-only.
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
-- RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for ClearCodec, Progressive, AVC444, and AVC444v2. They are transport-hook smoke tests only, not production encoder proof.
+- RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for ClearCodec, Progressive, AVC444, and AVC444v2. They are transport-hook smoke tests only, not production encoder proof; when a codec is selected, the matrix requires positive per-codec write evidence.
 - H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
 - H.264 force-mode protocol smoke tests use both `/gfx:AVC420` and `/gfx`. Some FreeRDP builds may reject explicit `/gfx:AVC420`; in that case the matrix still requires forced evidence from the `/gfx` fallback case.
 
