@@ -15,6 +15,11 @@ func TestBuildAVC444InputFromMediaCodec(t *testing.T) {
 	if _, err := buildAVC444InputFromMediaCodec(64, 64, base, nil, nil, false); err == nil {
 		t.Fatal("buildAVC444InputFromMediaCodec unexpectedly accepted nil aux layer")
 	}
+	pBase := base
+	pBase.KeyFrame = false
+	if _, err := buildAVC444InputFromMediaCodec(64, 64, pBase, &aux, nil, false); err == nil {
+		t.Fatal("buildAVC444InputFromMediaCodec unexpectedly accepted non-keyframe base layer")
+	}
 }
 
 func TestValidateAVC444EncoderInput(t *testing.T) {
@@ -38,6 +43,7 @@ func TestValidateAVC444EncoderInput(t *testing.T) {
 		{name: "bad dimensions", in: func() avc444EncoderInput { c := valid; c.Width = 0; return c }()},
 		{name: "bad base", in: func() avc444EncoderInput { c := valid; c.BaseLayer.Data = nil; return c }()},
 		{name: "bad aux", in: func() avc444EncoderInput { c := valid; c.AuxLayer.Data = nil; return c }()},
+		{name: "base not keyframe", in: func() avc444EncoderInput { c := valid; c.BaseLayer.KeyFrame = false; return c }()},
 		{name: "no rects", in: func() avc444EncoderInput { c := valid; c.RegionRects = nil; return c }()},
 		{name: "empty rect", in: func() avc444EncoderInput {
 			c := valid

@@ -46,6 +46,9 @@ func validateAVC444EncoderInput(in avc444EncoderInput) error {
 	if err := validateH264AccessUnit(in.BaseLayer); err != nil {
 		return fmt.Errorf("invalid AVC444 base layer: %w", err)
 	}
+	if !in.BaseLayer.KeyFrame {
+		return fmt.Errorf("AVC444 base layer must be keyframe-aligned")
+	}
 	if err := validateH264AccessUnit(in.AuxLayer); err != nil {
 		return fmt.Errorf("invalid AVC444 auxiliary layer: %w", err)
 	}
