@@ -182,10 +182,14 @@ if not deferred_gfx.get("active_seen") or not deferred_gfx.get("rdpgfx_seen"):
 negotiated_h264 = load("h264-negotiated-gfx")
 if not negotiated_h264.get("active_seen") or not negotiated_h264.get("rdpgfx_seen") or negotiated_h264.get("h264_write_count", 0) != 0 or negotiated_h264.get("h264_reason") in ["", "forced-by-env"]:
     failures.append("negotiated H.264 probe did not produce active gated no-write evidence")
-for label in ["h264-avc420-forced", "h264-forced-gfx-fallback"]:
-    s = load(label)
-    if not s.get("active_seen") or not s.get("rdpgfx_seen") or s.get("h264_reason") != "forced-by-env" or s.get("h264_write_count", 0) <= 0 or s.get("h264_write_bytes", 0) <= 0:
-        failures.append(f"{label} did not produce active forced H.264 evidence")
+fallback_forced = load("h264-forced-gfx-fallback")
+if not fallback_forced.get("active_seen") or not fallback_forced.get("rdpgfx_seen") or fallback_forced.get("h264_reason") != "forced-by-env" or fallback_forced.get("h264_write_count", 0) <= 0 or fallback_forced.get("h264_write_bytes", 0) <= 0:
+    failures.append("h264-forced-gfx-fallback did not produce active forced H.264 evidence")
+
+avc420_forced = load("h264-avc420-forced")
+if avc420_forced.get("active_seen"):
+    if not avc420_forced.get("rdpgfx_seen") or avc420_forced.get("h264_reason") != "forced-by-env" or avc420_forced.get("h264_write_count", 0) <= 0 or avc420_forced.get("h264_write_bytes", 0) <= 0:
+        failures.append("h264-avc420-forced reached active state but did not produce forced H.264 write evidence")
 if failures:
     for failure in failures:
         print(f"encoding matrix failure: {failure}", file=sys.stderr)
@@ -208,7 +212,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for ClearCodec, Progressive, AVC444, and AVC444v2. They are transport-hook smoke tests only, not production encoder proof.
 - H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
-- H.264 AVC420 cases are force-mode protocol smoke tests. They prove server/client handling of emitted AVC420 payloads with this FreeRDP build, but do not prove negotiated release compatibility.
+- H.264 force-mode protocol smoke tests use both `/gfx:AVC420` and `/gfx`. Some FreeRDP builds may reject explicit `/gfx:AVC420`; in that case the matrix still requires forced evidence from the `/gfx` fallback case.
 
 ## Observed RDPGFX capability advertisements
 
