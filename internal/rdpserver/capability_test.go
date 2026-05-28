@@ -112,6 +112,30 @@ func TestBuildMCSSendDataIndication(t *testing.T) {
 	}
 }
 
+func TestParseConfirmActiveCapabilitiesBitmapCodecsExtended(t *testing.T) {
+	bitmapCodecs := capabilitySet(capTypeBitmapCodecs, buildTestBitmapCodecsCapabilityPayloadExtended())
+	pdu := buildTestConfirmActiveWithCapabilities(defaultShareID+2, defaultMCSUserID+2, bitmapCodecs)
+	info, err := parseConfirmActive(pdu)
+	if err != nil {
+		t.Fatalf("parseConfirmActive: %v", err)
+	}
+	if !info.Capabilities.BitmapCodecs.Present || len(info.Capabilities.BitmapCodecs.Codecs) != 5 {
+		t.Fatalf("unexpected bitmap codecs capability: %#v", info.Capabilities.BitmapCodecs)
+	}
+	if id, ok := info.Capabilities.BitmapCodecs.nsCodecID(); !ok || id != 0x11 {
+		t.Fatalf("nsCodecID = %d,%t, want 17,true", id, ok)
+	}
+	if id, ok := info.Capabilities.BitmapCodecs.jpegCodecID(); !ok || id != 0x12 {
+		t.Fatalf("jpegCodecID = %d,%t, want 18,true", id, ok)
+	}
+	if id, ok := info.Capabilities.BitmapCodecs.remoteFXCodecID(); !ok || id != 0x13 {
+		t.Fatalf("remoteFXCodecID = %d,%t, want 19,true", id, ok)
+	}
+	if id, ok := info.Capabilities.BitmapCodecs.remoteFXImageCodecID(); !ok || id != 0x15 {
+		t.Fatalf("remoteFXImageCodecID = %d,%t, want 21,true", id, ok)
+	}
+}
+
 func buildTestConfirmActiveWithCapabilities(shareID uint32, userID uint16, capabilitySets ...[]byte) []byte {
 	source := []byte("TEST")
 	caps := make([]byte, 0)
@@ -162,6 +186,28 @@ func buildTestBitmapCodecsCapabilityPayload() []byte {
 	payload = append(payload, 1, 1, 3)
 	payload = append(payload, rdpcodec.JPEGCodecGUID[:]...)
 	payload = append(payload, 0x02)
+	payload = appendLE16(payload, 0)
+	return payload
+}
+
+func buildTestBitmapCodecsCapabilityPayloadExtended() []byte {
+	payload := []byte{0x05}
+	payload = append(payload, rdpcodec.NSCodecGUID[:]...)
+	payload = append(payload, 0x11)
+	payload = appendLE16(payload, 0)
+	payload = append(payload, rdpcodec.JPEGCodecGUID[:]...)
+	payload = append(payload, 0x12)
+	payload = appendLE16(payload, 0)
+	payload = append(payload, rdpcodec.RemoteFXGUID[:]...)
+	payload = append(payload, 0x13)
+	payload = appendLE16(payload, 0)
+	// No known PNG bitmap-codec GUID in this implementation; keep operator override-only.
+	unknown := [16]byte{0xaa, 0xbb, 0xcc, 0xdd, 0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe, 0x11, 0x22, 0x33, 0x44}
+	payload = append(payload, unknown[:]...)
+	payload = append(payload, 0x14)
+	payload = appendLE16(payload, 0)
+	payload = append(payload, rdpcodec.RemoteFXImageGUID[:]...)
+	payload = append(payload, 0x15)
 	payload = appendLE16(payload, 0)
 	return payload
 }
