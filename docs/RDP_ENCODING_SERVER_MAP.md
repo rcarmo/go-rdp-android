@@ -18,7 +18,7 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | Raw bitmap 15 bpp RGB555 | Decodes RGB555 | **missing / intentionally not negotiated pending proof** | Either constrain negotiation to 24/32 bpp and document, or implement RGB555 emission. |
 | Raw bitmap 16 bpp RGB565 | Decodes RGB565 | **missing / intentionally not negotiated pending proof** | Either constrain negotiation to 24/32 bpp and document, or implement RGB565 emission. |
 | Interleaved bitmap RLE 24 bpp | Decodes full RLE order set | **partial/minimal encoder** | Current server encoder is 24 bpp COPY/color-run subset with expansion rejection. Need full order coverage or documented subset. |
-| Interleaved bitmap RLE 8/15/16 bpp | Decodes full RLE order set for each depth | **missing / intentionally not negotiated pending proof** | Implement if lower-bpp server negotiation is allowed; otherwise document depth constraint. |
+| Interleaved bitmap RLE 8/15/16 bpp | Decodes full RLE order set for each depth | **partial/minimal encoder** | Conservative COPY/COLOR-order encoder now covers these depths, but production negotiation is still constrained to 24 bpp until lower-bpp raw tile emission/palette behavior is wired and documented. |
 | Interleaved bitmap RLE 32 bpp-as-24 | Decodes 32 bpp compressed stream as 24 bpp RLE | **partial via 24 bpp fallback only** | Confirm whether server ever negotiates 32 bpp compressed slow-path; implement or document. |
 | Classic RDP6 bitmap-update Planar (`NO_BITMAP_COMPRESSION_HDR`) | Decodes 32 bpp Planar bitmap updates | **missing** | Existing Planar encoder is RDPGFX WireToSurface, not classic bitmap-update Planar. Implement classic bitmap-update Planar or prove not negotiated/emitted. |
 

@@ -6,22 +6,38 @@ import (
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
-func TestEncodeBitmapRLE24CopyOnlyRoundTrip(t *testing.T) {
-	rect := bitmapRect{Width: 3, Height: 2, BPP: bitmapBPP24}
-	rowBytes := alignedBitmapRowBytes(int(rect.Width), rect.BPP)
-	rect.Data = make([]byte, rowBytes*int(rect.Height))
-	copy(rect.Data[0:9], []byte{1, 2, 3, 4, 5, 6, 7, 8, 9})
-	copy(rect.Data[rowBytes:rowBytes+9], []byte{10, 11, 12, 13, 14, 15, 16, 17, 18})
-	encoded, ok := encodeBitmapRLE24CopyOnly(rect)
-	if !ok {
-		t.Fatal("encodeBitmapRLE24CopyOnly() ok = false")
-	}
-	decoded, ok := decodeBitmapRLE24CopyOnlyForTest(encoded, int(rect.Width), int(rect.Height))
-	if !ok {
-		t.Fatalf("decode failed for %x", encoded)
-	}
-	if string(decoded) != string(rect.Data) {
-		t.Fatalf("decoded = %x, want %x", decoded, rect.Data)
+func TestEncodeBitmapRLECopyOnlyRoundTripAllClassicDepths(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		bpp           uint16
+		bytesPerPixel int
+	}{
+		{name: "8bpp", bpp: 8, bytesPerPixel: 1},
+		{name: "15bpp", bpp: 15, bytesPerPixel: 2},
+		{name: "16bpp", bpp: 16, bytesPerPixel: 2},
+		{name: "24bpp", bpp: bitmapBPP24, bytesPerPixel: 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rect := bitmapRect{Width: 3, Height: 2, BPP: tc.bpp}
+			rowBytes := alignedBitmapRowBytes(int(rect.Width), rect.BPP)
+			rect.Data = make([]byte, rowBytes*int(rect.Height))
+			visible := int(rect.Width) * tc.bytesPerPixel
+			for i := 0; i < visible; i++ {
+				rect.Data[i] = byte(i + 1)
+				rect.Data[rowBytes+i] = byte(i + 1 + visible)
+			}
+			encoded, ok := encodeBitmapRLECopyOnly(rect)
+			if !ok {
+				t.Fatal("encodeBitmapRLECopyOnly() ok = false")
+			}
+			decoded, ok := decodeBitmapRLECopyOnlyForTest(encoded, int(rect.Width), int(rect.Height), tc.bpp)
+			if !ok {
+				t.Fatalf("decode failed for %x", encoded)
+			}
+			if string(decoded) != string(rect.Data) {
+				t.Fatalf("decoded = %x, want %x", decoded, rect.Data)
+			}
+		})
 	}
 }
 
@@ -134,21 +150,25 @@ func TestBuildCompressedBitmapRLEUpdateRejectsExpansion(t *testing.T) {
 	}
 }
 
-func TestEncodeBitmapRLE24CopyOnlyRejectsInvalid(t *testing.T) {
-	if _, ok := encodeBitmapRLE24CopyOnly(bitmapRect{Width: 1, Height: 1, BPP: 16, Data: []byte{0}}); ok {
-		t.Fatal("expected non-24bpp input to be rejected")
+func TestEncodeBitmapRLECopyOnlyRejectsInvalid(t *testing.T) {
+	if _, ok := encodeBitmapRLECopyOnly(bitmapRect{Width: 1, Height: 1, BPP: 32, Data: []byte{0, 0, 0, 0}}); ok {
+		t.Fatal("expected unsupported 32bpp input to be rejected")
 	}
-	if _, ok := encodeBitmapRLE24CopyOnly(bitmapRect{Width: 2, Height: 2, BPP: bitmapBPP24, Data: []byte{0}}); ok {
+	if _, ok := encodeBitmapRLECopyOnly(bitmapRect{Width: 2, Height: 2, BPP: bitmapBPP24, Data: []byte{0}}); ok {
 		t.Fatal("expected short data to be rejected")
 	}
 }
 
-func decodeBitmapRLE24CopyOnlyForTest(data []byte, width, height int) ([]byte, bool) {
+func decodeBitmapRLECopyOnlyForTest(data []byte, width, height int, bpp uint16) ([]byte, bool) {
 	if width <= 0 || height <= 0 {
 		return nil, false
 	}
-	rowBytes := alignedBitmapRowBytes(width, bitmapBPP24)
-	visibleRowBytes := width * 3
+	bytesPerPixel, ok := bitmapRLEBytesPerPixel(bpp)
+	if !ok {
+		return nil, false
+	}
+	rowBytes := alignedBitmapRowBytes(width, bpp)
+	visibleRowBytes := width * bytesPerPixel
 	out := make([]byte, rowBytes*height)
 	offset := 0
 	for y := height - 1; y >= 0; y-- {
@@ -201,23 +221,23 @@ func decodeBitmapRLE24CopyOnlyForTest(data []byte, width, height int) ([]byte, b
 				return nil, false
 			}
 			if isColor {
-				if offset+3 > len(data) {
+				if offset+bytesPerPixel > len(data) {
 					return nil, false
 				}
 				for i := 0; i < pixels; i++ {
-					copy(out[rowOffset+(rowPixels+i)*3:], data[offset:offset+3])
+					copy(out[rowOffset+(rowPixels+i)*bytesPerPixel:], data[offset:offset+bytesPerPixel])
 				}
-				offset += 3
+				offset += bytesPerPixel
 			} else {
-				if offset+pixels*3 > len(data) {
+				if offset+pixels*bytesPerPixel > len(data) {
 					return nil, false
 				}
-				copy(out[rowOffset+rowPixels*3:], data[offset:offset+pixels*3])
-				offset += pixels * 3
+				copy(out[rowOffset+rowPixels*bytesPerPixel:], data[offset:offset+pixels*bytesPerPixel])
+				offset += pixels * bytesPerPixel
 			}
 			rowPixels += pixels
 		}
-		if rowPixels*3 != visibleRowBytes {
+		if rowPixels*bytesPerPixel != visibleRowBytes {
 			return nil, false
 		}
 	}
