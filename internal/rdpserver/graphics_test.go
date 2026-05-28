@@ -97,6 +97,32 @@ func TestBuildFrameBitmapUpdateHandlesStrideConversionAlphaAndAlignment(t *testi
 	}
 }
 
+func TestBuildFrameBitmapTileForClassicDepths(t *testing.T) {
+	fr := frame.Frame{Width: 1, Height: 1, Stride: 4, Format: frame.PixelFormatRGBA8888, Data: []byte{0xf8, 0x7c, 0x38, 0xff}}
+	for _, tc := range []struct {
+		bpp  uint16
+		want []byte
+	}{
+		{bpp: bitmapBPP8, want: []byte{0x99, 0x00, 0x00, 0x00}},
+		{bpp: bitmapBPP15, want: []byte{0xe7, 0x7d, 0x00, 0x00}},
+		{bpp: bitmapBPP16, want: []byte{0xe7, 0xfb, 0x00, 0x00}},
+		{bpp: bitmapBPP24, want: []byte{0x38, 0x7c, 0xf8, 0x00}},
+	} {
+		t.Run(fmt.Sprintf("%dbpp", tc.bpp), func(t *testing.T) {
+			rect, _, ok := buildFrameBitmapTileForBPP(fr, fr.Stride, 0, 0, 1, 1, tc.bpp)
+			if !ok {
+				t.Fatal("buildFrameBitmapTileForBPP() ok = false")
+			}
+			if rect.BPP != tc.bpp {
+				t.Fatalf("BPP = %d, want %d", rect.BPP, tc.bpp)
+			}
+			if string(rect.Data) != string(tc.want) {
+				t.Fatalf("data = %x, want %x", rect.Data, tc.want)
+			}
+		})
+	}
+}
+
 func TestBuildFrameBitmapUpdateHandlesBGRAConversion(t *testing.T) {
 	payload, ok := buildFrameBitmapUpdate(frame.Frame{
 		Width:  1,

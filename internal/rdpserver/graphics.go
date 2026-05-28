@@ -13,6 +13,9 @@ const (
 	pduType2Update = 0x02
 
 	updateTypeBitmap       = 0x0001
+	bitmapBPP8             = 8
+	bitmapBPP15            = 15
+	bitmapBPP16            = 16
 	bitmapBPP24            = 24
 	maxInitialBitmapUpdate = 80
 )
@@ -86,7 +89,7 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
 		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
 			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
-			tile, hash, ok := buildFrameBitmapTile(src, stride, x, y, tileWidth, tileHeight)
+			tile, hash, ok := buildFrameBitmapTileForBPP(src, stride, x, y, tileWidth, tileHeight, bitmapBPP24)
 			if !ok {
 				return nil, false
 			}
@@ -113,27 +116,33 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 }
 
 func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (bitmapRect, uint64, bool) {
-	rowBytes := alignedBitmapRowBytes(width, bitmapBPP24)
+	return buildFrameBitmapTileForBPP(src, stride, x0, y0, width, height, bitmapBPP24)
+}
+
+func buildFrameBitmapTileForBPP(src frame.Frame, stride, x0, y0, width, height int, bpp uint16) (bitmapRect, uint64, bool) {
+	if width <= 0 || height <= 0 {
+		return bitmapRect{}, 0, false
+	}
+	bytesPerPixel, ok := rawBitmapBytesPerPixel(bpp)
+	if !ok {
+		return bitmapRect{}, 0, false
+	}
+	rowBytes := alignedBitmapRowBytes(width, bpp)
 	data := make([]byte, rowBytes*height)
 	for y := 0; y < height; y++ {
 		rowOffset := (y0 + y) * stride
 		row := src.Data[rowOffset:]
 		for x := 0; x < width; x++ {
 			si := (x0 + x) * 4
-			di := y*rowBytes + x*3
+			di := y*rowBytes + x*bytesPerPixel
 			if si+3 >= len(row) {
 				return bitmapRect{}, 0, false
 			}
-			switch src.Format {
-			case frame.PixelFormatBGRA8888:
-				data[di+0] = row[si+0]
-				data[di+1] = row[si+1]
-				data[di+2] = row[si+2]
-			case frame.PixelFormatRGBA8888:
-				data[di+0] = row[si+2]
-				data[di+1] = row[si+1]
-				data[di+2] = row[si+0]
+			r, g, b, ok := frameRGB(row, si, src.Format)
+			if !ok {
+				return bitmapRect{}, 0, false
 			}
+			writeRawBitmapPixel(data, di, bpp, r, g, b)
 		}
 	}
 	return bitmapRect{
@@ -143,9 +152,54 @@ func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (b
 		Bottom: uint16(y0 + height - 1),
 		Width:  uint16(width),
 		Height: uint16(height),
-		BPP:    bitmapBPP24,
+		BPP:    bpp,
 		Data:   data,
 	}, hashBytes(data), true
+}
+
+func rawBitmapBytesPerPixel(bpp uint16) (int, bool) {
+	switch bpp {
+	case bitmapBPP8:
+		return 1, true
+	case bitmapBPP15, bitmapBPP16:
+		return 2, true
+	case bitmapBPP24:
+		return 3, true
+	default:
+		return 0, false
+	}
+}
+
+func frameRGB(row []byte, offset int, format frame.PixelFormat) (r, g, b byte, ok bool) {
+	switch format {
+	case frame.PixelFormatBGRA8888:
+		return row[offset+2], row[offset+1], row[offset+0], true
+	case frame.PixelFormatRGBA8888:
+		return row[offset+0], row[offset+1], row[offset+2], true
+	default:
+		return 0, 0, 0, false
+	}
+}
+
+func writeRawBitmapPixel(data []byte, offset int, bpp uint16, r, g, b byte) {
+	switch bpp {
+	case bitmapBPP8:
+		data[offset] = rgbToGray8(r, g, b)
+	case bitmapBPP15:
+		v := uint16(r>>3)<<10 | uint16(g>>3)<<5 | uint16(b>>3)
+		binary.LittleEndian.PutUint16(data[offset:offset+2], v)
+	case bitmapBPP16:
+		v := uint16(r>>3)<<11 | uint16(g>>2)<<5 | uint16(b>>3)
+		binary.LittleEndian.PutUint16(data[offset:offset+2], v)
+	case bitmapBPP24:
+		data[offset+0] = b
+		data[offset+1] = g
+		data[offset+2] = r
+	}
+}
+
+func rgbToGray8(r, g, b byte) byte {
+	return byte((uint16(r)*30 + uint16(g)*59 + uint16(b)*11) / 100)
 }
 
 func bitmapRLEEnabledFromEnv() bool {

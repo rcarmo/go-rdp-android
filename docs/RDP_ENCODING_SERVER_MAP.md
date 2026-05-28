@@ -14,9 +14,9 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | Encoding | go-rdp client support | go-rdp-android server status | Gap / next action |
 | --- | --- | --- | --- |
 | Raw bitmap 24/32 bpp | Decodes uncompressed 24/32 plus other depths | **production encoder** for 24 bpp BGR fallback | Keep as compatibility fallback/oracle. |
-| Raw bitmap 8 bpp palette | Decodes palette-indexed 8 bpp using palette state | **missing / intentionally not negotiated pending proof** | Either constrain negotiation to 24/32 bpp and document, or implement palette update + 8 bpp emission. |
-| Raw bitmap 15 bpp RGB555 | Decodes RGB555 | **missing / intentionally not negotiated pending proof** | Either constrain negotiation to 24/32 bpp and document, or implement RGB555 emission. |
-| Raw bitmap 16 bpp RGB565 | Decodes RGB565 | **missing / intentionally not negotiated pending proof** | Either constrain negotiation to 24/32 bpp and document, or implement RGB565 emission. |
+| Raw bitmap 8 bpp palette | Decodes palette-indexed 8 bpp using palette state | **partial/minimal encoder primitive** | Server can now build grayscale 8 bpp bitmap rectangles, but palette update emission and runtime negotiation are still pending. |
+| Raw bitmap 15 bpp RGB555 | Decodes RGB555 | **partial/minimal encoder primitive** | Server can now build RGB555 bitmap rectangles, but runtime negotiation/emission is still pending. |
+| Raw bitmap 16 bpp RGB565 | Decodes RGB565 | **partial/minimal encoder primitive** | Server can now build RGB565 bitmap rectangles, but runtime negotiation/emission is still pending. |
 | Interleaved bitmap RLE 24 bpp | Decodes full RLE order set | **partial/minimal encoder** | Current server encoder is 24 bpp COPY/color-run subset with expansion rejection. Need full order coverage or documented subset. |
 | Interleaved bitmap RLE 8/15/16 bpp | Decodes full RLE order set for each depth | **partial/minimal encoder** | Conservative COPY/COLOR-order encoder now covers these depths, but production negotiation is still constrained to 24 bpp until lower-bpp raw tile emission/palette behavior is wired and documented. |
 | Interleaved bitmap RLE 32 bpp-as-24 | Decodes 32 bpp compressed stream as 24 bpp RLE | **partial via 24 bpp fallback only** | Confirm whether server ever negotiates 32 bpp compressed slow-path; implement or document. |
