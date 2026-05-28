@@ -41,7 +41,7 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | --- | --- | --- | --- |
 | Uncompressed (`0x0000`) | Codec ID/name known | **production/diagnostic encoder** | Encoder exists behind env gate. Need decide if metadata-only client support is enough or document diagnostic-only. |
 | CAVideo (`0x0003`) | Codec ID/name known only | **metadata-only / no client decode path found** | Repository search found only ID/name tests. No server encoder required for parity until go-rdp gains decode support. |
-| ClearCodec (`0x0008`) | Codec ID/name known | **partial/minimal encoder** | Current encoder supports solid rect and RGB565 raw-rect splitting with expansion rejection. Need full useful subset based on client expectations/spec. |
+| ClearCodec (`0x0008`) | Codec ID/name known | **partial/minimal encoder** | Current encoder supports full-frame solid rects, solid row-band detection, RGB565 raw-rect splitting, and expansion rejection. Need broader spec/client-driven subset before calling complete. |
 | CAProgressive (`0x0009`) | Codec ID/name known | **fixture hook only / payload parser-builder only** | No production encoder. Implement real progressive region/layer/chunk generation. |
 | Planar (`0x000A`) | Codec ID/name known | **production encoder** | Default compressed path. Keep evidence current. |
 | AVC420 (`0x000B`) | Codec ID/name known | **partial experimental encoder** | AVC420 wrapper/forced path exists. Need negotiated production emission where client supports AVC420. |

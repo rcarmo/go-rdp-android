@@ -51,7 +51,7 @@ func (clearCodecEncoder) EncodeRDPGFX(src frame.Frame, width, height int) ([]byt
 		return payload, true
 	}
 
-	payload, ok := buildClearCodecRawRects(src, stride, rawBytes)
+	payload, ok := buildClearCodecRects(src, stride, rawBytes)
 	if !ok {
 		return nil, false
 	}
@@ -59,6 +59,10 @@ func (clearCodecEncoder) EncodeRDPGFX(src frame.Frame, width, height int) ([]byt
 }
 
 func buildClearCodecRawRects(src frame.Frame, stride int, rawBytes int) ([]byte, bool) {
+	return buildClearCodecRects(src, stride, rawBytes)
+}
+
+func buildClearCodecRects(src frame.Frame, stride int, rawBytes int) ([]byte, bool) {
 	bytesPerRow := src.Width * 2
 	if bytesPerRow <= 0 {
 		return nil, false
@@ -73,7 +77,9 @@ func buildClearCodecRawRects(src frame.Frame, stride int, rawBytes int) ([]byte,
 	}
 	headerLen := 4 + 2 + 2 + 2
 	rectHeadersLen := numRects * (1 + 2 + 2 + 2 + 2 + 4)
-	total := headerLen + rectHeadersLen + src.Width*src.Height*2
+	// Reserve raw data for every band plus three bytes for each band that turns
+	// out to be solid. The returned payload is sliced to the actual offset.
+	total := headerLen + rectHeadersLen + src.Width*src.Height*2 + numRects*3
 	if total > rdpgfxMaxPDUSize || total >= rawBytes {
 		return nil, false
 	}
@@ -93,6 +99,27 @@ func buildClearCodecRawRects(src frame.Frame, stride int, rawBytes int) ([]byte,
 		h := rowsPerRect
 		if y0+h > src.Height {
 			h = src.Height - y0
+		}
+		r, g, b, solid, ok := clearCodecSolidRectRGB(src, stride, 0, y0, src.Width, h)
+		if !ok {
+			return nil, false
+		}
+		if solid {
+			payload[off] = clearCodecOpSolidRect
+			off++
+			binary.LittleEndian.PutUint16(payload[off:off+2], 0)
+			off += 2
+			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(y0))
+			off += 2
+			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(src.Width))
+			off += 2
+			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(h))
+			off += 2
+			binary.LittleEndian.PutUint32(payload[off:off+4], 0)
+			off += 4
+			payload[off+0], payload[off+1], payload[off+2] = r, g, b
+			off += 3
+			continue
 		}
 		rectLen := src.Width * h * 2
 		payload[off] = clearCodecOpRawRect
@@ -129,26 +156,37 @@ func buildClearCodecRawRects(src frame.Frame, stride int, rawBytes int) ([]byte,
 			}
 		}
 	}
-	return payload, true
+	return payload[:off], true
 }
 
 func clearCodecSolidRGB(src frame.Frame, stride int) (r, g, b byte, solid bool) {
-	if src.Width <= 0 || src.Height <= 0 {
-		return 0, 0, 0, false
-	}
-	firstR, firstG, firstB, ok := clearCodecRGBAt(src, stride, 0, 0)
+	r, g, b, solid, ok := clearCodecSolidRectRGB(src, stride, 0, 0, src.Width, src.Height)
 	if !ok {
 		return 0, 0, 0, false
 	}
-	for y := 0; y < src.Height; y++ {
-		for x := 0; x < src.Width; x++ {
+	return r, g, b, solid
+}
+
+func clearCodecSolidRectRGB(src frame.Frame, stride, x0, y0, width, height int) (r, g, b byte, solid bool, ok bool) {
+	if width <= 0 || height <= 0 || x0 < 0 || y0 < 0 || x0+width > src.Width || y0+height > src.Height {
+		return 0, 0, 0, false, false
+	}
+	firstR, firstG, firstB, ok := clearCodecRGBAt(src, stride, x0, y0)
+	if !ok {
+		return 0, 0, 0, false, false
+	}
+	for y := y0; y < y0+height; y++ {
+		for x := x0; x < x0+width; x++ {
 			r, g, b, ok := clearCodecRGBAt(src, stride, x, y)
-			if !ok || r != firstR || g != firstG || b != firstB {
-				return 0, 0, 0, false
+			if !ok {
+				return 0, 0, 0, false, false
+			}
+			if r != firstR || g != firstG || b != firstB {
+				return firstR, firstG, firstB, false, true
 			}
 		}
 	}
-	return firstR, firstG, firstB, true
+	return firstR, firstG, firstB, true, true
 }
 
 func clearCodecRGBAt(src frame.Frame, stride, x, y int) (r, g, b byte, ok bool) {
