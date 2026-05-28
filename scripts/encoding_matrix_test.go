@@ -107,6 +107,10 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX AVC444v2")
+	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX Planar", "release_default", true)
+	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX ClearCodec", "fixture_hook", true)
+	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX ClearCodec", "production_encoder", true)
+	assertEntryHasString(t, coverage.RuntimeEmitters, "RDPGFX AVC444", "client_proof", "missing-production-client-proof")
 	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertStringPresent(t, coverage.ReleaseDefaults, "RDPGFX Planar")
 	assertStringPresent(t, coverage.NonDefaultExperimentalEmitters, "PNG bitmap codec")
@@ -137,6 +141,34 @@ func assertEntryNamed(t *testing.T, entries []map[string]any, name string) {
 	t.Helper()
 	for _, entry := range entries {
 		if entry["name"] == name {
+			return
+		}
+	}
+	t.Fatalf("entry %q not found in %#v", name, entries)
+}
+
+func assertEntryHasBool(t *testing.T, entries []map[string]any, name, key string, want bool) {
+	t.Helper()
+	for _, entry := range entries {
+		if entry["name"] == name {
+			got, ok := entry[key].(bool)
+			if !ok || got != want {
+				t.Fatalf("entry %q key %q = %#v, want %t", name, key, entry[key], want)
+			}
+			return
+		}
+	}
+	t.Fatalf("entry %q not found in %#v", name, entries)
+}
+
+func assertEntryHasString(t *testing.T, entries []map[string]any, name, key, want string) {
+	t.Helper()
+	for _, entry := range entries {
+		if entry["name"] == name {
+			got, ok := entry[key].(string)
+			if !ok || got != want {
+				t.Fatalf("entry %q key %q = %#v, want %q", name, key, entry[key], want)
+			}
 			return
 		}
 	}
