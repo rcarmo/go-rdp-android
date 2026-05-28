@@ -48,4 +48,7 @@ func TestNewSetsDefaultProductionEncoders(t *testing.T) {
 	if s.clearCodecEncoder == nil {
 		t.Fatal("expected default ClearCodec encoder")
 	}
+	if s.progressiveEncoder == nil {
+		t.Fatal("expected default Progressive encoder")
+	}
 }

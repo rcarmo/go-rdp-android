@@ -112,7 +112,11 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 	if clearEnc == nil {
 		clearEnc = clearCodecEncoder{}
 	}
-	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy), rfxEncoder: rfxEncoder, clearCodecEncoder: clearEnc, progressiveEncoder: cfg.Progressive, avc444Encoder: cfg.AVC444, avc444v2Encoder: cfg.AVC444v2}, nil
+	progressiveEnc := cfg.Progressive
+	if progressiveEnc == nil {
+		progressiveEnc = productionProgressiveEncoder{}
+	}
+	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy), rfxEncoder: rfxEncoder, clearCodecEncoder: clearEnc, progressiveEncoder: progressiveEnc, avc444Encoder: cfg.AVC444, avc444v2Encoder: cfg.AVC444v2}, nil
 }
 
 // Listen starts accepting TCP connections.
