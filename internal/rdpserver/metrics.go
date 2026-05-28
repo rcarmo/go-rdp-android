@@ -36,6 +36,7 @@ type serverMetrics struct {
 	rfxEncoder             RFXEncoder
 	clearCodecEncoder      RDPGFXFrameEncoder
 	progressiveEncoder     RDPGFXFrameEncoder
+	progressiveV2Encoder   RDPGFXFrameEncoder
 	avc444Encoder          RDPGFXFrameEncoder
 	avc444v2Encoder        RDPGFXFrameEncoder
 }

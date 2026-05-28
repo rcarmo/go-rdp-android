@@ -30,6 +30,7 @@ type Config struct {
 	Progressive   RDPGFXFrameEncoder
 	AVC444        RDPGFXFrameEncoder
 	AVC444v2      RDPGFXFrameEncoder
+	ProgressiveV2 RDPGFXFrameEncoder
 }
 
 // Server is the native Android RDP server core.
@@ -82,6 +83,7 @@ type Server struct {
 	progressiveEncoder     RDPGFXFrameEncoder
 	avc444Encoder          RDPGFXFrameEncoder
 	avc444v2Encoder        RDPGFXFrameEncoder
+	progressiveV2Encoder   RDPGFXFrameEncoder
 
 	mu sync.Mutex
 	ln net.Listener
@@ -116,7 +118,11 @@ func New(cfg Config, frames frame.Source, sink input.Sink) (*Server, error) {
 	if progressiveEnc == nil {
 		progressiveEnc = productionProgressiveEncoder{}
 	}
-	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy), rfxEncoder: rfxEncoder, clearCodecEncoder: clearEnc, progressiveEncoder: progressiveEnc, avc444Encoder: cfg.AVC444, avc444v2Encoder: cfg.AVC444v2}, nil
+	progressiveV2Enc := cfg.ProgressiveV2
+	if progressiveV2Enc == nil {
+		progressiveV2Enc = productionProgressiveV2Encoder{}
+	}
+	return &Server{cfg: cfg, frames: frames, input: sink, tlsConfig: tlsConfig, tlsFingerprint: fingerprint, authLimiter: newAuthBackoffLimiter(cfg.Policy), rfxEncoder: rfxEncoder, clearCodecEncoder: clearEnc, progressiveEncoder: progressiveEnc, avc444Encoder: cfg.AVC444, avc444v2Encoder: cfg.AVC444v2, progressiveV2Encoder: progressiveV2Enc}, nil
 }
 
 // Listen starts accepting TCP connections.

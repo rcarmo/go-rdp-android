@@ -35,6 +35,7 @@ func (s *Server) metrics() serverMetrics {
 		rfxEncoder:             s.rfxEncoder,
 		clearCodecEncoder:      s.clearCodecEncoder,
 		progressiveEncoder:     s.progressiveEncoder,
+		progressiveV2Encoder:   s.progressiveV2Encoder,
 		avc444Encoder:          s.avc444Encoder,
 		avc444v2Encoder:        s.avc444v2Encoder,
 	}

@@ -31,6 +31,10 @@ func rdpgfxCapabilitySupportsProgressive(cap rdpgfxCapabilitySet) bool {
 	return progressiveCodecEnabledFromEnv() && cap.Version >= rdpgfxCapsVersion10
 }
 
+func rdpgfxCapabilitySupportsProgressiveV2(cap rdpgfxCapabilitySet) bool {
+	return progressiveCodecEnabledFromEnv() && cap.Version >= rdpgfxCapsVersion104
+}
+
 func rdpgfxCapabilitySupportsAVC444(cap rdpgfxCapabilitySet) bool {
 	return avc444EnabledFromEnv() && cap.Version >= rdpgfxCapsVersion10 && cap.Flags&rdpgfxCapsFlagAVCDisabled == 0
 }

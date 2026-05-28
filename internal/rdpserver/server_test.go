@@ -51,4 +51,7 @@ func TestNewSetsDefaultProductionEncoders(t *testing.T) {
 	if s.progressiveEncoder == nil {
 		t.Fatal("expected default Progressive encoder")
 	}
+	if s.progressiveV2Encoder == nil {
+		t.Fatal("expected default ProgressiveV2 encoder")
+	}
 }

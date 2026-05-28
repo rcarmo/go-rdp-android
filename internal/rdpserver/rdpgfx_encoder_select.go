@@ -13,6 +13,9 @@ func selectRDPGFXEncodedPath(cap rdpgfxCapabilitySet, metrics serverMetrics) (rd
 	if rdpgfxCapabilitySupportsClearCodec(cap) && metrics.clearCodecEncoder != nil {
 		return rdpgfxEncodedPath{CodecID: rdpgfxCodecClearCodec, Name: "rdpgfx-clearcodec", Trace: "rdpgfx_clearcodec", Encoder: metrics.clearCodecEncoder}, true
 	}
+	if rdpgfxCapabilitySupportsProgressiveV2(cap) && metrics.progressiveV2Encoder != nil {
+		return rdpgfxEncodedPath{CodecID: rdpgfxCodecCAProgressiveV2, Name: "rdpgfx-progressive-v2", Trace: "rdpgfx_progressive_v2", Encoder: metrics.progressiveV2Encoder}, true
+	}
 	if rdpgfxCapabilitySupportsProgressive(cap) && metrics.progressiveEncoder != nil {
 		return rdpgfxEncodedPath{CodecID: rdpgfxCodecCAProgressive, Name: "rdpgfx-progressive", Trace: "rdpgfx_progressive", Encoder: metrics.progressiveEncoder}, true
 	}
@@ -45,6 +48,8 @@ func traceSelectedRDPGFXEncodedPath(cap rdpgfxCapabilitySet, selected rdpgfxEnco
 		tracef("rdpgfx_clearcodec_selected", "version=0x%08x flags=0x%08x codec_id=0x%04x emission=%s", cap.Version, cap.Flags, rdpgfxCodecClearCodec, emission)
 	case "rdpgfx_progressive":
 		tracef("rdpgfx_progressive_selected", "version=0x%08x flags=0x%08x codec_id=0x%04x codec_id_v2=0x%04x emission=%s", cap.Version, cap.Flags, rdpgfxCodecCAProgressive, rdpgfxCodecCAProgressiveV2, emission)
+	case "rdpgfx_progressive_v2":
+		tracef("rdpgfx_progressive_v2_selected", "version=0x%08x flags=0x%08x codec_id=0x%04x emission=%s", cap.Version, cap.Flags, rdpgfxCodecCAProgressiveV2, emission)
 	case "rdpgfx_avc444":
 		tracef("rdpgfx_avc444_selected", "version=0x%08x flags=0x%08x codec_id=0x%04x emission=%s", cap.Version, cap.Flags, rdpgfxCodecAVC444, emission)
 	case "rdpgfx_avc444v2":
