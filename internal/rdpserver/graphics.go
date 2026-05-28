@@ -116,7 +116,7 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 					update = compressed
 				}
 			}
-			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bytes=%d", x, y, tileWidth, tileHeight, len(update))
+			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
 			updates = append(updates, update)
 		}
 	}

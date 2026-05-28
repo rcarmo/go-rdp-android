@@ -92,6 +92,7 @@ run_case() {
 run_case bitmap 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case bitmap-rle 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1' '' '/sec:nla /bpp:24'
 run_case bitmap-planar 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1' '-test-pattern' '/sec:nla /bpp:32'
+run_case bitmap-16bpp 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16' '-test-pattern' '/sec:nla /bpp:16'
 run_case nscodec-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_NSCODEC=1' '-test-pattern' '/sec:nla /bpp:24'
 run_case jpeg-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1 GO_RDP_ANDROID_JPEG_QUALITY=80' '-test-pattern' '/sec:nla /bpp:24'
 run_case png-opt-in 'GO_RDP_ANDROID_DISABLE_RDPGFX=1 GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_PNG_CODEC_ID=9 GO_RDP_ANDROID_PNG_COMPRESSION_LEVEL=-3' '-test-pattern' '/sec:nla /bpp:24'
@@ -120,16 +121,16 @@ Generated: $(date -Is)
 FreeRDP: $("$XFREERDP" /version 2>/dev/null | head -1)
 Server: cmd/mock-server test pattern, NLA credentials runner/secret
 
-| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | Bitmap Planar | Planar saved % | NSCodec selected | NSCodec writes | NSCodec raw | NSCodec saved | NSCodec saved % | JPEG selected | JPEG writes | JPEG raw | JPEG saved | JPEG saved % | PNG raw | PNG saved | PNG saved % | Bitmap codec stream stops | RFX selected | RFX writes | RFX saved % | RDPGFX | GFX writes | GFX stream stops | Uncompressed GFX | Deferred GFX codecs | Hook GFX writes | H.264 reason | H.264 writes | H.264 bytes |
-| --- | ---: | --- | --- | --- | ---: | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | ---: | ---: | --- | ---: | ---: |
+| Case | Exit | Active | Bitmap | Bitmap RLE | RLE saved bytes | Bitmap Planar | Planar saved % | 16bpp bitmap | NSCodec selected | NSCodec writes | NSCodec raw | NSCodec saved | NSCodec saved % | JPEG selected | JPEG writes | JPEG raw | JPEG saved | JPEG saved % | PNG raw | PNG saved | PNG saved % | Bitmap codec stream stops | RFX selected | RFX writes | RFX saved % | RDPGFX | GFX writes | GFX stream stops | Uncompressed GFX | Deferred GFX codecs | Hook GFX writes | H.264 reason | H.264 writes | H.264 bytes |
+| --- | ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- | ---: | ---: | --- | ---: | ---: |
 SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "bitmap-planar", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-encoded", "rdpgfx-progressive-fixture", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "bitmap-planar", "bitmap-16bpp", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-encoded", "rdpgfx-progressive-fixture", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
-    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('bitmap_planar_seen', False)} | {s.get('bitmap_planar_saved_percent',0):.1f} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_raw_bytes',0)} | {s.get('nscodec_saved_bytes',0)} | {s.get('nscodec_saved_percent',0):.1f} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('jpeg_codec_raw_bytes',0)} | {s.get('jpeg_codec_saved_bytes',0)} | {s.get('jpeg_codec_saved_percent',0):.1f} | {s.get('png_codec_raw_bytes',0)} | {s.get('png_codec_saved_bytes',0)} | {s.get('png_codec_saved_percent',0):.1f} | {s.get('bitmap_codec_stream_stop_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rfx_codec_write_count',0)} | {s.get('rfx_codec_saved_percent',0):.1f} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('rdpgfx_clearcodec_write_count',0)+s.get('rdpgfx_progressive_write_count',0)+s.get('rdpgfx_avc444_write_count',0)+s.get('rdpgfx_avc444v2_write_count',0)} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
+    print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('bitmap_planar_seen', False)} | {s.get('bitmap_planar_saved_percent',0):.1f} | {s.get('bitmap_bpp16_seen', False)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_raw_bytes',0)} | {s.get('nscodec_saved_bytes',0)} | {s.get('nscodec_saved_percent',0):.1f} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('jpeg_codec_raw_bytes',0)} | {s.get('jpeg_codec_saved_bytes',0)} | {s.get('jpeg_codec_saved_percent',0):.1f} | {s.get('png_codec_raw_bytes',0)} | {s.get('png_codec_saved_bytes',0)} | {s.get('png_codec_saved_percent',0):.1f} | {s.get('bitmap_codec_stream_stop_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rfx_codec_write_count',0)} | {s.get('rfx_codec_saved_percent',0):.1f} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('rdpgfx_clearcodec_write_count',0)+s.get('rdpgfx_progressive_write_count',0)+s.get('rdpgfx_avc444_write_count',0)+s.get('rdpgfx_avc444v2_write_count',0)} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
 PY
 "$PYTHON" - "$OUT" <<'PY'
 import json, pathlib, sys
@@ -150,6 +151,11 @@ if not bitmap_planar.get("active_seen") or not bitmap_planar.get("bitmap_seen") 
     failures.append("classic bitmap Planar did not produce active bitmap-only evidence")
 if not bitmap_planar.get("bitmap_planar_seen") or bitmap_planar.get("bitmap_planar_count", 0) <= 0 or bitmap_planar.get("bitmap_planar_saved_bytes", 0) <= 0:
     failures.append("classic bitmap Planar case did not emit shrinking bitmap_planar trace evidence")
+bitmap_16bpp = load("bitmap-16bpp")
+if not bitmap_16bpp.get("active_seen") or not bitmap_16bpp.get("bitmap_seen") or bitmap_16bpp.get("rdpgfx_seen"):
+    failures.append("16bpp bitmap case did not produce active bitmap-only evidence")
+if not bitmap_16bpp.get("bitmap_bpp16_seen"):
+    failures.append("16bpp bitmap case did not emit bpp=16 tile evidence")
 nscodec = load("nscodec-opt-in")
 if not nscodec.get("active_seen"):
     failures.append("NSCodec opt-in case did not reach active state")
@@ -237,6 +243,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - Bitmap fallback should show active streaming with `bitmap_seen=true` and no RDPGFX.
 - Bitmap RLE should show active bitmap streaming plus `bitmap_rle_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`.
 - Classic bitmap Planar should show active bitmap streaming plus `bitmap_planar_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1` and is distinct from RDPGFX Planar.
+- 16bpp bitmap should show active bitmap streaming plus `bitmap_bpp16_seen=true`; it uses `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16` to prove the lower-depth encoder path separately from the default 24bpp fallback.
 - NSCodec opt-in should at least reach active state. If the client advertises NSCodec, the summary should show `nscodec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - JPEG opt-in should at least reach active state. If the client advertises JPEG in Bitmap Codecs, the summary should show `jpeg_codec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - PNG opt-in should at least reach active state. It uses an operator-supplied codec ID for client-specific experiments; if selected, the summary should show `png_codec_selected=true` and positive write evidence.
@@ -305,6 +312,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"slow-path raw bitmap", "status":"implemented-default-fallback", "matrix_case":"bitmap"},
     {"name":"RDP 5/6 bitmap compression / bitmap RLE", "status":"experimental-opt-in", "matrix_case":"bitmap-rle", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1", "default_enabled":false},
     {"name":"Classic RDP6 bitmap-update Planar", "status":"experimental-opt-in", "matrix_case":"bitmap-planar", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1", "default_enabled":false},
+    {"name":"Classic 16bpp bitmap updates", "status":"experimental-opt-in", "matrix_case":"bitmap-16bpp", "toggle":"GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16", "default_enabled":false},
     {"name":"NSCodec", "status":"experimental-opt-in", "matrix_case":"nscodec-opt-in", "toggle":"GO_RDP_ANDROID_ENABLE_NSCODEC=1", "requires_client_advertisement":true, "client_proof":"missing-in-current-freerdp-ci-profile", "fixture_hook":false, "production_encoder":true, "release_default":false, "default_enabled":false},
     {"name":"JPEG bitmap codec", "status":"experimental-opt-in", "matrix_case":"jpeg-opt-in", "toggles":["GO_RDP_ANDROID_ENABLE_JPEG_CODEC=1", "GO_RDP_ANDROID_JPEG_QUALITY=80"], "requires_client_advertisement":true, "client_proof":"missing-in-current-freerdp-ci-profile", "fixture_hook":false, "production_encoder":true, "release_default":false, "default_enabled":false},
     {"name":"PNG bitmap codec", "status":"operator-override-opt-in", "matrix_case":"png-opt-in", "toggles":["GO_RDP_ANDROID_ENABLE_PNG_CODEC_ID=9", "GO_RDP_ANDROID_PNG_COMPRESSION_LEVEL=-3"], "requires_operator_codec_id":true, "client_proof":"operator-supplied-codec-id-only", "fixture_hook":false, "production_encoder":true, "release_default":false, "default_enabled":false},
