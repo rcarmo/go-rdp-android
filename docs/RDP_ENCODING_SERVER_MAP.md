@@ -28,32 +28,32 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | --- | --- | --- | --- |
 | NSCodec | GUID + decoder + raw encoder helper | **production encoder, opt-in/capability-gated** | Existing SurfaceBits builder uses negotiated codec ID and metrics. Need matrix/client proof when clients advertise. |
 | JPEG bitmap codec | GUID + capability parsing | **production encoder, opt-in/capability-gated** | Existing JPEG SurfaceBits builder with quality knob and metrics. Need client advertisement proof. |
-| PNG bitmap codec | GUID appears in go-rdp client private parsing, not exported in `pkg/codec` | **diagnostic override** | Server has PNG SurfaceBits builder but only `GO_RDP_ANDROID_ENABLE_PNG_CODEC_ID`. Need confirm/export real go-rdp PNG GUID support, then negotiated path. |
+| PNG bitmap codec | GUID appears in go-rdp client capability parsing only, not exported in `pkg/codec` and no decode path found | **diagnostic override / metadata-only upstream** | Server has PNG SurfaceBits builder but only `GO_RDP_ANDROID_ENABLE_PNG_CODEC_ID`. Need upstream GUID export only if go-rdp intends real PNG client support; otherwise this remains non-parity/operator-only. |
 | RemoteFX / RFX | GUID + RFX decoder package | **production encoder, opt-in/capability-gated** | Existing single-tile encoder/message assembly and SurfaceBits wrapper. Need distinguish RemoteFX vs RemoteFX-Image advertisement and matrix proof where advertised. |
 | RemoteFX-Image | GUID + RFX decoder package advertised by client helper | **production encoder, opt-in/capability-gated** | Existing RFX payload likely serves this path; confirm exact GUID semantics and selection priority. |
-| Bitmap Codecs ClearCodec GUID | GUID appears in go-rdp client capability parsing/tests | **metadata-only pending proof** | No confirmed go-rdp Bitmap Codecs ClearCodec decode path. Do not conflate with RDPGFX ClearCodec. |
-| Bitmap Codecs RemoteFX Progressive GUID | GUID appears in go-rdp client capability parsing | **metadata-only pending proof** | Confirm whether there is a decode path or only capability logging. |
-| Bitmap Codecs H264 GUID | GUID appears in go-rdp client capability parsing | **metadata-only pending proof** | Confirm whether go-rdp decodes this path; keep separate from RDPGFX AVC420/444. |
+| Bitmap Codecs ClearCodec GUID | GUID appears in go-rdp client capability parsing/tests only | **metadata-only / no client decode path found** | Repository search found GUID naming/capability-summary tests, but no ClearCodec bitmap-codec decoder. Do not conflate with RDPGFX ClearCodec. |
+| Bitmap Codecs RemoteFX Progressive GUID | GUID appears in go-rdp client capability parsing only | **metadata-only / no client decode path found** | Repository search found GUID naming only. Treat as capability metadata unless a decoder is added upstream. |
+| Bitmap Codecs H264 GUID | GUID appears in go-rdp client capability parsing only | **metadata-only / no client decode path found** | Repository search found GUID naming only. Keep separate from RDPGFX AVC420/444. |
 
 ## RDPGFX WireToSurface codecs
 
 | Encoding | go-rdp client support | go-rdp-android server status | Gap / next action |
 | --- | --- | --- | --- |
 | Uncompressed (`0x0000`) | Codec ID/name known | **production/diagnostic encoder** | Encoder exists behind env gate. Need decide if metadata-only client support is enough or document diagnostic-only. |
-| CAVideo (`0x0003`) | Codec ID/name known | **metadata-only pending proof** | Need confirm go-rdp decode support. If none, document metadata-only; if yes, implement. |
+| CAVideo (`0x0003`) | Codec ID/name known only | **metadata-only / no client decode path found** | Repository search found only ID/name tests. No server encoder required for parity until go-rdp gains decode support. |
 | ClearCodec (`0x0008`) | Codec ID/name known | **partial/minimal encoder** | Current encoder supports solid rect and RGB565 raw-rect splitting with expansion rejection. Need full useful subset based on client expectations/spec. |
 | CAProgressive (`0x0009`) | Codec ID/name known | **fixture hook only / payload parser-builder only** | No production encoder. Implement real progressive region/layer/chunk generation. |
 | Planar (`0x000A`) | Codec ID/name known | **production encoder** | Default compressed path. Keep evidence current. |
 | AVC420 (`0x000B`) | Codec ID/name known | **partial experimental encoder** | AVC420 wrapper/forced path exists. Need negotiated production emission where client supports AVC420. |
-| Alpha (`0x000C`) | Codec ID/name known | **metadata-only pending proof** | Need confirm decode support. Implement alpha-capable path or document metadata-only. |
+| Alpha (`0x000C`) | Codec ID/name known only | **metadata-only / no client decode path found** | Repository search found only ID/name tests and unrelated alpha-plane support in NSCodec/classic Planar. No RDPGFX Alpha server encoder required for parity until go-rdp gains decode support. |
 | CAProgressiveV2 (`0x000D`) | Codec ID/name known | **missing production encoder** | Selection mentions V2 ID but emission uses CAProgressive encoder hook. Need V2-specific production encoder or document unsupported. |
 | AVC444 (`0x000E`) | Codec ID/name known | **fixture hook + bounded payload builders only** | Need production encoder input path with auxiliary plane/region metadata. |
 | AVC444v2 (`0x000F`) | Codec ID/name known | **fixture hook + bounded payload builders only** | Need production encoder input path with v2-specific auxiliary plane/region metadata. |
 
 ## Highest-priority implementation sequence
 
-1. Resolve negotiation/depth constraints for classic bitmap output, then implement or explicitly document lower-bpp raw/RLE and classic bitmap-update Planar.
-2. Confirm go-rdp metadata-only codecs by tracing actual decode paths for Bitmap Codecs PNG/H264/ClearCodec/Progressive and RDPGFX CAVideo/Alpha.
+1. Finish any remaining classic bitmap matrix/runtime evidence, then keep 24 bpp as the default fallback unless client negotiation selects a lower depth.
+2. Export/consume the go-rdp PNG Bitmap Codecs GUID if it is intended as real client support; otherwise keep the Android operator override marked non-parity.
 3. Implement production RDPGFX AVC444/AVC444v2 input/encoder path.
 4. Implement production CAProgressive/CAProgressiveV2 encoder path.
 5. Expand ClearCodec beyond the current minimal subset.
