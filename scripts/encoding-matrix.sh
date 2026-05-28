@@ -109,7 +109,9 @@ run_case rdpgfx-clearcodec-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID
 run_case rdpgfx-clearcodec-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1' "-test-pattern -clearcodec-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
 run_case rdpgfx-progressive-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-progressive-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1' "-test-pattern -progressive-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
+run_case rdpgfx-avc444-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-avc444-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444=1' "-test-pattern -avc444-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
+run_case rdpgfx-avc444v2-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-avc444v2-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' "-test-pattern -avc444v2-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
 printf '\x00\x00\x00\x01\x67\x42\x00\x1f\x00\x00\x00\x01\x68\xce\x06\xe2\x00\x00\x00\x01\x65\x88\x84' >"$OUT/h264-idr.h264"
 run_case h264-negotiated-gfx '' '-test-pattern' '/sec:nla /gfx'
@@ -129,7 +131,7 @@ SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "bitmap-planar", "bitmap-16bpp", "bitmap-15bpp", "bitmap-8bpp", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-encoded", "rdpgfx-progressive-fixture", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "bitmap-planar", "bitmap-16bpp", "bitmap-15bpp", "bitmap-8bpp", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-encoded", "rdpgfx-progressive-fixture", "rdpgfx-avc444-encoded", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-encoded", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('bitmap_planar_seen', False)} | {s.get('bitmap_planar_saved_percent',0):.1f} | {s.get('bitmap_bpp8_seen', False)} | {s.get('palette_seen', False)} | {s.get('bitmap_bpp15_seen', False)} | {s.get('bitmap_bpp16_seen', False)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_raw_bytes',0)} | {s.get('nscodec_saved_bytes',0)} | {s.get('nscodec_saved_percent',0):.1f} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('jpeg_codec_raw_bytes',0)} | {s.get('jpeg_codec_saved_bytes',0)} | {s.get('jpeg_codec_saved_percent',0):.1f} | {s.get('png_codec_raw_bytes',0)} | {s.get('png_codec_saved_bytes',0)} | {s.get('png_codec_saved_percent',0):.1f} | {s.get('bitmap_codec_stream_stop_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rfx_codec_write_count',0)} | {s.get('rfx_codec_saved_percent',0):.1f} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('rdpgfx_clearcodec_write_count',0)+s.get('rdpgfx_progressive_write_count',0)+s.get('rdpgfx_avc444_write_count',0)+s.get('rdpgfx_avc444v2_write_count',0)} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
@@ -221,11 +223,19 @@ progressive_fixture = load("rdpgfx-progressive-fixture")
 if not progressive_fixture.get("active_seen") or not progressive_fixture.get("rdpgfx_seen"):
     failures.append("Progressive fixture case did not produce active RDPGFX evidence")
 
+avc444_encoded = load("rdpgfx-avc444-encoded")
+if not avc444_encoded.get("active_seen") or not avc444_encoded.get("rdpgfx_seen"):
+    failures.append("AVC444 production case did not produce active RDPGFX evidence")
+
 avc444_fixture = load("rdpgfx-avc444-fixture")
 if not avc444_fixture.get("active_seen") or not avc444_fixture.get("rdpgfx_seen"):
     failures.append("AVC444 fixture case did not produce active RDPGFX evidence")
 if avc444_fixture.get("rdpgfx_avc444_selected") and avc444_fixture.get("rdpgfx_avc444_write_count", 0) <= 0:
     failures.append("AVC444 fixture case selected codec but did not emit write evidence")
+
+avc444v2_encoded = load("rdpgfx-avc444v2-encoded")
+if not avc444v2_encoded.get("active_seen") or not avc444v2_encoded.get("rdpgfx_seen"):
+    failures.append("AVC444v2 production case did not produce active RDPGFX evidence")
 
 avc444v2_fixture = load("rdpgfx-avc444v2-fixture")
 if not avc444v2_fixture.get("active_seen") or not avc444v2_fixture.get("rdpgfx_seen"):
@@ -269,7 +279,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - ClearCodec now has both a production-encode case (`rdpgfx-clearcodec-encoded`) and a fixture-hook case (`rdpgfx-clearcodec-fixture`) so matrix evidence distinguishes real encoder output from transport-hook output; write counters are recorded when the client/timing accepts the path, but active RDPGFX evidence is the hard gate.
 - Progressive now has both a production-path case (`rdpgfx-progressive-encoded`) and a fixture-hook case (`rdpgfx-progressive-fixture`) so matrix evidence distinguishes fallback/no-encoder behavior from transport-hook output; write counters are recorded when the client/timing accepts the path, but active RDPGFX evidence is the hard gate.
-- RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for AVC444 and AVC444v2. They are transport-hook smoke tests only, not production encoder proof; write counters are recorded when selected paths emit.
+- AVC444 and AVC444v2 now have production-path cases (`rdpgfx-avc444-encoded`, `rdpgfx-avc444v2-encoded`) plus fixture-hook cases. Production cases use the built-in bounded base/aux payload encoders; fixture cases remain transport-hook smoke tests only. Write counters are recorded when selected paths emit.
 - H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
 - H.264 force-mode protocol smoke tests use both `/gfx:AVC420` and `/gfx`. Some FreeRDP builds may reject explicit `/gfx:AVC420`; in that case the matrix still requires forced evidence from the `/gfx` fallback case.
 
@@ -339,8 +349,8 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RemoteFX / RFX", "status":"implemented-opt-in", "matrix_cases":["rfx-encoded","rfx-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_RFX_CODEC=1", "requires_client_advertisement":true, "client_proof":"missing-in-current-freerdp-ci-profile", "fixture_hook":true, "production_encoder":true, "release_default":false, "default_enabled":false},
     {"name":"RDPGFX ClearCodec", "status":"experimental-production-opt-in", "matrix_cases":["rdpgfx-clearcodec-encoded","rdpgfx-clearcodec-fixture","rdpgfx-planar"], "toggle":"GO_RDP_ANDROID_ENABLE_CLEARCODEC=1", "client_proof":"partial-freerdp-fixture-acceptance-only", "fixture_hook":true, "production_encoder":true, "release_default":false, "default_enabled":false, "default_emission":"planar-fallback-when-unsupported-or-non-beneficial"},
     {"name":"RDPGFX Progressive / other progressive codecs", "status":"experimental-production-path-opt-in", "matrix_cases":["rdpgfx-progressive-encoded","rdpgfx-progressive-fixture","rdpgfx-planar"], "toggle":"GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "client_proof":"missing-production-client-proof", "fixture_hook":true, "production_encoder":false, "release_default":false, "default_enabled":false, "default_emission":"planar-fallback-when-unsupported-or-no-encoder"},
-    {"name":"RDPGFX AVC444", "status":"encoder-hooked-experimental", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444=1", "requires_configured_encoder":true, "client_proof":"missing-production-client-proof", "fixture_hook":true, "production_encoder":false, "release_default":false, "default_enabled":false, "default_emission":"deferred-safe-planar-fallback"},
-    {"name":"RDPGFX AVC444v2", "status":"encoder-hooked-experimental", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444v2-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444V2=1", "requires_configured_encoder":true, "client_proof":"missing-production-client-proof", "fixture_hook":true, "production_encoder":false, "release_default":false, "default_enabled":false, "default_emission":"deferred-safe-planar-fallback"}
+    {"name":"RDPGFX AVC444", "status":"partial-production-opt-in", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444-encoded","rdpgfx-avc444-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444=1", "client_proof":"missing-production-client-proof", "fixture_hook":true, "production_encoder":true, "release_default":false, "default_enabled":false, "default_emission":"bounded-base-aux-payload-or-planar-fallback"},
+    {"name":"RDPGFX AVC444v2", "status":"partial-production-opt-in", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444v2-encoded","rdpgfx-avc444v2-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444V2=1", "client_proof":"missing-production-client-proof", "fixture_hook":true, "production_encoder":true, "release_default":false, "default_enabled":false, "default_emission":"bounded-base-aux-payload-or-planar-fallback"}
   ],
   "selection_scaffolds": [
   ],
