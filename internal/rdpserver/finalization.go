@@ -102,6 +102,17 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-rejected-frame", codecID)
 				}
 			}
+			if classicBitmapPlanarEnabledFromEnv() {
+				if update, ok := buildClassicBitmapPlanarUpdate(normalized); ok {
+					tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d", len(update), normalized.Width*normalized.Height*4)
+					if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
+						return err
+					}
+					metrics.recordBitmapFrame([][]byte{update})
+					return nil
+				}
+				tracef("bitmap_planar_selected", "emission=deferred reason=encoder-rejected-frame")
+			}
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {
