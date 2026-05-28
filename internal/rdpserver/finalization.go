@@ -122,6 +122,9 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktopBPP(fr, cache, false, width, height, bitmapBPP); ok {
 				updates = prependPaletteUpdateIfNeeded(updates, bitmapBPP)
+				if bitmapBPP == bitmapBPP8 && len(updates) > 0 {
+					tracef("bitmap_palette_write", "colors=256 bytes=%d", len(updates[0]))
+				}
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}
