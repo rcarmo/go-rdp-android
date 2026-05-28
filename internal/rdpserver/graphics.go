@@ -323,37 +323,48 @@ func scaleFrameNearest(src frame.Frame, width, height int) (frame.Frame, bool) {
 }
 
 func buildSolidBitmapUpdate(width, height int, argb uint32) []byte {
-	rect := buildSolidBitmapRect(width, height, argb)
+	return buildSolidBitmapUpdateBPP(width, height, argb, bitmapBPP24)
+}
+
+func buildSolidBitmapUpdateBPP(width, height int, argb uint32, bpp uint16) []byte {
+	rect := buildSolidBitmapRectForBPP(width, height, argb, bpp)
 	if bitmapRLEEnabledFromEnv() {
 		if compressed, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect}); ok {
 			tracef("bitmap_rle_solid", "width=%d height=%d bytes=%d uncompressed_bytes=%d", rect.Width, rect.Height, len(compressed), len(buildBitmapUpdate([]bitmapRect{rect})))
 			return compressed
 		}
 	}
+	tracef("bitmap_tile", "x=0 y=0 width=%d height=%d bpp=%d bytes=%d", rect.Width, rect.Height, rect.BPP, len(rect.Data)+22)
 	return buildBitmapUpdate([]bitmapRect{rect})
 }
 
 func buildSolidBitmapRect(width, height int, argb uint32) bitmapRect {
+	return buildSolidBitmapRectForBPP(width, height, argb, bitmapBPP24)
+}
+
+func buildSolidBitmapRectForBPP(width, height int, argb uint32, bpp uint16) bitmapRect {
 	if width <= 0 || width > 64 {
 		width = 64
 	}
 	if height <= 0 || height > 64 {
 		height = 64
 	}
-	rowBytes := alignedBitmapRowBytes(width, bitmapBPP24)
+	if _, ok := rawBitmapBytesPerPixel(bpp); !ok {
+		bpp = bitmapBPP24
+	}
+	rowBytes := alignedBitmapRowBytes(width, bpp)
 	data := make([]byte, rowBytes*height)
 	b := byte(argb)
 	g := byte(argb >> 8)
 	r := byte(argb >> 16)
+	bytesPerPixel, _ := rawBitmapBytesPerPixel(bpp)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			di := y*rowBytes + x*3
-			data[di+0] = b
-			data[di+1] = g
-			data[di+2] = r
+			di := y*rowBytes + x*bytesPerPixel
+			writeRawBitmapPixel(data, di, bpp, r, g, b)
 		}
 	}
-	return bitmapRect{Left: 0, Top: 0, Right: uint16(width - 1), Bottom: uint16(height - 1), Width: uint16(width), Height: uint16(height), BPP: bitmapBPP24, Data: data}
+	return bitmapRect{Left: 0, Top: 0, Right: uint16(width - 1), Bottom: uint16(height - 1), Width: uint16(width), Height: uint16(height), BPP: bpp, Data: data}
 }
 
 func buildBitmapUpdate(rects []bitmapRect) []byte {

@@ -135,11 +135,16 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		default:
 		}
 	}
-	update := buildSolidBitmapUpdate(minPositive(width, 64), minPositive(height, 64), 0xff336699)
-	if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
+	bitmapBPP := preferredBitmapBPP(caps)
+	update := buildSolidBitmapUpdateBPP(minPositive(width, 64), minPositive(height, 64), 0xff336699, bitmapBPP)
+	updates := prependPaletteUpdateIfNeeded([][]byte{update}, bitmapBPP)
+	if bitmapBPP == bitmapBPP8 && len(updates) > 1 {
+		tracef("bitmap_palette_write", "colors=256 bytes=%d", len(updates[0]))
+	}
+	if err := writeBitmapUpdates(conn, updates); err != nil {
 		return err
 	}
-	metrics.recordBitmapFrame([][]byte{update})
+	metrics.recordBitmapFrame(updates)
 	return nil
 }
 
