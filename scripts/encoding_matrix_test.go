@@ -49,6 +49,24 @@ func TestEncodingMatrixIncludesRDPGFXFixtureCases(t *testing.T) {
 	}
 }
 
+func TestEncodingMatrixIncludesClassicBitmapPlanarCase(t *testing.T) {
+	data, err := os.ReadFile("encoding-matrix.sh")
+	if err != nil {
+		t.Fatalf("read encoding-matrix.sh: %v", err)
+	}
+	text := string(data)
+	for _, want := range []string{
+		"run_case bitmap-planar",
+		"GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1",
+		"bitmap_planar_seen",
+		"Classic RDP6 bitmap-update Planar",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("encoding-matrix.sh does not contain %q", want)
+		}
+	}
+}
+
 func TestEncodingMatrixIncludesPNGOptInCase(t *testing.T) {
 	data, err := os.ReadFile("encoding-matrix.sh")
 	if err != nil {
@@ -100,6 +118,7 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	if len(coverage.NonDefaultExperimentalEmitters) == 0 {
 		t.Fatal("non_default_experimental_emitters is empty")
 	}
+	assertEntryNamed(t, coverage.RuntimeEmitters, "Classic RDP6 bitmap-update Planar")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "PNG bitmap codec")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX Planar")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RemoteFX / RFX")

@@ -21,6 +21,12 @@ type summary struct {
 	BitmapRLECount              int      `json:"bitmap_rle_count,omitempty"`
 	BitmapRLEBytes              int      `json:"bitmap_rle_bytes,omitempty"`
 	BitmapRLESavedBytes         int      `json:"bitmap_rle_saved_bytes,omitempty"`
+	BitmapPlanarSeen            bool     `json:"bitmap_planar_seen,omitempty"`
+	BitmapPlanarCount           int      `json:"bitmap_planar_count,omitempty"`
+	BitmapPlanarBytes           int      `json:"bitmap_planar_bytes,omitempty"`
+	BitmapPlanarRawBytes        int      `json:"bitmap_planar_raw_bytes,omitempty"`
+	BitmapPlanarSavedBytes      int      `json:"bitmap_planar_saved_bytes,omitempty"`
+	BitmapPlanarSavedPercent    float64  `json:"bitmap_planar_saved_percent,omitempty"`
 	NSCodecSelected             bool     `json:"nscodec_selected,omitempty"`
 	NSCodecWriteSeen            bool     `json:"nscodec_write_seen,omitempty"`
 	NSCodecWriteCount           int      `json:"nscodec_write_count,omitempty"`
@@ -106,6 +112,11 @@ func main() {
 	s.BitmapSeen = strings.Contains(xf, "Bitmap Update Data PDU") || strings.Contains(xf, "recv Update Data PDU")
 	s.BitmapRLESeen = strings.Contains(sv, "bitmap_rle_")
 	s.BitmapRLECount, s.BitmapRLEBytes, s.BitmapRLESavedBytes = bitmapRLETraceStats(sv)
+	s.BitmapPlanarSeen = strings.Contains(sv, "bitmap_planar_write")
+	s.BitmapPlanarCount, s.BitmapPlanarBytes = traceCountAndSum(sv, "bitmap_planar_write", "bytes")
+	_, s.BitmapPlanarRawBytes = traceCountAndSum(sv, "bitmap_planar_write", "raw_bytes")
+	_, s.BitmapPlanarSavedBytes = traceCountAndSum(sv, "bitmap_planar_write", "saved_bytes")
+	s.BitmapPlanarSavedPercent = savedPercent(s.BitmapPlanarRawBytes, s.BitmapPlanarSavedBytes)
 	s.NSCodecSelected = strings.Contains(sv, "nscodec_selected")
 	s.NSCodecWriteSeen = strings.Contains(sv, "nscodec_write")
 	s.NSCodecWriteCount, s.NSCodecWriteBytes = traceCountAndSum(sv, "nscodec_write", "bytes")

@@ -104,7 +104,12 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 			}
 			if classicBitmapPlanarEnabledFromEnv() {
 				if update, ok := buildClassicBitmapPlanarUpdate(normalized); ok {
-					tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d", len(update), normalized.Width*normalized.Height*4)
+					rawBytes := normalized.Width * normalized.Height * 4
+					savedBytes := 0
+					if rawBytes > len(update) {
+						savedBytes = rawBytes - len(update)
+					}
+					tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(update), rawBytes, savedBytes)
 					if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
 						return err
 					}
