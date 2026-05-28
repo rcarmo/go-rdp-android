@@ -47,8 +47,8 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | AVC420 (`0x000B`) | Codec ID/name known | **partial experimental encoder** | AVC420 wrapper/forced path exists. Need negotiated production emission where client supports AVC420. |
 | Alpha (`0x000C`) | Codec ID/name known only | **metadata-only / no client decode path found** | Repository search found only ID/name tests and unrelated alpha-plane support in NSCodec/classic Planar. No RDPGFX Alpha server encoder required for parity until go-rdp gains decode support. |
 | CAProgressiveV2 (`0x000D`) | Codec ID/name known | **partial/minimal production encoder** | Default V2 encoder now emits a distinct bounded single-layer full-frame progressive payload and is selected for RDPGFX 10.4+ when progressive is enabled. Broader V2 layer semantics remain pending. |
-| AVC444 (`0x000E`) | Codec ID/name known | **fixture hook + bounded payload builders only** | Need production encoder input path with auxiliary plane/region metadata. |
-| AVC444v2 (`0x000F`) | Codec ID/name known | **fixture hook + bounded payload builders only** | Need production encoder input path with v2-specific auxiliary plane/region metadata. |
+| AVC444 (`0x000E`) | Codec ID/name known | **partial/minimal production encoder** | Default encoder now emits bounded base/aux access-unit payloads with full-frame region metadata, plus fixture-hook support. Real Android auxiliary-plane AVC generation/client proof remains pending. |
+| AVC444v2 (`0x000F`) | Codec ID/name known | **partial/minimal production encoder** | Default v2 encoder now emits distinct bounded base/aux access-unit payloads with full-frame region metadata, plus fixture-hook support. Real Android auxiliary-plane AVC generation/client proof remains pending. |
 
 ## Highest-priority implementation sequence
 
