@@ -121,6 +121,7 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 			bitmapBPP := preferredBitmapBPP(caps)
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktopBPP(fr, cache, false, width, height, bitmapBPP); ok {
+				updates = prependPaletteUpdateIfNeeded(updates, bitmapBPP)
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}

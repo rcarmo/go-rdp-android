@@ -12,7 +12,7 @@ func preferredBitmapBPP(caps confirmActiveCapabilities) uint16 {
 	}
 	if caps.Bitmap.Present {
 		switch caps.Bitmap.PreferredBitsPerPixel {
-		case bitmapBPP15, bitmapBPP16, bitmapBPP24:
+		case bitmapBPP8, bitmapBPP15, bitmapBPP16, bitmapBPP24:
 			return caps.Bitmap.PreferredBitsPerPixel
 		}
 	}
@@ -29,7 +29,7 @@ func forcedBitmapBPPFromEnv() (uint16, bool) {
 		return 0, false
 	}
 	switch uint16(value) {
-	case bitmapBPP15, bitmapBPP16, bitmapBPP24:
+	case bitmapBPP8, bitmapBPP15, bitmapBPP16, bitmapBPP24:
 		return uint16(value), true
 	default:
 		return 0, false

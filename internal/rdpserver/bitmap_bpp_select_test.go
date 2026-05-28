@@ -11,8 +11,8 @@ func TestPreferredBitmapBPP(t *testing.T) {
 		t.Fatalf("preferred bpp = %d, want 16", got)
 	}
 	caps.Bitmap.PreferredBitsPerPixel = 8
-	if got := preferredBitmapBPP(caps); got != bitmapBPP24 {
-		t.Fatalf("unsupported negotiated bpp = %d, want 24 fallback", got)
+	if got := preferredBitmapBPP(caps); got != bitmapBPP8 {
+		t.Fatalf("negotiated bpp = %d, want 8", got)
 	}
 	t.Setenv("GO_RDP_ANDROID_ENABLE_BITMAP_BPP", "15")
 	if got := preferredBitmapBPP(caps); got != bitmapBPP15 {

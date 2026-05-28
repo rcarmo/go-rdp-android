@@ -14,7 +14,7 @@ This map turns `docs/RDP_ENCODING_INVENTORY.md` into implementation status. Stat
 | Encoding | go-rdp client support | go-rdp-android server status | Gap / next action |
 | --- | --- | --- | --- |
 | Raw bitmap 24/32 bpp | Decodes uncompressed 24/32 plus other depths | **production encoder** for 24 bpp BGR fallback | Keep as compatibility fallback/oracle. |
-| Raw bitmap 8 bpp palette | Decodes palette-indexed 8 bpp using palette state | **partial/minimal encoder primitive** | Server can now build grayscale 8 bpp bitmap rectangles, but palette update emission and runtime negotiation are still pending. |
+| Raw bitmap 8 bpp palette | Decodes palette-indexed 8 bpp using palette state | **partial/minimal encoder** | Server can now build grayscale 8 bpp bitmap rectangles, prepend a grayscale palette update, and emit when negotiated/forced via `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=8`; matrix/client evidence still pending. |
 | Raw bitmap 15 bpp RGB555 | Decodes RGB555 | **partial/minimal encoder** | Server can now build RGB555 bitmap rectangles and emit them when negotiated/forced via `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=15`; matrix/client evidence still pending. |
 | Raw bitmap 16 bpp RGB565 | Decodes RGB565 | **partial/minimal encoder** | Server can now build RGB565 bitmap rectangles and emit them when negotiated/forced via `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16`; matrix/client evidence still pending. |
 | Interleaved bitmap RLE 24 bpp | Decodes full RLE order set | **partial/minimal encoder** | Current server encoder is 24 bpp COPY/color-run subset with expansion rejection. Need full order coverage or documented subset. |
