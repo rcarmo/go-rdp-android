@@ -118,13 +118,14 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				}
 				tracef("bitmap_planar_selected", "emission=deferred reason=encoder-rejected-frame")
 			}
+			bitmapBPP := preferredBitmapBPP(caps)
 			cache := newBitmapTileCache()
-			if updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, false, width, height); ok {
+			if updates, ok := buildFrameBitmapUpdatesForDesktopBPP(fr, cache, false, width, height, bitmapBPP); ok {
 				if err := writeBitmapUpdates(conn, updates); err != nil {
 					return err
 				}
 				metrics.recordBitmapFrame(updates)
-				go streamFrameUpdates(conn, frames, cache, width, height, metrics)
+				go streamFrameUpdates(conn, frames, cache, width, height, bitmapBPP, metrics)
 				return nil
 			}
 		default:
@@ -318,14 +319,14 @@ func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager
 	}
 }
 
-func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache, width, height int, metrics serverMetrics) {
+func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCache, width, height int, bpp uint16, metrics serverMetrics) {
 	if cache == nil {
 		cache = newBitmapTileCache()
 	}
 	frameCh := frames.Frames()
 	for fr := range frameCh {
 		fr = latestAvailableFrame(frameCh, fr)
-		updates, ok := buildFrameBitmapUpdatesForDesktop(fr, cache, true, width, height)
+		updates, ok := buildFrameBitmapUpdatesForDesktopBPP(fr, cache, true, width, height, bpp)
 		if !ok || len(updates) == 0 {
 			continue
 		}

@@ -61,11 +61,19 @@ func buildFrameBitmapUpdates(src frame.Frame) ([][]byte, bool) {
 }
 
 func buildFrameBitmapUpdatesForDesktop(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool, width, height int) ([][]byte, bool) {
+	return buildFrameBitmapUpdatesForDesktopBPP(src, cache, dirtyOnly, width, height, bitmapBPP24)
+}
+
+func buildFrameBitmapUpdatesForDesktopBPP(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool, width, height int, bpp uint16) ([][]byte, bool) {
 	normalized := normalizeFrameForDesktop(src, width, height)
-	return buildFrameBitmapUpdatesWithCache(normalized, cache, dirtyOnly)
+	return buildFrameBitmapUpdatesWithCacheBPP(normalized, cache, dirtyOnly, bpp)
 }
 
 func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool) ([][]byte, bool) {
+	return buildFrameBitmapUpdatesWithCacheBPP(src, cache, dirtyOnly, bitmapBPP24)
+}
+
+func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache, dirtyOnly bool, bpp uint16) ([][]byte, bool) {
 	if cache != nil {
 		if cache.frameWidth != 0 && (cache.frameWidth != src.Width || cache.frameHeight != src.Height) {
 			clear(cache.hashes)
@@ -89,7 +97,7 @@ func buildFrameBitmapUpdatesWithCache(src frame.Frame, cache *bitmapTileCache, d
 		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
 		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
 			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
-			tile, hash, ok := buildFrameBitmapTileForBPP(src, stride, x, y, tileWidth, tileHeight, bitmapBPP24)
+			tile, hash, ok := buildFrameBitmapTileForBPP(src, stride, x, y, tileWidth, tileHeight, bpp)
 			if !ok {
 				return nil, false
 			}
