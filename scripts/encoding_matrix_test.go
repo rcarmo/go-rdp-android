@@ -64,6 +64,10 @@ func TestEncodingMatrixIncludesClassicBitmapCases(t *testing.T) {
 		"GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16",
 		"bitmap_bpp16_seen",
 		"Classic 16bpp bitmap updates",
+		"run_case bitmap-15bpp",
+		"GO_RDP_ANDROID_ENABLE_BITMAP_BPP=15",
+		"bitmap_bpp15_seen",
+		"Classic 15bpp bitmap updates",
 		"run_case bitmap-8bpp",
 		"GO_RDP_ANDROID_ENABLE_BITMAP_BPP=8",
 		"bitmap_bpp8_seen",
@@ -129,6 +133,7 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	}
 	assertEntryNamed(t, coverage.RuntimeEmitters, "Classic RDP6 bitmap-update Planar")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "Classic 16bpp bitmap updates")
+	assertEntryNamed(t, coverage.RuntimeEmitters, "Classic 15bpp bitmap updates")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "Classic 8bpp paletted bitmap updates")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "PNG bitmap codec")
 	assertEntryNamed(t, coverage.RuntimeEmitters, "RDPGFX Planar")

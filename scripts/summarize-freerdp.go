@@ -29,6 +29,7 @@ type summary struct {
 	BitmapPlanarSavedPercent    float64  `json:"bitmap_planar_saved_percent,omitempty"`
 	BitmapBPP8Seen              bool     `json:"bitmap_bpp8_seen,omitempty"`
 	PaletteSeen                 bool     `json:"palette_seen,omitempty"`
+	BitmapBPP15Seen             bool     `json:"bitmap_bpp15_seen,omitempty"`
 	BitmapBPP16Seen             bool     `json:"bitmap_bpp16_seen,omitempty"`
 	NSCodecSelected             bool     `json:"nscodec_selected,omitempty"`
 	NSCodecWriteSeen            bool     `json:"nscodec_write_seen,omitempty"`
@@ -122,6 +123,7 @@ func main() {
 	s.BitmapPlanarSavedPercent = savedPercent(s.BitmapPlanarRawBytes, s.BitmapPlanarSavedBytes)
 	s.BitmapBPP8Seen = strings.Contains(sv, "trace phase=bitmap_tile") && strings.Contains(sv, "bpp=8")
 	s.PaletteSeen = strings.Contains(xf, "Palette") || strings.Contains(sv, "trace phase=bitmap_palette_write")
+	s.BitmapBPP15Seen = strings.Contains(sv, "trace phase=bitmap_tile") && strings.Contains(sv, "bpp=15")
 	s.BitmapBPP16Seen = strings.Contains(sv, "trace phase=bitmap_tile") && strings.Contains(sv, "bpp=16")
 	s.NSCodecSelected = strings.Contains(sv, "nscodec_selected")
 	s.NSCodecWriteSeen = strings.Contains(sv, "nscodec_write")
