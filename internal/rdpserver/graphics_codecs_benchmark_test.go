@@ -34,6 +34,32 @@ func BenchmarkBuildRDPGFXPlanarFramePDUs_320x240(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildRFXProductionEncoder_320x240(b *testing.B) {
+	fr := benchmarkCodecFrame(320, 240)
+	enc := productionRFXEncoder{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		payload, ok := enc.EncodeRFX(fr, fr.Width, fr.Height)
+		if !ok || len(payload) == 0 {
+			b.Fatalf("EncodeRFX len=%d ok=%t", len(payload), ok)
+		}
+		b.SetBytes(int64(len(payload)))
+	}
+}
+
+func BenchmarkBuildClearCodecEncoder_320x240(b *testing.B) {
+	fr := benchmarkCodecFrame(320, 240)
+	enc := clearCodecEncoder{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		payload, ok := enc.EncodeRDPGFX(fr, fr.Width, fr.Height)
+		if !ok || len(payload) == 0 {
+			b.Fatalf("ClearCodec len=%d ok=%t", len(payload), ok)
+		}
+		b.SetBytes(int64(len(payload)))
+	}
+}
+
 func BenchmarkBuildRDPGFXUncompressedFramePDUs_320x240(b *testing.B) {
 	fr := benchmarkCodecFrame(320, 240)
 	b.ReportAllocs()
