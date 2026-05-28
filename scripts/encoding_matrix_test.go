@@ -35,6 +35,7 @@ func TestEncodingMatrixIncludesRDPGFXFixtureCases(t *testing.T) {
 		"run_case rdpgfx-clearcodec-encoded",
 		"run_case rdpgfx-clearcodec-fixture",
 		"-clearcodec-file $OUT/codec-fixture.bin",
+		"run_case rdpgfx-progressive-encoded",
 		"run_case rdpgfx-progressive-fixture",
 		"-progressive-file $OUT/codec-fixture.bin",
 		"run_case rdpgfx-avc444-fixture",

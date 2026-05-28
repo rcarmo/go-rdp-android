@@ -63,6 +63,18 @@ func TestBuildRDPGFXFrameUpdatePDUsProgressiveCapabilityGatedFallback(t *testing
 	}
 }
 
+func TestBuildRDPGFXFrameUpdatePDUsFallsBackWhenProgressiveEncoderRejects(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC", "1")
+	fr := frame.Frame{Width: 2, Height: 1, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3, 4, 5, 6, 7, 8}}
+	metrics := serverMetrics{progressiveEncoder: rdpgfxFrameEncoderFunc(func(frame.Frame, int, int) ([]byte, bool) { return nil, false })}
+	cap := rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: 0}
+
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 7, fr, 2, 1, metrics, cap)
+	if !ok || path != "rdpgfx-planar" || len(pdus) != 3 {
+		t.Fatalf("progressive fallback len=%d path=%q ok=%t", len(pdus), path, ok)
+	}
+}
+
 func TestBuildRDPGFXFrameUpdatePDUsUsesAVC444Encoder(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_ENABLE_AVC444", "1")
 	fr := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(4, 4, 0x11, 0x22, 0x33, 0xff)}

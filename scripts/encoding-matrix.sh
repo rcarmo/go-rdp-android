@@ -103,6 +103,7 @@ run_case rdpgfx-uncompressed 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABL
 run_case rdpgfx-deferred-codecs 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1 GO_RDP_ANDROID_ENABLE_AVC444=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-clearcodec-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-clearcodec-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_CLEARCODEC=1' "-test-pattern -clearcodec-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
+run_case rdpgfx-progressive-encoded 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1' '-test-pattern' '/sec:nla /gfx'
 run_case rdpgfx-progressive-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1' "-test-pattern -progressive-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
 run_case rdpgfx-avc444-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444=1' "-test-pattern -avc444-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
 run_case rdpgfx-avc444v2-fixture 'GO_RDP_ANDROID_DISABLE_H264=1 GO_RDP_ANDROID_ENABLE_AVC444V2=1' "-test-pattern -avc444v2-file $OUT/codec-fixture.bin" '/sec:nla /gfx'
@@ -124,7 +125,7 @@ SUMMARY
 "$PYTHON" - "$OUT" >>"$OUT/summary.md" <<'PY'
 import json, pathlib, sys
 base = pathlib.Path(sys.argv[1])
-for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-fixture", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
+for label in ["bitmap", "bitmap-rle", "nscodec-opt-in", "jpeg-opt-in", "png-opt-in", "rfx-encoded", "rfx-fixture", "rdpgfx-planar", "rdpgfx-planar-stream", "rdpgfx-uncompressed", "rdpgfx-deferred-codecs", "rdpgfx-clearcodec-encoded", "rdpgfx-clearcodec-fixture", "rdpgfx-progressive-encoded", "rdpgfx-progressive-fixture", "rdpgfx-avc444-fixture", "rdpgfx-avc444v2-fixture", "h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"]:
     s = json.load(open(base / label / "summary.json"))
     deferred = sum(1 for key in ["rdpgfx_clearcodec_selected", "rdpgfx_progressive_selected", "rdpgfx_avc444_selected", "rdpgfx_avc444v2_selected"] if s.get(key))
     print(f"| {label} | {s.get('exit_code')} | {s.get('active_seen')} | {s.get('bitmap_seen')} | {s.get('bitmap_rle_seen', False)} | {s.get('bitmap_rle_saved_bytes',0)} | {s.get('nscodec_selected', False)} | {s.get('nscodec_write_count',0)} | {s.get('nscodec_raw_bytes',0)} | {s.get('nscodec_saved_bytes',0)} | {s.get('nscodec_saved_percent',0):.1f} | {s.get('jpeg_codec_selected', False)} | {s.get('jpeg_codec_write_count',0)} | {s.get('jpeg_codec_raw_bytes',0)} | {s.get('jpeg_codec_saved_bytes',0)} | {s.get('jpeg_codec_saved_percent',0):.1f} | {s.get('png_codec_raw_bytes',0)} | {s.get('png_codec_saved_bytes',0)} | {s.get('png_codec_saved_percent',0):.1f} | {s.get('bitmap_codec_stream_stop_count',0)} | {s.get('rfx_codec_selected', False)} | {s.get('rfx_codec_write_count',0)} | {s.get('rfx_codec_saved_percent',0):.1f} | {s.get('rdpgfx_seen')} | {s.get('rdpgfx_frame_write_count',0)} | {s.get('rdpgfx_frame_stream_stop_count',0)} | {s.get('rdpgfx_uncompressed_selected', False)} | {deferred} | {s.get('rdpgfx_clearcodec_write_count',0)+s.get('rdpgfx_progressive_write_count',0)+s.get('rdpgfx_avc444_write_count',0)+s.get('rdpgfx_avc444v2_write_count',0)} | {s.get('h264_reason','')} | {s.get('h264_write_count',0)} | {s.get('h264_write_bytes',0)} |")
@@ -193,6 +194,12 @@ if not clearcodec_fixture.get("active_seen") or not clearcodec_fixture.get("rdpg
 if clearcodec_fixture.get("rdpgfx_clearcodec_selected") and clearcodec_fixture.get("rdpgfx_clearcodec_write_count", 0) <= 0:
     failures.append("ClearCodec fixture case selected codec but did not emit write evidence")
 
+progressive_encoded = load("rdpgfx-progressive-encoded")
+if not progressive_encoded.get("active_seen") or not progressive_encoded.get("rdpgfx_seen"):
+    failures.append("Progressive production case did not produce active RDPGFX evidence")
+if progressive_encoded.get("rdpgfx_progressive_selected") and progressive_encoded.get("rdpgfx_progressive_write_count", 0) <= 0:
+    failures.append("Progressive production case selected codec but did not emit write evidence")
+
 progressive_fixture = load("rdpgfx-progressive-fixture")
 if not progressive_fixture.get("active_seen") or not progressive_fixture.get("rdpgfx_seen"):
     failures.append("Progressive fixture case did not produce active RDPGFX evidence")
@@ -242,7 +249,8 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX uncompressed probe enables `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1` and should show `rdpgfx_uncompressed_selected=true` while remaining diagnostic-only.
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - ClearCodec now has both a production-encode case (`rdpgfx-clearcodec-encoded`) and a fixture-hook case (`rdpgfx-clearcodec-fixture`) so matrix evidence distinguishes real encoder output from transport-hook output; when selected, both require positive ClearCodec write evidence.
-- RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for Progressive, AVC444, and AVC444v2. They are transport-hook smoke tests only, not production encoder proof; when a codec is selected, the matrix requires positive per-codec write evidence.
+- Progressive now has both a production-path case (`rdpgfx-progressive-encoded`) and a fixture-hook case (`rdpgfx-progressive-fixture`) so matrix evidence distinguishes fallback/no-encoder behavior from transport-hook output; when selected, both require positive Progressive write evidence.
+- RDPGFX fixture probes pass operator-provided payload bytes into the encoder hooks for AVC444 and AVC444v2. They are transport-hook smoke tests only, not production encoder proof; when a codec is selected, the matrix requires positive per-codec write evidence.
 - H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
 - H.264 force-mode protocol smoke tests use both `/gfx:AVC420` and `/gfx`. Some FreeRDP builds may reject explicit `/gfx:AVC420`; in that case the matrix still requires forced evidence from the `/gfx` fallback case.
 
@@ -289,7 +297,7 @@ These are tracked explicitly so the matrix does not imply default RDP graphics-c
 | RemoteFX / RFX | Implemented opt-in | `go-rdp` exposes RemoteFX GUID metadata and RFX decode package coverage; Android now has a production single-tile encoder path (YCoCg/DWT/quant/RLGR/message assembly) behind capability + `GO_RDP_ANDROID_ENABLE_RFX_CODEC=1`, plus a separate fixture path for transport-hook testing. |
 | RDPGFX AVC444 / AVC444v2 | Encoder-hooked experimental seams; no production encoder | Higher-fidelity H.264 variants; shared IDs exist and generic WireToSurface hooks are wired, but production transport remains deferred until AVC420 negotiation/client proof exists. |
 | RDPGFX ClearCodec | Experimental production encoder + fixture hook | Text/graphics optimized codec; bounded minimal production encoding now exists (solid rect + RGB565 raw rect splitting with expansion rejection) and matrix includes both production (`rdpgfx-clearcodec-encoded`) and fixture-hook (`rdpgfx-clearcodec-fixture`) cases. Keep off by default until client evidence is stronger. |
-| RDPGFX Progressive / other progressive codecs | Encoder-hooked experimental seam; no production encoder | Shared IDs exist and a generic WireToSurface hook is wired for CAProgressive, but the production progressive pipeline remains deferred without client evidence. |
+| RDPGFX Progressive / other progressive codecs | Experimental production-path gate + fixture hook | Shared IDs exist and generic WireToSurface hooks are wired for CAProgressive/CAProgressiveV2. Matrix now includes both production-path (`rdpgfx-progressive-encoded`) and fixture-hook (`rdpgfx-progressive-fixture`) cases; production path currently falls back unless an encoder is supplied. |
 | JPEG/PNG bitmap codecs | Experimental opt-in | JPEG uses advertised Bitmap Codecs GUID evidence; PNG uses an operator-supplied codec ID override because no standard PNG Bitmap Codecs GUID is wired here. Both have SurfaceBits builders, runtime diagnostics, and matrix raw/saved/percent summaries; keep them off by default until client evidence justifies them. |
 SUMMARY
 
@@ -307,7 +315,7 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
     {"name":"RDPGFX AVC420 / H.264", "status":"experimental-force-mode", "matrix_cases":["h264-negotiated-gfx", "h264-avc420-forced", "h264-forced-gfx-fallback"], "default_enabled":"capability-gated"},
     {"name":"RemoteFX / RFX", "status":"implemented-opt-in", "matrix_cases":["rfx-encoded","rfx-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_RFX_CODEC=1", "requires_client_advertisement":true, "default_enabled":false},
     {"name":"RDPGFX ClearCodec", "status":"experimental-production-opt-in", "matrix_cases":["rdpgfx-clearcodec-encoded","rdpgfx-clearcodec-fixture","rdpgfx-planar"], "toggle":"GO_RDP_ANDROID_ENABLE_CLEARCODEC=1", "default_enabled":false, "default_emission":"planar-fallback-when-unsupported-or-non-beneficial"},
-    {"name":"RDPGFX Progressive / other progressive codecs", "status":"encoder-hooked-experimental", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-progressive-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "requires_configured_encoder":true, "default_enabled":false, "default_emission":"deferred-safe-planar-fallback"},
+    {"name":"RDPGFX Progressive / other progressive codecs", "status":"experimental-production-path-opt-in", "matrix_cases":["rdpgfx-progressive-encoded","rdpgfx-progressive-fixture","rdpgfx-planar"], "toggle":"GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC=1", "default_enabled":false, "default_emission":"planar-fallback-when-unsupported-or-no-encoder"},
     {"name":"RDPGFX AVC444", "status":"encoder-hooked-experimental", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444=1", "requires_configured_encoder":true, "default_enabled":false, "default_emission":"deferred-safe-planar-fallback"},
     {"name":"RDPGFX AVC444v2", "status":"encoder-hooked-experimental", "matrix_cases":["rdpgfx-deferred-codecs","rdpgfx-avc444v2-fixture"], "toggle":"GO_RDP_ANDROID_ENABLE_AVC444V2=1", "requires_configured_encoder":true, "default_enabled":false, "default_emission":"deferred-safe-planar-fallback"}
   ],
