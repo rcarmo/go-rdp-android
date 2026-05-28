@@ -223,6 +223,11 @@ func (s *Server) NSCodecRawBytes() int64 { return s.nsCodecRawBytes.Load() }
 // NSCodecSavedBytes returns the estimated bytes saved by experimental NSCodec SurfaceBits commands.
 func (s *Server) NSCodecSavedBytes() int64 { return s.nsCodecSavedBytes.Load() }
 
+// NSCodecSavedPercent returns the estimated percentage saved by experimental NSCodec SurfaceBits commands.
+func (s *Server) NSCodecSavedPercent() float64 {
+	return savedPercent(s.NSCodecRawBytes(), s.NSCodecSavedBytes())
+}
+
 // JPEGCodecFrames returns the total number of experimental JPEG bitmap-codec update batches sent to clients.
 func (s *Server) JPEGCodecFrames() int64 { return s.jpegCodecFrames.Load() }
 
@@ -234,6 +239,11 @@ func (s *Server) JPEGCodecRawBytes() int64 { return s.jpegCodecRawBytes.Load() }
 
 // JPEGCodecSavedBytes returns the estimated bytes saved by experimental JPEG SurfaceBits commands.
 func (s *Server) JPEGCodecSavedBytes() int64 { return s.jpegCodecSavedBytes.Load() }
+
+// JPEGCodecSavedPercent returns the estimated percentage saved by experimental JPEG SurfaceBits commands.
+func (s *Server) JPEGCodecSavedPercent() float64 {
+	return savedPercent(s.JPEGCodecRawBytes(), s.JPEGCodecSavedBytes())
+}
 
 // PNGCodecFrames returns the total number of experimental PNG bitmap-codec update batches sent to clients.
 func (s *Server) PNGCodecFrames() int64 { return s.pngCodecFrames.Load() }
@@ -247,6 +257,11 @@ func (s *Server) PNGCodecRawBytes() int64 { return s.pngCodecRawBytes.Load() }
 // PNGCodecSavedBytes returns the estimated bytes saved by experimental PNG SurfaceBits commands.
 func (s *Server) PNGCodecSavedBytes() int64 { return s.pngCodecSavedBytes.Load() }
 
+// PNGCodecSavedPercent returns the estimated percentage saved by experimental PNG SurfaceBits commands.
+func (s *Server) PNGCodecSavedPercent() float64 {
+	return savedPercent(s.PNGCodecRawBytes(), s.PNGCodecSavedBytes())
+}
+
 // RFXCodecFrames returns the total number of experimental RemoteFX update batches sent to clients.
 func (s *Server) RFXCodecFrames() int64 { return s.rfxCodecFrames.Load() }
 
@@ -258,6 +273,11 @@ func (s *Server) RFXCodecRawBytes() int64 { return s.rfxCodecRawBytes.Load() }
 
 // RFXCodecSavedBytes returns the estimated bytes saved by experimental RemoteFX SurfaceBits commands.
 func (s *Server) RFXCodecSavedBytes() int64 { return s.rfxCodecSavedBytes.Load() }
+
+// RFXCodecSavedPercent returns the estimated percentage saved by experimental RemoteFX SurfaceBits commands.
+func (s *Server) RFXCodecSavedPercent() float64 {
+	return savedPercent(s.RFXCodecRawBytes(), s.RFXCodecSavedBytes())
+}
 
 // BitmapCodecStreamStops returns the total number of experimental SurfaceBits bitmap-codec stream write stops observed.
 func (s *Server) BitmapCodecStreamStops() int64 { return s.bitmapCodecStreamStops.Load() }
