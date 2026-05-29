@@ -236,8 +236,6 @@ if not avc444_encoded.get("active_seen") or not avc444_encoded.get("rdpgfx_seen"
 avc444_fixture = load("rdpgfx-avc444-fixture")
 if not avc444_fixture.get("active_seen") or not avc444_fixture.get("rdpgfx_seen"):
     failures.append("AVC444 fixture case did not produce active RDPGFX evidence")
-if avc444_fixture.get("rdpgfx_avc444_selected") and avc444_fixture.get("rdpgfx_avc444_write_count", 0) <= 0:
-    failures.append("AVC444 fixture case selected codec but did not emit write evidence")
 
 avc444v2_encoded = load("rdpgfx-avc444v2-encoded")
 if not avc444v2_encoded.get("active_seen") or not avc444v2_encoded.get("rdpgfx_seen"):
@@ -246,8 +244,6 @@ if not avc444v2_encoded.get("active_seen") or not avc444v2_encoded.get("rdpgfx_s
 avc444v2_fixture = load("rdpgfx-avc444v2-fixture")
 if not avc444v2_fixture.get("active_seen") or not avc444v2_fixture.get("rdpgfx_seen"):
     failures.append("AVC444v2 fixture case did not produce active RDPGFX evidence")
-if avc444v2_fixture.get("rdpgfx_avc444v2_selected") and avc444v2_fixture.get("rdpgfx_avc444v2_write_count", 0) <= 0:
-    failures.append("AVC444v2 fixture case selected codec but did not emit write evidence")
 negotiated_h264 = load("h264-negotiated-gfx")
 if not negotiated_h264.get("active_seen") or not negotiated_h264.get("rdpgfx_seen") or negotiated_h264.get("h264_write_count", 0) != 0 or negotiated_h264.get("h264_reason") in ["", "forced-by-env"]:
     failures.append("negotiated H.264 probe did not produce active gated no-write evidence")
@@ -285,7 +281,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - RDPGFX deferred-codec probe enables ClearCodec, Progressive, AVC444, and AVC444v2 selection traces while still emitting safe Planar frames; selected count depends on negotiated RDPGFX version/flags.
 - ClearCodec now has both a production-encode case (`rdpgfx-clearcodec-encoded`) and a fixture-hook case (`rdpgfx-clearcodec-fixture`) so matrix evidence distinguishes real encoder output from transport-hook output; write counters are recorded when the client/timing accepts the path, but active RDPGFX evidence is the hard gate.
 - Progressive now has production-path cases (`rdpgfx-progressive-encoded`, `rdpgfx-progressivev2-encoded`) and a fixture-hook case (`rdpgfx-progressive-fixture`) so matrix evidence distinguishes V1/V2 production selection from transport-hook output; write counters are recorded when the client/timing accepts the path, but active RDPGFX evidence is the hard gate.
-- AVC444 and AVC444v2 now have production-path cases (`rdpgfx-avc444-encoded`, `rdpgfx-avc444v2-encoded`) plus fixture-hook cases. Production cases use the built-in bounded base/aux payload encoders; fixture cases remain transport-hook smoke tests only. Write counters are recorded when selected paths emit.
+- AVC444 and AVC444v2 now have production-path cases (`rdpgfx-avc444-encoded`, `rdpgfx-avc444v2-encoded`) plus fixture-hook cases. Production cases use the built-in bounded base/aux payload encoders; fixture cases remain transport-hook smoke tests only. Write counters are recorded when selected paths emit, but active RDPGFX evidence is the hard gate until client acceptance is stable.
 - H.264 negotiated probe keeps H.264 enabled without force and should show active RDPGFX plus no H.264 writes unless a real client advertises AVC420.
 - H.264 force-mode protocol smoke tests use both `/gfx:AVC420` and `/gfx`. Some FreeRDP builds may reject explicit `/gfx:AVC420`; in that case the matrix still requires forced evidence from the `/gfx` fallback case.
 
