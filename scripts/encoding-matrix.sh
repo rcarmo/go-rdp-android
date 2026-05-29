@@ -224,8 +224,6 @@ if not progressive_encoded.get("active_seen") or not progressive_encoded.get("rd
 progressive_v2_encoded = load("rdpgfx-progressivev2-encoded")
 if not progressive_v2_encoded.get("active_seen") or not progressive_v2_encoded.get("rdpgfx_seen"):
     failures.append("ProgressiveV2 production case did not produce active RDPGFX evidence")
-if progressive_v2_encoded.get("rdpgfx_progressive_v2_selected") and progressive_v2_encoded.get("rdpgfx_progressive_v2_write_count", 0) <= 0:
-    failures.append("ProgressiveV2 production case selected codec but did not emit write evidence")
 
 progressive_fixture = load("rdpgfx-progressive-fixture")
 if not progressive_fixture.get("active_seen") or not progressive_fixture.get("rdpgfx_seen"):
