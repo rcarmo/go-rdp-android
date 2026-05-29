@@ -63,100 +63,90 @@ func buildClearCodecRawRects(src frame.Frame, stride int, rawBytes int) ([]byte,
 }
 
 func buildClearCodecRects(src frame.Frame, stride int, rawBytes int) ([]byte, bool) {
-	bytesPerRow := src.Width * 2
-	if bytesPerRow <= 0 {
-		return nil, false
-	}
-	rowsPerRect := clearCodecMaxRawRectBytes / bytesPerRow
-	if rowsPerRect <= 0 {
-		rowsPerRect = 1
-	}
-	numRects := (src.Height + rowsPerRect - 1) / rowsPerRect
+	const tileSize = 64
+	tilesX := (src.Width + tileSize - 1) / tileSize
+	tilesY := (src.Height + tileSize - 1) / tileSize
+	numRects := tilesX * tilesY
 	if numRects <= 0 || numRects > 0xffff {
 		return nil, false
 	}
 	headerLen := 4 + 2 + 2 + 2
-	rectHeadersLen := numRects * (1 + 2 + 2 + 2 + 2 + 4)
-	// Reserve raw data for every band plus three bytes for each band that turns
-	// out to be solid. The returned payload is sliced to the actual offset.
-	total := headerLen + rectHeadersLen + src.Width*src.Height*2 + numRects*3
-	if total > rdpgfxMaxPDUSize || total >= rawBytes {
-		return nil, false
-	}
-	payload := make([]byte, total)
-	off := 0
-	copy(payload[off:], []byte(clearCodecMagic))
-	off += 4
-	binary.LittleEndian.PutUint16(payload[off:off+2], uint16(src.Width))
-	off += 2
-	binary.LittleEndian.PutUint16(payload[off:off+2], uint16(src.Height))
-	off += 2
-	binary.LittleEndian.PutUint16(payload[off:off+2], uint16(numRects))
-	off += 2
-
-	for rect := 0; rect < numRects; rect++ {
-		y0 := rect * rowsPerRect
-		h := rowsPerRect
+	payload := make([]byte, 0, headerLen+src.Width*src.Height*2)
+	payload = append(payload, clearCodecMagic...)
+	payload = appendLE16Bytes(payload, uint16(src.Width))
+	payload = appendLE16Bytes(payload, uint16(src.Height))
+	payload = appendLE16Bytes(payload, 0) // patched with rect count below
+	rectCount := 0
+	for y0 := 0; y0 < src.Height; y0 += tileSize {
+		h := tileSize
 		if y0+h > src.Height {
 			h = src.Height - y0
 		}
-		r, g, b, solid, ok := clearCodecSolidRectRGB(src, stride, 0, y0, src.Width, h)
-		if !ok {
-			return nil, false
-		}
-		if solid {
-			payload[off] = clearCodecOpSolidRect
-			off++
-			binary.LittleEndian.PutUint16(payload[off:off+2], 0)
-			off += 2
-			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(y0))
-			off += 2
-			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(src.Width))
-			off += 2
-			binary.LittleEndian.PutUint16(payload[off:off+2], uint16(h))
-			off += 2
-			binary.LittleEndian.PutUint32(payload[off:off+4], 0)
-			off += 4
-			payload[off+0], payload[off+1], payload[off+2] = r, g, b
-			off += 3
-			continue
-		}
-		rectLen := src.Width * h * 2
-		payload[off] = clearCodecOpRawRect
-		off++
-		binary.LittleEndian.PutUint16(payload[off:off+2], 0)
-		off += 2
-		binary.LittleEndian.PutUint16(payload[off:off+2], uint16(y0))
-		off += 2
-		binary.LittleEndian.PutUint16(payload[off:off+2], uint16(src.Width))
-		off += 2
-		binary.LittleEndian.PutUint16(payload[off:off+2], uint16(h))
-		off += 2
-		binary.LittleEndian.PutUint32(payload[off:off+4], uint32(rectLen))
-		off += 4
-		for y := 0; y < h; y++ {
-			row := (y0 + y) * stride
-			for x := 0; x < src.Width; x++ {
-				si := row + x*4
-				var r8, g8, b8 byte
-				switch src.Format {
-				case frame.PixelFormatRGBA8888:
-					r8, g8, b8 = src.Data[si+0], src.Data[si+1], src.Data[si+2]
-				case frame.PixelFormatBGRA8888:
-					r8, g8, b8 = src.Data[si+2], src.Data[si+1], src.Data[si+0]
-				default:
-					return nil, false
-				}
-				r5 := uint16(r8 >> 3)
-				g6 := uint16(g8 >> 2)
-				b5 := uint16(b8 >> 3)
-				rgb565 := (r5 << 11) | (g6 << 5) | b5
-				binary.LittleEndian.PutUint16(payload[off:off+2], rgb565)
-				off += 2
+		for x0 := 0; x0 < src.Width; x0 += tileSize {
+			w := tileSize
+			if x0+w > src.Width {
+				w = src.Width - x0
+			}
+			before := len(payload)
+			var ok bool
+			payload, ok = appendClearCodecRect(payload, src, stride, x0, y0, w, h)
+			if !ok || len(payload) > rdpgfxMaxPDUSize || len(payload) >= rawBytes {
+				return nil, false
+			}
+			if len(payload) > before {
+				rectCount++
 			}
 		}
 	}
-	return payload[:off], true
+	if rectCount == 0 || rectCount > 0xffff {
+		return nil, false
+	}
+	binary.LittleEndian.PutUint16(payload[8:10], uint16(rectCount))
+	return payload, true
+}
+
+func appendClearCodecRect(payload []byte, src frame.Frame, stride, x0, y0, w, h int) ([]byte, bool) {
+	r, g, b, solid, ok := clearCodecSolidRectRGB(src, stride, x0, y0, w, h)
+	if !ok {
+		return nil, false
+	}
+	if solid {
+		payload = append(payload, clearCodecOpSolidRect)
+		payload = appendLE16Bytes(payload, uint16(x0))
+		payload = appendLE16Bytes(payload, uint16(y0))
+		payload = appendLE16Bytes(payload, uint16(w))
+		payload = appendLE16Bytes(payload, uint16(h))
+		payload = binary.LittleEndian.AppendUint32(payload, 0)
+		return append(payload, r, g, b), true
+	}
+	rectLen := w * h * 2
+	if rectLen > clearCodecMaxRawRectBytes {
+		return nil, false
+	}
+	payload = append(payload, clearCodecOpRawRect)
+	payload = appendLE16Bytes(payload, uint16(x0))
+	payload = appendLE16Bytes(payload, uint16(y0))
+	payload = appendLE16Bytes(payload, uint16(w))
+	payload = appendLE16Bytes(payload, uint16(h))
+	payload = binary.LittleEndian.AppendUint32(payload, uint32(rectLen))
+	for y := 0; y < h; y++ {
+		row := (y0 + y) * stride
+		for x := 0; x < w; x++ {
+			si := row + (x0+x)*4
+			var r8, g8, b8 byte
+			switch src.Format {
+			case frame.PixelFormatRGBA8888:
+				r8, g8, b8 = src.Data[si+0], src.Data[si+1], src.Data[si+2]
+			case frame.PixelFormatBGRA8888:
+				r8, g8, b8 = src.Data[si+2], src.Data[si+1], src.Data[si+0]
+			default:
+				return nil, false
+			}
+			rgb565 := uint16(r8>>3)<<11 | uint16(g8>>2)<<5 | uint16(b8>>3)
+			payload = binary.LittleEndian.AppendUint16(payload, rgb565)
+		}
+	}
+	return payload, true
 }
 
 func clearCodecSolidRGB(src frame.Frame, stride int) (r, g, b byte, solid bool) {
