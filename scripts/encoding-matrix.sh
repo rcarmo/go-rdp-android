@@ -355,14 +355,12 @@ cat >"$OUT/codec-coverage.json" <<'JSON'
   "upstream_metadata": [
     {"name":"NSCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"experimental-opt-in", "priority":"client-evidence-gated"},
     {"name":"RemoteFX / RFX", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"implemented-opt-in", "priority":"client-evidence-gated"},
-    {"name":"RDPGFX AVC444 / AVC444v2", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"encoder-hooked-experimental", "priority":"deferred-until-avc420-proof"},
+    {"name":"RDPGFX AVC444 / AVC444v2", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"partial-production-opt-in", "priority":"client-evidence-and-real-aux-plane-source-needed"},
     {"name":"RDPGFX ClearCodec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"experimental-production-opt-in", "priority":"client-evidence-gated"},
-    {"name":"RDPGFX Progressive / other progressive codecs", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"encoder-hooked-experimental", "priority":"production-encoder-and-client-evidence-needed"},
+    {"name":"RDPGFX Progressive / other progressive codecs", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"partial-production-opt-in", "priority":"client-evidence-and-full-semantics-needed"},
     {"name":"JPEG bitmap codec", "source":"github.com/rcarmo/go-rdp/pkg/codec", "android_emitter":"experimental-opt-in", "priority":"evidence-gated"}
   ],
   "missing_runtime_emitters": [
-    {"name":"RDPGFX AVC444 / AVC444v2", "reason":"production encoder/transport missing; runtime hook exists"},
-    {"name":"RDPGFX Progressive / other progressive codecs", "reason":"production encoder missing; runtime hook exists"}
   ],
   "release_defaults": [
     "RDPGFX Planar",

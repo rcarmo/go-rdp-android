@@ -126,8 +126,8 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	if len(coverage.UpstreamMetadata) == 0 {
 		t.Fatal("upstream_metadata is empty")
 	}
-	if len(coverage.MissingRuntimeEmitters) == 0 {
-		t.Fatal("missing_runtime_emitters is empty")
+	if len(coverage.MissingRuntimeEmitters) != 0 {
+		t.Fatalf("missing_runtime_emitters should be empty after production encoder coverage, got %#v", coverage.MissingRuntimeEmitters)
 	}
 	if len(coverage.ReleaseDefaults) == 0 {
 		t.Fatal("release_defaults is empty")
@@ -152,7 +152,8 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	assertEntryHasString(t, coverage.RuntimeEmitters, "RDPGFX AVC444", "client_proof", "missing-production-client-proof")
 	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX AVC444", "production_encoder", true)
 	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX Progressive / other progressive codecs", "production_encoder", true)
-	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
+	assertEntryHasString(t, coverage.UpstreamMetadata, "RDPGFX AVC444 / AVC444v2", "android_emitter", "partial-production-opt-in")
+	assertEntryHasString(t, coverage.UpstreamMetadata, "RDPGFX Progressive / other progressive codecs", "android_emitter", "partial-production-opt-in")
 	assertStringPresent(t, coverage.ReleaseDefaults, "RDPGFX Planar")
 	assertStringPresent(t, coverage.NonDefaultExperimentalEmitters, "PNG bitmap codec")
 	assertStringPresent(t, coverage.NonDefaultExperimentalEmitters, "RDPGFX ClearCodec")
