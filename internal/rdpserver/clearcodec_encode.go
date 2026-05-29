@@ -71,7 +71,8 @@ func buildClearCodecRects(src frame.Frame, stride int, rawBytes int) ([]byte, bo
 		return nil, false
 	}
 	headerLen := 4 + 2 + 2 + 2
-	payload := make([]byte, 0, headerLen+src.Width*src.Height*2)
+	maxRectHeaderLen := numRects * (1 + 2 + 2 + 2 + 2 + 4)
+	payload := make([]byte, 0, headerLen+src.Width*src.Height*2+maxRectHeaderLen)
 	payload = append(payload, clearCodecMagic...)
 	payload = appendLE16Bytes(payload, uint16(src.Width))
 	payload = appendLE16Bytes(payload, uint16(src.Height))
