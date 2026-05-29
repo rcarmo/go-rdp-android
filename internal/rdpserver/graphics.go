@@ -220,7 +220,12 @@ func bitmapRLEEnabledFromEnv() bool {
 }
 
 func alignedBitmapRowBytes(width int, bpp uint16) int {
-	bits := width * int(bpp)
+	bitsPerPixel := int(bpp)
+	// 15-bpp RGB555 is carried in 16-bit pixels on the wire.
+	if bpp == bitmapBPP15 {
+		bitsPerPixel = 16
+	}
+	bits := width * bitsPerPixel
 	return ((bits + 31) / 32) * 4
 }
 
