@@ -293,17 +293,18 @@ func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
 			}
 		}
 	}
-	out := []byte{0x30} // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
-	out = append(out, encodePlanarDeltaRLEPlane(red, src.Width, src.Height)...)
-	out = append(out, encodePlanarDeltaRLEPlane(green, src.Width, src.Height)...)
-	out = append(out, encodePlanarDeltaRLEPlane(blue, src.Width, src.Height)...)
+	out := make([]byte, 1, 1+planeSize) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
+	out[0] = 0x30
+	rowScratch := make([]byte, src.Width)
+	out = appendPlanarDeltaRLEPlane(out, rowScratch, red, src.Width, src.Height)
+	out = appendPlanarDeltaRLEPlane(out, rowScratch, green, src.Width, src.Height)
+	out = appendPlanarDeltaRLEPlane(out, rowScratch, blue, src.Width, src.Height)
 	return out, true
 }
 
-func encodePlanarDeltaRLEPlane(plane []byte, width, height int) []byte {
-	out := make([]byte, 0, len(plane)/2)
+func appendPlanarDeltaRLEPlane(out, rowScratch, plane []byte, width, height int) []byte {
 	for y := 0; y < height; y++ {
-		row := make([]byte, width)
+		row := rowScratch[:width]
 		copy(row, plane[y*width:y*width+width])
 		if y > 0 {
 			prev := plane[(y-1)*width : (y-1)*width+width]

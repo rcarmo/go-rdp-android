@@ -55,22 +55,22 @@ Local baseline on the current workspace host (`12th Gen Intel(R) Core(TM) i7-127
 Codec-builder benchmarks are available in `internal/rdpserver`:
 
 ```sh
-GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench 'BenchmarkBuild(RDPGFX|RFXProductionEncoder|ClearCodecEncoder|NSCodec|JPEG|PNG)' -benchtime=1x
+GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench 'BenchmarkBuild(RDPGFX|RFXProductionEncoder|ClearCodecEncoder|NSCodec|JPEG|PNG)' -benchtime=3x
 ```
 
-Latest local 320x240 single-iteration smoke on 2026-05-29 at commit `fbcc42c` showed these relative costs on the workspace host: RDPGFX Planar performed the most allocation-heavy pure-Go compression work for the synthetic gradient frame, RemoteFX and ClearCodec production encoders now have benchmark coverage, NSCodec raw-plane remains comparatively fast, JPEG trades CPU for smaller payloads on some inputs, and PNG is still diagnostic/operator-only. Sample smoke output:
+Latest local 320x240 three-iteration smoke on 2026-05-29 after the Planar scratch-buffer allocation pass showed these relative costs on the workspace host: RDPGFX Planar no longer allocates a scratch row per scanline while encoding each color plane, reducing the hot-path allocation count from roughly 743 to 13 allocations/op for the synthetic gradient frame. RemoteFX and ClearCodec production encoders have benchmark coverage, NSCodec raw-plane remains comparatively fast, JPEG trades CPU for smaller payloads on some inputs, and PNG is still diagnostic/operator-only. Sample smoke output:
 
 | Benchmark | Time/op | Allocated/op | Allocs/op |
 | --- | ---: | ---: | ---: |
-| RDPGFX Planar 320x240 | 2.30 ms | 1.94 MB | 743 |
-| RemoteFX production 320x240 | 0.25 ms | 0.31 MB | 25 |
-| ClearCodec production 320x240 | 0.86 ms | 0.66 MB | 3 |
-| RDPGFX Uncompressed 320x240 | 0.48 ms | 1.25 MB | 7 |
-| NSCodec SurfaceBits 320x240 | 0.34 ms | 1.03 MB | 6 |
-| JPEG SurfaceBits 320x240 | 2.08 ms | 0.67 MB | 15 |
-| PNG SurfaceBits 320x240 | 3.46 ms | 1.49 MB | 37 |
+| RDPGFX Planar 320x240 | 1.37 ms | 1.18 MB | 13 |
+| RemoteFX production 320x240 | 0.22 ms | 0.11 MB | 24 |
+| ClearCodec production 320x240 | 0.63 ms | 0.46 MB | 2 |
+| RDPGFX Uncompressed 320x240 | 0.88 ms | 1.04 MB | 6 |
+| NSCodec SurfaceBits 320x240 | 0.84 ms | 0.82 MB | 5 |
+| JPEG SurfaceBits 320x240 | 2.25 ms | 0.46 MB | 14 |
+| PNG SurfaceBits 320x240 | 3.74 ms | 1.27 MB | 36 |
 
-`TestGraphicsCodecBuilderSizeSmoke` also keeps a simple solid-frame regression check that Planar, NSCodec, JPEG, and PNG builders produce payloads smaller than the raw 32-bpp source while uncompressed RDPGFX records expected protocol overhead. `TestJPEGQualityAffectsPayloadSize` verifies the JPEG quality knob changes payload size while remaining below raw 32-bpp size on a synthetic frame. `TestPNGCompressionLevelAffectsPayloadSize` verifies the PNG compression-level knob reduces payload size versus uncompressed PNG on a solid synthetic frame. Treat these as local encoder-cost/size smoke numbers only; release decisions still require target Android device FPS/CPU/battery/bandwidth measurements and real client compatibility evidence.
+`TestRDPGFXPlanarBuilderAllocationSmoke` keeps the Planar allocation reduction from regressing above 20 allocations/op for a 320x240 frame. `TestGraphicsCodecBuilderSizeSmoke` also keeps a simple solid-frame regression check that Planar, NSCodec, JPEG, and PNG builders produce payloads smaller than the raw 32-bpp source while uncompressed RDPGFX records expected protocol overhead. `TestJPEGQualityAffectsPayloadSize` verifies the JPEG quality knob changes payload size while remaining below raw 32-bpp size on a synthetic frame. `TestPNGCompressionLevelAffectsPayloadSize` verifies the PNG compression-level knob reduces payload size versus uncompressed PNG on a solid synthetic frame. Treat these as local encoder-cost/size smoke numbers only; release decisions still require target Android device FPS/CPU/battery/bandwidth measurements and real client compatibility evidence.
 
 ## Compressed graphics path
 

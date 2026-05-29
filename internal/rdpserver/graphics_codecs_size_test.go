@@ -18,6 +18,19 @@ func solidCodecFrame(width, height int, rgba [4]byte) frame.Frame {
 	return frame.Frame{Width: width, Height: height, Stride: stride, Format: frame.PixelFormatRGBA8888, Data: data}
 }
 
+func TestRDPGFXPlanarBuilderAllocationSmoke(t *testing.T) {
+	fr := benchmarkCodecFrame(320, 240)
+	allocs := testing.AllocsPerRun(5, func() {
+		pdus, ok := buildRDPGFXPlanarFramePDUs(0, 1, fr, fr.Width, fr.Height)
+		if !ok || len(pdus) != 3 {
+			t.Fatalf("buildRDPGFXPlanarFramePDUs len=%d ok=%t", len(pdus), ok)
+		}
+	})
+	if allocs > 20 {
+		t.Fatalf("RDPGFX Planar allocations = %.1f, want <= 20", allocs)
+	}
+}
+
 func TestGraphicsCodecBuilderSizeSmoke(t *testing.T) {
 	fr := solidCodecFrame(64, 64, [4]byte{0x33, 0x66, 0x99, 0xff})
 	uncompressedBytes := fr.Width * fr.Height * 4
