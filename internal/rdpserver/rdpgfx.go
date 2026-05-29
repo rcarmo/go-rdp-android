@@ -284,34 +284,54 @@ func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
 		return nil, false
 	}
 	planeSize := src.Width * src.Height
-	red := make([]byte, planeSize)
-	green := make([]byte, planeSize)
-	blue := make([]byte, planeSize)
+	plane := make([]byte, planeSize)
+	out := make([]byte, 1, 1+planeSize) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
+	out[0] = 0x30
+	rowScratch := make([]byte, src.Width)
+	for i := 0; i < 3; i++ {
+		component := "rgb"[i]
+		if !fillPlanarColorPlane(plane, src, stride, component) {
+			return nil, false
+		}
+		out = appendPlanarDeltaRLEPlane(out, rowScratch, plane, src.Width, src.Height)
+	}
+	return out, true
+}
+
+func fillPlanarColorPlane(plane []byte, src frame.Frame, stride int, component byte) bool {
 	for y := 0; y < src.Height; y++ {
 		for x := 0; x < src.Width; x++ {
 			si := y*stride + x*4
 			di := y*src.Width + x
 			switch src.Format {
 			case frame.PixelFormatBGRA8888:
-				blue[di] = src.Data[si+0]
-				green[di] = src.Data[si+1]
-				red[di] = src.Data[si+2]
+				switch component {
+				case 'r':
+					plane[di] = src.Data[si+2]
+				case 'g':
+					plane[di] = src.Data[si+1]
+				case 'b':
+					plane[di] = src.Data[si+0]
+				default:
+					return false
+				}
 			case frame.PixelFormatRGBA8888:
-				red[di] = src.Data[si+0]
-				green[di] = src.Data[si+1]
-				blue[di] = src.Data[si+2]
+				switch component {
+				case 'r':
+					plane[di] = src.Data[si+0]
+				case 'g':
+					plane[di] = src.Data[si+1]
+				case 'b':
+					plane[di] = src.Data[si+2]
+				default:
+					return false
+				}
 			default:
-				return nil, false
+				return false
 			}
 		}
 	}
-	out := make([]byte, 1, 1+planeSize) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
-	out[0] = 0x30
-	rowScratch := make([]byte, src.Width)
-	out = appendPlanarDeltaRLEPlane(out, rowScratch, red, src.Width, src.Height)
-	out = appendPlanarDeltaRLEPlane(out, rowScratch, green, src.Width, src.Height)
-	out = appendPlanarDeltaRLEPlane(out, rowScratch, blue, src.Width, src.Height)
-	return out, true
+	return true
 }
 
 func appendPlanarDeltaRLEPlane(out, rowScratch, plane []byte, width, height int) []byte {

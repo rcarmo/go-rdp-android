@@ -58,17 +58,17 @@ Codec-builder benchmarks are available in `internal/rdpserver`:
 GOTMPDIR="$PWD/.gotmp" go test ./internal/rdpserver -run '^$' -bench 'BenchmarkBuild(RDPGFX|RFXProductionEncoder|ClearCodecEncoder|NSCodec|JPEG|PNG)' -benchtime=3x
 ```
 
-Latest local 320x240 three-iteration smoke on 2026-05-29 after the Planar scratch-buffer, RDPGFX PDU-header, and uncompressed direct-write allocation passes showed these relative costs on the workspace host: RDPGFX Planar no longer allocates a scratch row per scanline while encoding each color plane, common RDPGFX frame wrappers now build final PDUs directly instead of allocating intermediate payload buffers, and the uncompressed diagnostic encoder writes pixels directly into the final WireToSurface PDU. This reduced the Planar hot-path allocation count from roughly 743 to 12 allocations/op for the synthetic gradient frame and lowered uncompressed RDPGFX from 7 to 4 allocations/op. RemoteFX and ClearCodec production encoders have benchmark coverage, NSCodec raw-plane remains comparatively fast, JPEG trades CPU for smaller payloads on some inputs, and PNG is still diagnostic/operator-only. Sample smoke output:
+Latest local 320x240 five-iteration smoke on 2026-05-29 after the Planar scratch-buffer, RDPGFX PDU-header, uncompressed direct-write, and single-plane reuse allocation passes showed these relative costs on the workspace host: RDPGFX Planar no longer allocates a scratch row per scanline while encoding each color plane, reuses one color-plane buffer instead of allocating separate RGB planes, common RDPGFX frame wrappers now build final PDUs directly instead of allocating intermediate payload buffers, and the uncompressed diagnostic encoder writes pixels directly into the final WireToSurface PDU. This reduced the Planar hot-path allocation count from roughly 743 to 10 allocations/op for the synthetic gradient frame and lowered uncompressed RDPGFX from 7 to 4 allocations/op. RemoteFX and ClearCodec production encoders have benchmark coverage, NSCodec raw-plane remains comparatively fast, JPEG trades CPU for smaller payloads on some inputs, and PNG is still diagnostic/operator-only. Sample smoke output:
 
 | Benchmark | Time/op | Allocated/op | Allocs/op |
 | --- | ---: | ---: | ---: |
-| RDPGFX Planar 320x240 | 1.47 ms | 1.01 MB | 12 |
-| RemoteFX production 320x240 | 0.25 ms | 0.11 MB | 24 |
-| ClearCodec production 320x240 | 0.28 ms | 0.46 MB | 2 |
-| RDPGFX Uncompressed 320x240 | 0.45 ms | 0.42 MB | 4 |
-| NSCodec SurfaceBits 320x240 | 0.40 ms | 0.82 MB | 5 |
-| JPEG SurfaceBits 320x240 | 1.52 ms | 0.46 MB | 14 |
-| PNG SurfaceBits 320x240 | 2.35 ms | 1.27 MB | 35 |
+| RDPGFX Planar 320x240 | 1.00 ms | 0.80 MB | 10 |
+| RemoteFX production 320x240 | 0.20 ms | 0.07 MB | 24 |
+| ClearCodec production 320x240 | 0.30 ms | 0.41 MB | 2 |
+| RDPGFX Uncompressed 320x240 | 0.27 ms | 0.37 MB | 4 |
+| NSCodec SurfaceBits 320x240 | 0.46 ms | 0.78 MB | 5 |
+| JPEG SurfaceBits 320x240 | 1.59 ms | 0.42 MB | 14 |
+| PNG SurfaceBits 320x240 | 2.63 ms | 1.23 MB | 35 |
 
 `TestRDPGFXPlanarBuilderAllocationSmoke` keeps the Planar allocation reduction from regressing above 20 allocations/op for a 320x240 frame. `TestGraphicsCodecBuilderSizeSmoke` also keeps a simple solid-frame regression check that Planar, NSCodec, JPEG, and PNG builders produce payloads smaller than the raw 32-bpp source while uncompressed RDPGFX records expected protocol overhead. `TestJPEGQualityAffectsPayloadSize` verifies the JPEG quality knob changes payload size while remaining below raw 32-bpp size on a synthetic frame. `TestPNGCompressionLevelAffectsPayloadSize` verifies the PNG compression-level knob reduces payload size versus uncompressed PNG on a solid synthetic frame. Treat these as local encoder-cost/size smoke numbers only; release decisions still require target Android device FPS/CPU/battery/bandwidth measurements and real client compatibility evidence.
 
