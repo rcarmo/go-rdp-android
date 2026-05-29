@@ -309,13 +309,12 @@ func appendPlanarRLEPayload(out []byte, src frame.Frame, stride int) ([]byte, bo
 	planeSize := src.Width * src.Height
 	plane := make([]byte, planeSize)
 	out = append(out, 0x30) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
-	rowScratch := make([]byte, src.Width)
 	for i := 0; i < 3; i++ {
 		component := "rgb"[i]
 		if !fillPlanarColorPlane(plane, src, stride, component) {
 			return nil, false
 		}
-		out = appendPlanarDeltaRLEPlane(out, rowScratch, plane, src.Width, src.Height)
+		out = appendPlanarDeltaRLEPlane(out, plane, src.Width, src.Height)
 	}
 	return out, true
 }
@@ -356,17 +355,16 @@ func fillPlanarColorPlane(plane []byte, src frame.Frame, stride int, component b
 	return true
 }
 
-func appendPlanarDeltaRLEPlane(out, rowScratch, plane []byte, width, height int) []byte {
-	for y := 0; y < height; y++ {
-		row := rowScratch[:width]
-		copy(row, plane[y*width:y*width+width])
-		if y > 0 {
-			prev := plane[(y-1)*width : (y-1)*width+width]
-			for x := 0; x < width; x++ {
-				row[x] = planarDeltaByte(int(row[x]) - int(prev[x]))
-			}
+func appendPlanarDeltaRLEPlane(out, plane []byte, width, height int) []byte {
+	for y := height - 1; y > 0; y-- {
+		row := plane[y*width : y*width+width]
+		prev := plane[(y-1)*width : (y-1)*width+width]
+		for x := 0; x < width; x++ {
+			row[x] = planarDeltaByte(int(row[x]) - int(prev[x]))
 		}
-		out = appendPlanarRLELine(out, row)
+	}
+	for y := 0; y < height; y++ {
+		out = appendPlanarRLELine(out, plane[y*width:y*width+width])
 	}
 	return out
 }
