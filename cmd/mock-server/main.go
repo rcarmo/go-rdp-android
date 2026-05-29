@@ -38,18 +38,19 @@ func main() {
 	rfxFile := flag.String("rfx-file", "", "optional encoded RemoteFX fixture payload for experimental SurfaceBits transport")
 	clearCodecFile := flag.String("clearcodec-file", "", "optional encoded ClearCodec fixture payload for experimental RDPGFX transport")
 	progressiveFile := flag.String("progressive-file", "", "optional encoded Progressive fixture payload for experimental RDPGFX transport")
+	progressiveV2File := flag.String("progressivev2-file", "", "optional encoded ProgressiveV2 fixture payload for experimental RDPGFX transport")
 	avc444File := flag.String("avc444-file", "", "optional encoded AVC444 fixture payload for experimental RDPGFX transport")
 	avc444v2File := flag.String("avc444v2-file", "", "optional encoded AVC444v2 fixture payload for experimental RDPGFX transport")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *h264File, *h264FPS, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), *failedAuthLimit, *failedAuthBackoff, *failedAuthBackoffMax, *rfxFile, *clearCodecFile, *progressiveFile, *avc444File, *avc444v2File, rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
+	if err := run(ctx, *addr, *width, *height, *testPattern, *fps, *h264File, *h264FPS, *username, *password, *passwordHash, *securityMode, splitCSV(*allowedUsers), splitCSV(*allowedCIDRs), *failedAuthLimit, *failedAuthBackoff, *failedAuthBackoffMax, *rfxFile, *clearCodecFile, *progressiveFile, *progressiveV2File, *avc444File, *avc444v2File, rdpserver.TLSSettings{CertFile: *tlsCert, KeyFile: *tlsKey, RotateOnStart: *tlsRotate, CommonName: *tlsCN}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, h264File string, h264FPS int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, failedAuthLimit int, failedAuthBackoff, failedAuthBackoffMax time.Duration, rfxFile, clearCodecFile, progressiveFile, avc444File, avc444v2File string, tlsSettings rdpserver.TLSSettings) error {
+func run(ctx context.Context, addr string, width, height int, testPattern bool, fps int, h264File string, h264FPS int, username, password, passwordHash, securityMode string, allowedUsers, allowedCIDRs []string, failedAuthLimit int, failedAuthBackoff, failedAuthBackoffMax time.Duration, rfxFile, clearCodecFile, progressiveFile, progressiveV2File, avc444File, avc444v2File string, tlsSettings rdpserver.TLSSettings) error {
 	var frames frame.Source
 	if testPattern {
 		frames = frame.NewTestPatternSource(width, height, fps)
@@ -75,6 +76,10 @@ func run(ctx context.Context, addr string, width, height int, testPattern bool, 
 	progressiveEncoder, err := newFixtureFrameEncoder(progressiveFile)
 	if err != nil {
 		return fmt.Errorf("load Progressive fixture: %w", err)
+	}
+	progressiveV2Encoder, err := newFixtureFrameEncoder(progressiveV2File)
+	if err != nil {
+		return fmt.Errorf("load ProgressiveV2 fixture: %w", err)
 	}
 	avc444Encoder, err := newFixtureFrameEncoder(avc444File)
 	if err != nil {
@@ -110,18 +115,19 @@ func run(ctx context.Context, addr string, width, height int, testPattern bool, 
 			FailedAuthBackoff:    failedAuthBackoff,
 			FailedAuthBackoffMax: failedAuthBackoffMax,
 		},
-		TLS:         tlsSettings,
-		H264:        h264,
-		RFX:         rfxEncoder,
-		ClearCodec:  clearCodecEncoder,
-		Progressive: progressiveEncoder,
-		AVC444:      avc444Encoder,
-		AVC444v2:    avc444v2Encoder,
+		TLS:           tlsSettings,
+		H264:          h264,
+		RFX:           rfxEncoder,
+		ClearCodec:    clearCodecEncoder,
+		Progressive:   progressiveEncoder,
+		ProgressiveV2: progressiveV2Encoder,
+		AVC444:        avc444Encoder,
+		AVC444v2:      avc444v2Encoder,
 	}, frames, nil)
 	if err != nil {
 		return err
 	}
-	log.Printf("listening on %s (protocol stub, testPattern=%v h264File=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d failed_auth_limit=%d rfx_fixture=%t clearcodec_fixture=%t progressive_fixture=%t avc444_fixture=%t avc444v2_fixture=%t tls_fp=%s)", addr, testPattern, h264 != nil, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), failedAuthLimit, rfxEncoder != nil, clearCodecEncoder != nil, progressiveEncoder != nil, avc444Encoder != nil, avc444v2Encoder != nil, srv.TLSFingerprintSHA256())
+	log.Printf("listening on %s (protocol stub, testPattern=%v h264File=%v auth=%v security_mode=%s allowed_users=%d allowed_cidrs=%d failed_auth_limit=%d rfx_fixture=%t clearcodec_fixture=%t progressive_fixture=%t progressivev2_fixture=%t avc444_fixture=%t avc444v2_fixture=%t tls_fp=%s)", addr, testPattern, h264 != nil, auth != nil, securityMode, len(allowedUsers), len(allowedCIDRs), failedAuthLimit, rfxEncoder != nil, clearCodecEncoder != nil, progressiveEncoder != nil, progressiveV2Encoder != nil, avc444Encoder != nil, avc444v2Encoder != nil, srv.TLSFingerprintSHA256())
 	if err := srv.Listen(ctx); err != nil && ctx.Err() == nil {
 		return err
 	}

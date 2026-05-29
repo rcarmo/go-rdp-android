@@ -40,6 +40,8 @@ func TestEncodingMatrixIncludesRDPGFXFixtureCases(t *testing.T) {
 		"rdpgfx_progressive_v2_selected",
 		"run_case rdpgfx-progressive-fixture",
 		"-progressive-file $OUT/codec-fixture.bin",
+		"run_case rdpgfx-progressivev2-fixture",
+		"-progressivev2-file $OUT/codec-fixture.bin",
 		"run_case rdpgfx-avc444-encoded",
 		"run_case rdpgfx-avc444-fixture",
 		"-avc444-file $OUT/codec-fixture.bin",
