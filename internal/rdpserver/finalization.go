@@ -136,7 +136,27 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		}
 	}
 	bitmapBPP := preferredBitmapBPP(caps)
-	update := buildSolidBitmapUpdateBPP(minPositive(width, 64), minPositive(height, 64), 0xff336699, bitmapBPP)
+	var update []byte
+	if classicBitmapPlanarEnabledFromEnv() {
+		w, h := minPositive(width, 64), minPositive(height, 64)
+		data := make([]byte, w*h*4)
+		for i := 0; i < len(data); i += 4 {
+			data[i+0], data[i+1], data[i+2], data[i+3] = 0x33, 0x66, 0x99, 0xff
+		}
+		fr := frame.Frame{Width: w, Height: h, Stride: w * 4, Format: frame.PixelFormatRGBA8888, Data: data}
+		if planar, ok := buildClassicBitmapPlanarUpdate(fr); ok {
+			rawBytes := fr.Width * fr.Height * 4
+			savedBytes := 0
+			if rawBytes > len(planar) {
+				savedBytes = rawBytes - len(planar)
+			}
+			tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(planar), rawBytes, savedBytes)
+			update = planar
+		}
+	}
+	if len(update) == 0 {
+		update = buildSolidBitmapUpdateBPP(minPositive(width, 64), minPositive(height, 64), 0xff336699, bitmapBPP)
+	}
 	updates := prependPaletteUpdateIfNeeded([][]byte{update}, bitmapBPP)
 	if bitmapBPP == bitmapBPP8 && len(updates) > 1 {
 		tracef("bitmap_palette_write", "colors=256 bytes=%d", len(updates[0]))

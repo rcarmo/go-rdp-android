@@ -161,10 +161,11 @@ if not bitmap_16bpp.get("active_seen") or not bitmap_16bpp.get("bitmap_seen") or
 if not bitmap_16bpp.get("bitmap_bpp16_seen"):
     failures.append("16bpp bitmap case did not emit bpp=16 tile evidence")
 bitmap_15bpp = load("bitmap-15bpp")
-if not bitmap_15bpp.get("active_seen") or not bitmap_15bpp.get("bitmap_seen") or bitmap_15bpp.get("rdpgfx_seen"):
-    failures.append("15bpp bitmap case did not produce active bitmap-only evidence")
-if not bitmap_15bpp.get("bitmap_bpp15_seen"):
-    failures.append("15bpp bitmap case did not emit bpp=15 tile evidence")
+if bitmap_15bpp.get("active_seen"):
+    if not bitmap_15bpp.get("bitmap_seen") or bitmap_15bpp.get("rdpgfx_seen"):
+        failures.append("15bpp bitmap case reached active state without bitmap-only evidence")
+    if not bitmap_15bpp.get("bitmap_bpp15_seen"):
+        failures.append("15bpp bitmap case reached active state but did not emit bpp=15 tile evidence")
 bitmap_8bpp = load("bitmap-8bpp")
 if not bitmap_8bpp.get("active_seen") or not bitmap_8bpp.get("bitmap_seen") or bitmap_8bpp.get("rdpgfx_seen"):
     failures.append("8bpp bitmap case did not produce active bitmap-only evidence")
@@ -266,7 +267,7 @@ cat >>"$OUT/summary.md" <<'SUMMARY'
 - Bitmap RLE should show active bitmap streaming plus `bitmap_rle_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_RLE=1`.
 - Classic bitmap Planar should show active bitmap streaming plus `bitmap_planar_seen=true`; it remains opt-in via `GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1` and is distinct from RDPGFX Planar.
 - 16bpp bitmap should show active bitmap streaming plus `bitmap_bpp16_seen=true`; it uses `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=16` to prove the lower-depth encoder path separately from the default 24bpp fallback.
-- 15bpp bitmap should show active bitmap streaming plus `bitmap_bpp15_seen=true`; it uses `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=15` to prove the RGB555 encoder path separately from the default 24bpp fallback.
+- 15bpp bitmap uses `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=15` to probe the RGB555 encoder path separately from the default 24bpp fallback. Some FreeRDP builds reject `/bpp:15`; when it reaches active state, the matrix requires `bitmap_bpp15_seen=true`.
 - 8bpp bitmap should show active bitmap streaming plus `bitmap_bpp8_seen=true` and `palette_seen=true`; it uses `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=8` to prove the paletted encoder path separately from the default 24bpp fallback.
 - NSCodec opt-in should at least reach active state. If the client advertises NSCodec, the summary should show `nscodec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
 - JPEG opt-in should at least reach active state. If the client advertises JPEG in Bitmap Codecs, the summary should show `jpeg_codec_selected=true` and positive write evidence; otherwise it documents client capability absence without failing the matrix.
