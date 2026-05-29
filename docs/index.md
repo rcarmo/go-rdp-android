@@ -19,6 +19,7 @@ Start here when working on `go-rdp-android`.
 - [TRACE_PHASES](TRACE_PHASES.md) — structured server/Android trace phase taxonomy, bitmap RLE/SurfaceBits/H.264 graphics traces, and diagnostic bundle sources.
 - [PERFORMANCE](PERFORMANCE.md) — RDP capture metrics, bitmap/RDPGFX/SurfaceBits/H.264 baselines/status, known first-APK performance limits, and optimization workstreams.
 - [GRAPHICS_CODECS](GRAPHICS_CODECS.md) — implemented graphics paths, opt-in bitmap RLE and NSCodec/JPEG/PNG SurfaceBits diagnostics, missing/deferred RDP codec families, and codec-addition decision rules.
+- [CODEC_PRIMITIVES](CODEC_PRIMITIVES.md) — policy for what stays Android-local versus what should move into `go-rdp/pkg/codec`.
 - [RELEASES](RELEASES.md) — tag policy and release identifiers.
 
 ## Assets
