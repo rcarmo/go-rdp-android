@@ -75,6 +75,34 @@ func TestBuildRDPGFXFrameUpdatePDUsFallsBackWhenProgressiveEncoderRejects(t *tes
 	}
 }
 
+func TestBuildRDPGFXFrameUpdatePDUsUsesProgressiveV2Encoder(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC", "1")
+	fr := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(4, 4, 0x11, 0x22, 0x33, 0xff)}
+	metrics := serverMetrics{progressiveV2Encoder: rdpgfxFrameEncoderFunc(func(frame.Frame, int, int) ([]byte, bool) { return []byte{15, 16, 17, 18}, true })}
+	cap := rdpgfxCapabilitySet{Version: rdpgfxCapsVersion104, Flags: 0}
+
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 7, fr, 4, 4, metrics, cap)
+	if !ok || path != "rdpgfx-progressive-v2" || len(pdus) != 3 {
+		t.Fatalf("buildRDPGFXFrameUpdatePDUs len=%d path=%q ok=%t", len(pdus), path, ok)
+	}
+	codecID, ok := wireToSurfaceCodecIDForTest(pdus[1])
+	if !ok || codecID != rdpgfxCodecCAProgressiveV2 {
+		t.Fatalf("wire codec=0x%04x ok=%t", codecID, ok)
+	}
+}
+
+func TestBuildRDPGFXFrameUpdatePDUsFallsBackWhenProgressiveV2EncoderRejects(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_PROGRESSIVE_CODEC", "1")
+	fr := frame.Frame{Width: 2, Height: 1, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3, 4, 5, 6, 7, 8}}
+	metrics := serverMetrics{progressiveV2Encoder: rdpgfxFrameEncoderFunc(func(frame.Frame, int, int) ([]byte, bool) { return nil, false })}
+	cap := rdpgfxCapabilitySet{Version: rdpgfxCapsVersion104, Flags: 0}
+
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 7, fr, 2, 1, metrics, cap)
+	if !ok || path != "rdpgfx-planar" || len(pdus) != 3 {
+		t.Fatalf("progressive-v2 fallback len=%d path=%q ok=%t", len(pdus), path, ok)
+	}
+}
+
 func TestBuildRDPGFXFrameUpdatePDUsUsesAVC444Encoder(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_ENABLE_AVC444", "1")
 	fr := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(4, 4, 0x11, 0x22, 0x33, 0xff)}
@@ -103,6 +131,18 @@ func TestBuildRDPGFXFrameUpdatePDUsAVC444CapabilityGatedFallback(t *testing.T) {
 	}
 }
 
+func TestBuildRDPGFXFrameUpdatePDUsFallsBackWhenAVC444EncoderRejects(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_AVC444", "1")
+	fr := frame.Frame{Width: 2, Height: 1, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3, 4, 5, 6, 7, 8}}
+	metrics := serverMetrics{avc444Encoder: rdpgfxFrameEncoderFunc(func(frame.Frame, int, int) ([]byte, bool) { return nil, false })}
+	cap := rdpgfxCapabilitySet{Version: rdpgfxCapsVersion10, Flags: 0}
+
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 7, fr, 2, 1, metrics, cap)
+	if !ok || path != "rdpgfx-planar" || len(pdus) != 3 {
+		t.Fatalf("avc444 fallback len=%d path=%q ok=%t", len(pdus), path, ok)
+	}
+}
+
 func TestBuildRDPGFXFrameUpdatePDUsUsesAVC444v2Encoder(t *testing.T) {
 	t.Setenv("GO_RDP_ANDROID_ENABLE_AVC444V2", "1")
 	fr := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(4, 4, 0x11, 0x22, 0x33, 0xff)}
@@ -116,6 +156,18 @@ func TestBuildRDPGFXFrameUpdatePDUsUsesAVC444v2Encoder(t *testing.T) {
 	codecID, ok := wireToSurfaceCodecIDForTest(pdus[1])
 	if !ok || codecID != rdpgfxCodecAVC444v2 {
 		t.Fatalf("wire codec=0x%04x ok=%t", codecID, ok)
+	}
+}
+
+func TestBuildRDPGFXFrameUpdatePDUsFallsBackWhenAVC444v2EncoderRejects(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_AVC444V2", "1")
+	fr := frame.Frame{Width: 2, Height: 1, Stride: 8, Format: frame.PixelFormatRGBA8888, Data: []byte{1, 2, 3, 4, 5, 6, 7, 8}}
+	metrics := serverMetrics{avc444v2Encoder: rdpgfxFrameEncoderFunc(func(frame.Frame, int, int) ([]byte, bool) { return nil, false })}
+	cap := rdpgfxCapabilitySet{Version: rdpgfxCapsVersion104, Flags: 0}
+
+	pdus, path, ok := buildRDPGFXFrameUpdatePDUs(0, 7, fr, 2, 1, metrics, cap)
+	if !ok || path != "rdpgfx-planar" || len(pdus) != 3 {
+		t.Fatalf("avc444v2 fallback len=%d path=%q ok=%t", len(pdus), path, ok)
 	}
 }
 
