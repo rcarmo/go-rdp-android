@@ -242,15 +242,13 @@ func (w *rfxBitWriter) writeUnaryOnesThenZero(ones int) {
 }
 
 func (w *rfxBitWriter) bytes() []byte {
-	out := make([]byte, len(w.buf))
-	copy(out, w.buf)
 	if w.nbits > 0 {
-		out = append(out, w.acc<<(8-w.nbits))
+		w.buf = append(w.buf, w.acc<<(8-w.nbits))
 	}
-	if len(out) == 0 {
-		return []byte{0}
+	if len(w.buf) == 0 {
+		w.buf = append(w.buf, 0)
 	}
-	return out
+	return w.buf
 }
 
 func encodeRFXRLGR(coeff []int16, mode rfxRLGRMode) ([]byte, bool) {
@@ -527,121 +525,157 @@ func buildRFXMessageSingleTile(src frame.Frame, width, height int, frameID uint3
 	if !ok {
 		return nil, false
 	}
-	blocks := [][]byte{
-		buildRFXSyncBlock(),
-		buildRFXCodecVersionsBlock(),
-		buildRFXChannelsBlock(uint16(width), uint16(height)),
-		buildRFXContextBlock(uint16(width), uint16(height)),
-		buildRFXFrameBeginBlock(frameID),
-		buildRFXRegionBlock(uint16(tileX), uint16(tileY), rfxTileSize, rfxTileSize),
-		buildRFXTilesetBlock(tileBlock, quantRaw),
-		buildRFXFrameEndBlock(),
+	quantLen := len(quantRaw)
+	if quantLen == 0 {
+		quantLen = len(defaultRFXQuantBytes)
 	}
-	total := 0
-	for _, b := range blocks {
-		total += len(b)
-	}
+	total := 12 + 10 + 13 + 13 + 14 + 17 + 20 + quantLen + len(tileBlock) + 6
 	if total <= 0 || total > rfxMaxEncodedPayloadLen {
 		return nil, false
 	}
 	out := make([]byte, 0, total)
-	for _, b := range blocks {
-		out = append(out, b...)
-	}
+	out = appendRFXSyncBlock(out)
+	out = appendRFXCodecVersionsBlock(out)
+	out = appendRFXChannelsBlock(out, uint16(width), uint16(height))
+	out = appendRFXContextBlock(out, uint16(width), uint16(height))
+	out = appendRFXFrameBeginBlock(out, frameID)
+	out = appendRFXRegionBlock(out, uint16(tileX), uint16(tileY), rfxTileSize, rfxTileSize)
+	out = appendRFXTilesetBlock(out, tileBlock, quantRaw)
+	out = appendRFXFrameEndBlock(out)
 	return out, true
 }
 
 func buildRFXSyncBlock() []byte {
-	out := make([]byte, 12)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeSync)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	binary.LittleEndian.PutUint32(out[6:10], rfxSyncMagic)
-	binary.LittleEndian.PutUint16(out[10:12], rfxVersion10)
+	return appendRFXSyncBlock(nil)
+}
+
+func appendRFXSyncBlock(out []byte) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 12)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeSync)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 12)
+	binary.LittleEndian.PutUint32(out[start+6:start+10], rfxSyncMagic)
+	binary.LittleEndian.PutUint16(out[start+10:start+12], rfxVersion10)
 	return out
 }
 
 func buildRFXCodecVersionsBlock() []byte {
-	out := make([]byte, 10)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeCodecVersions)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	out[6] = 1
-	out[7] = 1
-	binary.LittleEndian.PutUint16(out[8:10], rfxVersion10)
+	return appendRFXCodecVersionsBlock(nil)
+}
+
+func appendRFXCodecVersionsBlock(out []byte) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 10)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeCodecVersions)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 10)
+	out[start+6] = 1
+	out[start+7] = 1
+	binary.LittleEndian.PutUint16(out[start+8:start+10], rfxVersion10)
 	return out
 }
 
 func buildRFXChannelsBlock(width, height uint16) []byte {
-	out := make([]byte, 13)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeChannels)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	out[6] = 1
-	out[7] = 0
-	binary.LittleEndian.PutUint16(out[8:10], width)
-	binary.LittleEndian.PutUint16(out[10:12], height)
-	out[12] = 0
+	return appendRFXChannelsBlock(nil, width, height)
+}
+
+func appendRFXChannelsBlock(out []byte, width, height uint16) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 13)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeChannels)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 13)
+	out[start+6] = 1
+	out[start+7] = 0
+	binary.LittleEndian.PutUint16(out[start+8:start+10], width)
+	binary.LittleEndian.PutUint16(out[start+10:start+12], height)
+	out[start+12] = 0
 	return out
 }
 
 func buildRFXContextBlock(width, height uint16) []byte {
-	out := make([]byte, 13)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeContext)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	out[6] = 0
-	binary.LittleEndian.PutUint16(out[7:9], rfxTileSize)
-	binary.LittleEndian.PutUint16(out[9:11], width)
-	binary.LittleEndian.PutUint16(out[11:13], height)
+	return appendRFXContextBlock(nil, width, height)
+}
+
+func appendRFXContextBlock(out []byte, width, height uint16) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 13)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeContext)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 13)
+	out[start+6] = 0
+	binary.LittleEndian.PutUint16(out[start+7:start+9], rfxTileSize)
+	binary.LittleEndian.PutUint16(out[start+9:start+11], width)
+	binary.LittleEndian.PutUint16(out[start+11:start+13], height)
 	return out
 }
 
 func buildRFXFrameBeginBlock(frameID uint32) []byte {
-	out := make([]byte, 14)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeFrameBegin)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	binary.LittleEndian.PutUint32(out[6:10], frameID)
-	binary.LittleEndian.PutUint16(out[10:12], 1)
-	binary.LittleEndian.PutUint16(out[12:14], 0)
+	return appendRFXFrameBeginBlock(nil, frameID)
+}
+
+func appendRFXFrameBeginBlock(out []byte, frameID uint32) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 14)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeFrameBegin)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 14)
+	binary.LittleEndian.PutUint32(out[start+6:start+10], frameID)
+	binary.LittleEndian.PutUint16(out[start+10:start+12], 1)
+	binary.LittleEndian.PutUint16(out[start+12:start+14], 0)
 	return out
 }
 
 func buildRFXRegionBlock(x, y uint16, w, h int) []byte {
-	out := make([]byte, 17)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeRegion)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
-	out[6] = 1
-	binary.LittleEndian.PutUint16(out[7:9], 1)
-	binary.LittleEndian.PutUint16(out[9:11], x)
-	binary.LittleEndian.PutUint16(out[11:13], y)
-	binary.LittleEndian.PutUint16(out[13:15], uint16(w))
-	binary.LittleEndian.PutUint16(out[15:17], uint16(h))
+	return appendRFXRegionBlock(nil, x, y, w, h)
+}
+
+func appendRFXRegionBlock(out []byte, x, y uint16, w, h int) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 17)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeRegion)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 17)
+	out[start+6] = 1
+	binary.LittleEndian.PutUint16(out[start+7:start+9], 1)
+	binary.LittleEndian.PutUint16(out[start+9:start+11], x)
+	binary.LittleEndian.PutUint16(out[start+11:start+13], y)
+	binary.LittleEndian.PutUint16(out[start+13:start+15], uint16(w))
+	binary.LittleEndian.PutUint16(out[start+15:start+17], uint16(h))
 	return out
 }
 
+var defaultRFXQuantBytes = [...]byte{0x66, 0x66, 0x77, 0x88, 0x89}
+
 func buildRFXTilesetBlock(tileBlock, quantRaw []byte) []byte {
+	return appendRFXTilesetBlock(nil, tileBlock, quantRaw)
+}
+
+func appendRFXTilesetBlock(out, tileBlock, quantRaw []byte) []byte {
 	quant := quantRaw
 	if len(quant) == 0 {
-		quant = []byte{0x66, 0x66, 0x77, 0x88, 0x89}
+		quant = defaultRFXQuantBytes[:]
 	}
-	out := make([]byte, 0, 22+len(quant)+len(tileBlock))
-	hdr := make([]byte, 20)
-	binary.LittleEndian.PutUint16(hdr[0:2], rfxBlockTypeTileset)
-	binary.LittleEndian.PutUint16(hdr[6:8], 0xCAC1)
-	binary.LittleEndian.PutUint16(hdr[8:10], 0)
-	binary.LittleEndian.PutUint16(hdr[10:12], 0)
-	hdr[12] = 1
-	hdr[13] = rfxTileSize
-	binary.LittleEndian.PutUint16(hdr[14:16], 1)
-	binary.LittleEndian.PutUint32(hdr[16:20], uint32(len(tileBlock)))
-	out = append(out, hdr...)
+	start := len(out)
+	out = append(out, make([]byte, 20)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeTileset)
+	binary.LittleEndian.PutUint16(out[start+6:start+8], 0xCAC1)
+	binary.LittleEndian.PutUint16(out[start+8:start+10], 0)
+	binary.LittleEndian.PutUint16(out[start+10:start+12], 0)
+	out[start+12] = 1
+	out[start+13] = rfxTileSize
+	binary.LittleEndian.PutUint16(out[start+14:start+16], 1)
+	binary.LittleEndian.PutUint32(out[start+16:start+20], uint32(len(tileBlock)))
 	out = append(out, quant...)
 	out = append(out, tileBlock...)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
+	binary.LittleEndian.PutUint32(out[start+2:start+6], uint32(len(out)-start))
 	return out
 }
 
 func buildRFXFrameEndBlock() []byte {
-	out := make([]byte, 6)
-	binary.LittleEndian.PutUint16(out[0:2], rfxBlockTypeFrameEnd)
-	binary.LittleEndian.PutUint32(out[2:6], uint32(len(out)))
+	return appendRFXFrameEndBlock(nil)
+}
+
+func appendRFXFrameEndBlock(out []byte) []byte {
+	start := len(out)
+	out = append(out, make([]byte, 6)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeFrameEnd)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], 6)
 	return out
 }
 
