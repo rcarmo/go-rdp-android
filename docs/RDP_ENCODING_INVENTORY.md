@@ -30,13 +30,13 @@ Do not mark the parity plan complete until each non-decode-only item has product
 
 | go-rdp client-side support | Class | Server obligation |
 | --- | --- | --- |
-| RDPGFX Uncompressed (`0x0000`) | RDPGFX WireToSurface | Production/diagnostic encoder exists but must have negotiated path, tests, metrics, matrix evidence. |
-| RDPGFX CAVideo (`0x0003`) | RDPGFX WireToSurface metadata | Determine whether go-rdp decodes CAVideo or only names the codec. Implement or explicitly document metadata-only/decode-only absence. |
-| RDPGFX ClearCodec (`0x0008`) | RDPGFX WireToSurface | Expand from minimal subset to full useful production subset supported by go-rdp client expectations, with fallback and matrix proof. |
+| RDPGFX Uncompressed (`0x0000`) | RDPGFX WireToSurface | Production/diagnostic encoder exists behind `GO_RDP_ANDROID_ENABLE_RDPGFX_UNCOMPRESSED=1`, with capability-gated selection, metrics/traces, tests, and matrix evidence. It remains diagnostic-only because RDPGFX Planar is the release compressed default. |
+| RDPGFX CAVideo (`0x0003`) | RDPGFX WireToSurface metadata | Repository search found only ID/name metadata in go-rdp, with no confirmed decode path. No server encoder is required for current parity until go-rdp gains real CAVideo client support. |
+| RDPGFX ClearCodec (`0x0008`) | RDPGFX WireToSurface | Partial/minimal opt-in production encoder exists with solid-rect mode, RGB565 raw-rect mode, 64x64 tiled segmentation, expansion rejection, fallback, tests, and production-vs-fixture matrix evidence. Broader spec/client-driven operations remain non-release-default follow-up. |
 | RDPGFX CAProgressive (`0x0009`) | RDPGFX WireToSurface | Partial/minimal opt-in production encoder exists for bounded single-layer full-frame RGB565 payloads, with parser/fuzz coverage, fallback, and production-vs-fixture matrix evidence; broader progressive semantics remain pending. |
 | RDPGFX Planar (`0x000A`) | RDPGFX WireToSurface | Production encoder exists and remains default compressed path; keep tests/matrix/docs current. |
-| RDPGFX AVC420 (`0x000B`) | RDPGFX WireToSurface | Existing AVC420 wrapper/forced path must become negotiated production emission where client support exists, or remain explicitly force-mode until proof exists. |
-| RDPGFX Alpha (`0x000C`) | RDPGFX WireToSurface metadata | Determine whether go-rdp decodes Alpha. Implement alpha-capable server emission or document metadata-only absence. |
+| RDPGFX AVC420 (`0x000B`) | RDPGFX WireToSurface | Experimental Android `MediaCodec` + gomobile access-unit queue + RDPGFX AVC420 wrapper/streaming path exists, including forced CI smoke evidence and negotiated fallback when AVC420 is absent/disabled. It remains non-default until real clients advertise and accept AVC420 without forcing. |
+| RDPGFX Alpha (`0x000C`) | RDPGFX WireToSurface metadata | Repository search found only ID/name metadata and unrelated alpha-plane handling in other codecs, with no confirmed RDPGFX Alpha decode path. No server encoder is required for current parity until go-rdp gains real Alpha client support. |
 | RDPGFX CAProgressiveV2 (`0x000D`) | RDPGFX WireToSurface | Partial/minimal opt-in V2 encoder exists for bounded single-layer full-frame RGB565 payloads and has a separate `rdpgfx-progressivev2-encoded` matrix case; broader V2 semantics/client proof remain pending. |
 | RDPGFX AVC444 (`0x000E`) | RDPGFX WireToSurface | Partial/minimal opt-in production encoder exists with bounded full-frame base/aux payloads and production-vs-fixture matrix evidence; real Android auxiliary-plane AVC input and client proof remain pending. |
 | RDPGFX AVC444v2 (`0x000F`) | RDPGFX WireToSurface | Partial/minimal opt-in production encoder exists with distinct v2 bounded base/aux payloads and production-vs-fixture matrix evidence; real Android auxiliary-plane AVC input and client proof remain pending. |
@@ -47,4 +47,4 @@ Do not mark the parity plan complete until each non-decode-only item has product
 2. Bitmap Codecs PNG/H264/ClearCodec/RemoteFX Progressive GUIDs are present in go-rdp client capability parsing but not all are exported or mapped to actual decode paths; this must remain documented before claiming negotiated parity.
 3. RDPGFX ClearCodec, CAProgressive/CAProgressiveV2, and AVC444/AVC444v2 have partial/minimal opt-in production encoders, but still need broader spec/client proof before release-default status.
 4. RDPGFX AVC444/AVC444v2 still need real Android auxiliary-plane AVC generation rather than deterministic bounded test access units.
-5. RDPGFX CAVideo and Alpha are named by go-rdp; server parity requires implementation or an explicit metadata-only/decode-only finding.
+5. RDPGFX CAVideo and Alpha are explicit metadata-only/no-confirmed-decode findings for current go-rdp parity and need revisiting only if upstream client support appears.
