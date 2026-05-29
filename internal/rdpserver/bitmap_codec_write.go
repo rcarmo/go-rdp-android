@@ -26,6 +26,9 @@ func streamExperimentalBitmapCodecUpdates(conn net.Conn, frames frame.Source, ca
 		normalized := normalizeFrameForDesktop(fr, width, height)
 		cmd, ok := buildExperimentalBitmapCodecCommand(normalized, caps)
 		if !ok {
+			cmd, ok = buildRemoteFXBitmapCodecCommand(normalized, caps, metrics.rfxEncoder)
+		}
+		if !ok {
 			continue
 		}
 		if err := writeExperimentalBitmapCodecUpdate(conn, metrics, cmd); err != nil {

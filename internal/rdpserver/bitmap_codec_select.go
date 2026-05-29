@@ -32,6 +32,28 @@ func buildExperimentalBitmapCodecCommand(src frame.Frame, caps confirmActiveCapa
 	return bitmapCodecCommand{}, false
 }
 
+func buildRemoteFXBitmapCodecCommand(src frame.Frame, caps confirmActiveCapabilities, encoder RFXEncoder) (bitmapCodecCommand, bool) {
+	codecID, ok := negotiatedRemoteFXCodecID(caps)
+	if !ok {
+		return bitmapCodecCommand{}, false
+	}
+	if encoder == nil {
+		tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
+		return bitmapCodecCommand{}, false
+	}
+	encoded, encodedOK := encoder.EncodeRFX(src, src.Width, src.Height)
+	if !encodedOK {
+		tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-rejected", codecID)
+		return bitmapCodecCommand{}, false
+	}
+	command, built := buildRFXSurfaceBitsCommand(src.Width, src.Height, codecID, encoded)
+	if !built {
+		tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=surfacebits-build-failed", codecID)
+		return bitmapCodecCommand{}, false
+	}
+	return bitmapCodecCommand{Name: "rfx-codec", CodecID: codecID, Command: command, Trace: "rfx_codec", RawBytes: src.Width * src.Height * 4}, true
+}
+
 func recordExperimentalBitmapCodecFrame(metrics serverMetrics, cmd bitmapCodecCommand) bool {
 	switch cmd.Name {
 	case "nscodec":
@@ -42,6 +64,9 @@ func recordExperimentalBitmapCodecFrame(metrics serverMetrics, cmd bitmapCodecCo
 		return true
 	case "png-codec":
 		metrics.recordPNGCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
+		return true
+	case "rfx-codec":
+		metrics.recordRFXCodecFrame([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	default:
 		return false
@@ -63,6 +88,8 @@ func traceExperimentalBitmapCodecSelected(cmd bitmapCodecCommand) {
 		tracef("jpeg_codec_selected", "codec_id=%d command_bytes=%d raw_bytes=%d saved_bytes=%d quality=%d emission=opt-in", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes(), cmd.Quality)
 	case "png_codec":
 		tracef("png_codec_selected", "codec_id=%d command_bytes=%d raw_bytes=%d saved_bytes=%d emission=operator-override", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes())
+	case "rfx_codec":
+		tracef("rfx_codec_selected", "codec_id=%d command_bytes=%d raw_bytes=%d saved_bytes=%d emission=opt-in", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes())
 	}
 }
 
@@ -74,5 +101,7 @@ func traceExperimentalBitmapCodecWrite(cmd bitmapCodecCommand) {
 		tracef("jpeg_codec_write", "codec_id=%d bytes=%d raw_bytes=%d saved_bytes=%d", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes())
 	case "png_codec":
 		tracef("png_codec_write", "codec_id=%d bytes=%d raw_bytes=%d saved_bytes=%d", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes())
+	case "rfx_codec":
+		tracef("rfx_codec_write", "codec_id=%d bytes=%d raw_bytes=%d saved_bytes=%d", cmd.CodecID, len(cmd.Command), cmd.RawBytes, cmd.savedBytes())
 	}
 }

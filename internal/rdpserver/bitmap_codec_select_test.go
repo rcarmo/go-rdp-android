@@ -64,7 +64,11 @@ func TestRecordExperimentalBitmapCodecFrame(t *testing.T) {
 	var pngBytes atomic.Int64
 	var pngRaw atomic.Int64
 	var pngSaved atomic.Int64
-	metrics := serverMetrics{nsCodecFrames: &nsFrames, nsCodecBytes: &nsBytes, nsCodecRawBytes: &nsRaw, nsCodecSavedBytes: &nsSaved, jpegCodecFrames: &jpegFrames, jpegCodecBytes: &jpegBytes, jpegCodecRawBytes: &jpegRaw, jpegCodecSavedBytes: &jpegSaved, pngCodecFrames: &pngFrames, pngCodecBytes: &pngBytes, pngCodecRawBytes: &pngRaw, pngCodecSavedBytes: &pngSaved}
+	var rfxFrames atomic.Int64
+	var rfxBytes atomic.Int64
+	var rfxRaw atomic.Int64
+	var rfxSaved atomic.Int64
+	metrics := serverMetrics{nsCodecFrames: &nsFrames, nsCodecBytes: &nsBytes, nsCodecRawBytes: &nsRaw, nsCodecSavedBytes: &nsSaved, jpegCodecFrames: &jpegFrames, jpegCodecBytes: &jpegBytes, jpegCodecRawBytes: &jpegRaw, jpegCodecSavedBytes: &jpegSaved, pngCodecFrames: &pngFrames, pngCodecBytes: &pngBytes, pngCodecRawBytes: &pngRaw, pngCodecSavedBytes: &pngSaved, rfxCodecFrames: &rfxFrames, rfxCodecBytes: &rfxBytes, rfxCodecRawBytes: &rfxRaw, rfxCodecSavedBytes: &rfxSaved}
 
 	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "nscodec", Command: []byte{1, 2}, RawBytes: 6}) {
 		t.Fatal("record nscodec = false")
@@ -75,10 +79,13 @@ func TestRecordExperimentalBitmapCodecFrame(t *testing.T) {
 	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "png-codec", Command: []byte{1, 2, 3, 4}, RawBytes: 10}) {
 		t.Fatal("record png = false")
 	}
+	if !recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "rfx-codec", Command: []byte{1, 2, 3, 4, 5}, RawBytes: 12}) {
+		t.Fatal("record rfx = false")
+	}
 	if recordExperimentalBitmapCodecFrame(metrics, bitmapCodecCommand{Name: "unknown", Command: []byte{1}}) {
 		t.Fatal("record unknown = true")
 	}
-	if nsFrames.Load() != 1 || nsBytes.Load() != 2 || nsRaw.Load() != 6 || nsSaved.Load() != 4 || jpegFrames.Load() != 1 || jpegBytes.Load() != 3 || jpegRaw.Load() != 8 || jpegSaved.Load() != 5 || pngFrames.Load() != 1 || pngBytes.Load() != 4 || pngRaw.Load() != 10 || pngSaved.Load() != 6 {
-		t.Fatalf("unexpected metrics ns=%d/%d/%d/%d jpeg=%d/%d/%d/%d png=%d/%d/%d/%d", nsFrames.Load(), nsBytes.Load(), nsRaw.Load(), nsSaved.Load(), jpegFrames.Load(), jpegBytes.Load(), jpegRaw.Load(), jpegSaved.Load(), pngFrames.Load(), pngBytes.Load(), pngRaw.Load(), pngSaved.Load())
+	if nsFrames.Load() != 1 || nsBytes.Load() != 2 || nsRaw.Load() != 6 || nsSaved.Load() != 4 || jpegFrames.Load() != 1 || jpegBytes.Load() != 3 || jpegRaw.Load() != 8 || jpegSaved.Load() != 5 || pngFrames.Load() != 1 || pngBytes.Load() != 4 || pngRaw.Load() != 10 || pngSaved.Load() != 6 || rfxFrames.Load() != 1 || rfxBytes.Load() != 5 || rfxRaw.Load() != 12 || rfxSaved.Load() != 7 {
+		t.Fatalf("unexpected metrics ns=%d/%d/%d/%d jpeg=%d/%d/%d/%d png=%d/%d/%d/%d rfx=%d/%d/%d/%d", nsFrames.Load(), nsBytes.Load(), nsRaw.Load(), nsSaved.Load(), jpegFrames.Load(), jpegBytes.Load(), jpegRaw.Load(), jpegSaved.Load(), pngFrames.Load(), pngBytes.Load(), pngRaw.Load(), pngSaved.Load(), rfxFrames.Load(), rfxBytes.Load(), rfxRaw.Load(), rfxSaved.Load())
 	}
 }

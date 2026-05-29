@@ -83,24 +83,14 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 				}
 				return nil
 			}
-			if codecID, ok := negotiatedRemoteFXCodecID(caps); ok {
-				if metrics.rfxEncoder == nil {
-					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-missing", codecID)
-				} else if encoded, encodedOK := metrics.rfxEncoder.EncodeRFX(normalized, width, height); encodedOK {
-					if cmd, built := buildRFXSurfaceBitsCommand(normalized.Width, normalized.Height, codecID, encoded); built {
-						rfxCmd := bitmapCodecCommand{Name: "rfx-codec", CodecID: codecID, Command: cmd, Trace: "rfx_codec", RawBytes: normalized.Width * normalized.Height * 4}
-						tracef("rfx_codec_selected", "codec_id=%d command_bytes=%d raw_bytes=%d saved_bytes=%d emission=opt-in", codecID, len(cmd), rfxCmd.RawBytes, rfxCmd.savedBytes())
-						if err := writeShareDataPDU(conn, pduType2Update, cmd); err != nil {
-							return err
-						}
-						metrics.recordRFXCodecFrame([][]byte{cmd}, int64(rfxCmd.RawBytes), int64(rfxCmd.savedBytes()))
-						tracef("rfx_codec_write", "codec_id=%d bytes=%d raw_bytes=%d saved_bytes=%d", codecID, len(cmd), rfxCmd.RawBytes, rfxCmd.savedBytes())
-						return nil
-					}
-					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=surfacebits-build-failed", codecID)
-				} else {
-					tracef("rfx_codec_selected", "codec_id=%d emission=deferred reason=encoder-rejected-frame", codecID)
+			if cmd, ok := buildRemoteFXBitmapCodecCommand(normalized, caps, metrics.rfxEncoder); ok {
+				if err := writeExperimentalBitmapCodecUpdate(conn, metrics, cmd); err != nil {
+					return err
 				}
+				if bitmapCodecStreamingEnabledFromEnv() {
+					go streamExperimentalBitmapCodecUpdates(conn, frames, caps, width, height, metrics)
+				}
+				return nil
 			}
 			if classicBitmapPlanarEnabledFromEnv() {
 				if update, ok := buildClassicBitmapPlanarUpdate(normalized); ok {

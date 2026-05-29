@@ -42,6 +42,24 @@ func TestWriteInitialBitmapUpdateUsesRFXEncoderWhenAvailable(t *testing.T) {
 	}
 }
 
+func TestBuildRemoteFXBitmapCodecCommand(t *testing.T) {
+	t.Setenv("GO_RDP_ANDROID_ENABLE_RFX_CODEC", "1")
+	src := frame.Frame{Width: 4, Height: 4, Stride: 16, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(4, 4, 0x11, 0x22, 0x33, 0xff)}
+	caps := confirmActiveCapabilities{BitmapCodecs: bitmapCodecsCapabilityInfo{Present: true, Codecs: []bitmapCodecInfo{{GUID: rdpcodec.RemoteFXGUID, ID: 4, Name: rdpcodec.BitmapCodecNameRemoteFX}}}}
+	cmd, ok := buildRemoteFXBitmapCodecCommand(src, caps, rfxEncoderFunc(func(got frame.Frame, width, height int) ([]byte, bool) {
+		if got.Width != 4 || got.Height != 4 || width != 4 || height != 4 {
+			t.Fatalf("encoder input got frame=%dx%d desktop=%dx%d", got.Width, got.Height, width, height)
+		}
+		return []byte{0xc0, 0xcc, 0x0c, 0x00}, true
+	}))
+	if !ok || cmd.Name != "rfx-codec" || cmd.Trace != "rfx_codec" || cmd.CodecID != 4 || len(cmd.Command) == 0 || cmd.RawBytes != 64 {
+		t.Fatalf("rfx command = %#v ok=%t", cmd, ok)
+	}
+	if _, ok := buildRemoteFXBitmapCodecCommand(src, caps, nil); ok {
+		t.Fatal("nil encoder unexpectedly built RFX command")
+	}
+}
+
 func TestProductionRFXEncoderEncodeRFX(t *testing.T) {
 	enc := productionRFXEncoder{}
 	src := frame.Frame{
