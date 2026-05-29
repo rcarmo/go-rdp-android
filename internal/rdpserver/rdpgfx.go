@@ -267,15 +267,29 @@ func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Fram
 	if normalized.Width > maxInt/4 || normalized.Height > maxInt/(normalized.Width*4) {
 		return nil, false
 	}
-	planar, ok := buildPlanarRLEPayload(normalized, stride)
+	wire, ok := buildRDPGFXPlanarWireToSurfacePDU(surfaceID, normalized, stride)
 	if !ok {
 		return nil, false
 	}
 	return [][]byte{
 		buildRDPGFXStartFramePDU(frameID),
-		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width), uint16(normalized.Height), planar), // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+		wire,
 		buildRDPGFXEndFramePDU(frameID),
 	}, true
+}
+
+func buildRDPGFXPlanarWireToSurfacePDU(surfaceID uint16, src frame.Frame, stride int) ([]byte, bool) {
+	bitmapStart := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen
+	planeSize := src.Width * src.Height
+	wire := make([]byte, bitmapStart, bitmapStart+1+planeSize*3)
+	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(src.Width), uint16(src.Height), 0) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+	wire, ok := appendPlanarRLEPayload(wire, src, stride)
+	if !ok {
+		return nil, false
+	}
+	binary.LittleEndian.PutUint32(wire[21:25], uint32(len(wire)-bitmapStart)) // #nosec G115 -- payload length is bounded by allocation.
+	binary.LittleEndian.PutUint32(wire[4:8], uint32(len(wire)))               // #nosec G115 -- PDU length is bounded by allocation.
+	return wire, true
 }
 
 func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
@@ -283,10 +297,18 @@ func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
 	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
 		return nil, false
 	}
+	out := make([]byte, 0, 1+src.Width*src.Height*3)
+	return appendPlanarRLEPayload(out, src, stride)
+}
+
+func appendPlanarRLEPayload(out []byte, src frame.Frame, stride int) ([]byte, bool) {
+	maxInt := int(^uint(0) >> 1)
+	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
+		return nil, false
+	}
 	planeSize := src.Width * src.Height
 	plane := make([]byte, planeSize)
-	out := make([]byte, 1, 1+planeSize) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
-	out[0] = 0x30
+	out = append(out, 0x30) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
 	rowScratch := make([]byte, src.Width)
 	for i := 0; i < 3; i++ {
 		component := "rgb"[i]
