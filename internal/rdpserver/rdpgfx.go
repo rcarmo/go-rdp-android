@@ -190,30 +190,33 @@ func buildRDPGFXMapSurfaceToOutputPDU(surfaceID uint16, originX, originY int) ([
 }
 
 func buildRDPGFXStartFramePDU(frameID uint32) []byte {
-	payload := make([]byte, 8)
-	binary.LittleEndian.PutUint32(payload[0:4], uint32(0))
-	binary.LittleEndian.PutUint32(payload[4:8], frameID)
-	return buildRDPGFXPDU(rdpgfxCmdStartFrame, 0, payload)
+	out := make([]byte, 16)
+	writeRDPGFXPDUHeader(out, rdpgfxCmdStartFrame, 0)
+	binary.LittleEndian.PutUint32(out[8:12], uint32(0))
+	binary.LittleEndian.PutUint32(out[12:16], frameID)
+	return out
 }
 
 func buildRDPGFXEndFramePDU(frameID uint32) []byte {
-	payload := make([]byte, 4)
-	binary.LittleEndian.PutUint32(payload[0:4], frameID)
-	return buildRDPGFXPDU(rdpgfxCmdEndFrame, 0, payload)
+	out := make([]byte, 12)
+	writeRDPGFXPDUHeader(out, rdpgfxCmdEndFrame, 0)
+	binary.LittleEndian.PutUint32(out[8:12], frameID)
+	return out
 }
 
 func buildRDPGFXWireToSurface1PDU(surfaceID uint16, codecID uint16, pixelFormat byte, destLeft, destTop, destRight, destBottom uint16, bitmapData []byte) []byte {
-	payload := make([]byte, 0, 17+len(bitmapData))
-	payload = appendLE16Bytes(payload, surfaceID)
-	payload = appendLE16Bytes(payload, codecID)
-	payload = append(payload, pixelFormat)
-	payload = appendLE16Bytes(payload, destLeft)
-	payload = appendLE16Bytes(payload, destTop)
-	payload = appendLE16Bytes(payload, destRight)
-	payload = appendLE16Bytes(payload, destBottom)
-	payload = appendLE32Bytes(payload, uint32(len(bitmapData))) // #nosec G115 -- payload length is bounded by allocation.
-	payload = append(payload, bitmapData...)
-	return buildRDPGFXPDU(rdpgfxCmdWireToSurface1, 0, payload)
+	out := make([]byte, 8+17+len(bitmapData))
+	writeRDPGFXPDUHeader(out, rdpgfxCmdWireToSurface1, 0)
+	binary.LittleEndian.PutUint16(out[8:10], surfaceID)
+	binary.LittleEndian.PutUint16(out[10:12], codecID)
+	out[12] = pixelFormat
+	binary.LittleEndian.PutUint16(out[13:15], destLeft)
+	binary.LittleEndian.PutUint16(out[15:17], destTop)
+	binary.LittleEndian.PutUint16(out[17:19], destRight)
+	binary.LittleEndian.PutUint16(out[19:21], destBottom)
+	binary.LittleEndian.PutUint32(out[21:25], uint32(len(bitmapData))) // #nosec G115 -- payload length is bounded by allocation.
+	copy(out[25:], bitmapData)
+	return out
 }
 
 func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessUnit, width, height int) ([][]byte, bool) {
@@ -368,12 +371,16 @@ func appendPlanarRLELine(out []byte, row []byte) []byte {
 }
 
 func buildRDPGFXPDU(cmdID, flags uint16, payload []byte) []byte {
-	out := make([]byte, 8, 8+len(payload))
+	out := make([]byte, 8+len(payload))
+	writeRDPGFXPDUHeader(out, cmdID, flags)
+	copy(out[8:], payload)
+	return out
+}
+
+func writeRDPGFXPDUHeader(out []byte, cmdID, flags uint16) {
 	binary.LittleEndian.PutUint16(out[0:2], cmdID)
 	binary.LittleEndian.PutUint16(out[2:4], flags)
-	binary.LittleEndian.PutUint32(out[4:8], uint32(8+len(payload))) // #nosec G115 -- payload length is bounded by allocation.
-	out = append(out, payload...)
-	return out
+	binary.LittleEndian.PutUint32(out[4:8], uint32(len(out))) // #nosec G115 -- PDU length is bounded by allocation.
 }
 
 func traceRDPGFXPDU(pdu *rdpgfxPDU) {
