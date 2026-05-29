@@ -265,7 +265,7 @@ func encodeRFXRLGR(coeff []int16, mode rfxRLGRMode) ([]byte, bool) {
 	)
 	k, kp := uint32(1), uint32(8)
 	kr, krp := uint32(1), uint32(8)
-	var bw rfxBitWriter
+	bw := rfxBitWriter{buf: make([]byte, 0, len(coeff)/2)}
 	idx := 0
 	for idx < len(coeff) {
 		if k != 0 {
