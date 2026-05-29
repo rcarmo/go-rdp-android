@@ -9,7 +9,7 @@ Do not mark the parity plan complete until each non-decode-only item has product
 | go-rdp client-side support | Class | Server obligation |
 | --- | --- | --- |
 | Uncompressed bitmap updates: 8 bpp palette, 15 bpp RGB555, 16 bpp RGB565, 24 bpp BGR, 32 bpp BGRA | Classic slow-path bitmap | Server must emit at least one safe release fallback. Additional lower-bpp palette/RGB555/RGB565 emission is only required if server negotiates those depths rather than normalizing to 24/32 bpp. |
-| Interleaved bitmap RLE: 8 bpp, 15 bpp, 16 bpp, 24 bpp, and 32 bpp-as-24 bpp compressed stream | Classic slow-path bitmap compression | Server has an experimental 24 bpp COPY/color-run subset with expansion rejection and matrix saved-byte evidence; lower compressed depths remain out of default negotiation and should stay documented as unsupported unless implemented. |
+| Interleaved bitmap RLE: 8 bpp, 15 bpp, 16 bpp, 24 bpp, and 32 bpp-as-24 bpp compressed stream | Classic slow-path bitmap compression | Server has an experimental COPY/color-run subset for emitted 8/15/16/24 bpp rectangles with expansion rejection, round-trip tests, and matrix saved-byte evidence; 32-as-24 remains covered by constraining server emission to the explicit 24 bpp rectangle path. |
 | RDP6 Planar bitmap compression via `NO_BITMAP_COMPRESSION_HDR` for 32 bpp bitmap updates | Classic bitmap-update compression, distinct from RDPGFX Planar | Server has an experimental classic bitmap-update Planar emitter gated by `GO_RDP_ANDROID_ENABLE_BITMAP_PLANAR=1`, with matrix raw/saved/saved-percent evidence. Keep it separate from default RDPGFX Planar. |
 | Palette update + 8 bpp paletted bitmap decode | Classic bitmap support | Server emits a 256-entry grayscale palette when the experimental 8 bpp path is selected via `GO_RDP_ANDROID_ENABLE_BITMAP_BPP=8`; matrix evidence requires both 8 bpp tile traces and palette writes. |
 
@@ -43,7 +43,7 @@ Do not mark the parity plan complete until each non-decode-only item has product
 
 ## Immediate parity gaps to resolve
 
-1. Classic bitmap RLE is currently only a 24 bpp COPY/color-run subset on the server; go-rdp client decodes 8/15/16/24 and 32-as-24.
+1. Classic bitmap RLE is still an experimental COPY/color-run subset rather than a full RDP bitmap-compression optimizer; keep it opt-in until broader client/performance evidence exists.
 2. Bitmap Codecs PNG/H264/ClearCodec/RemoteFX Progressive GUIDs are present in go-rdp client capability parsing but not all are exported or mapped to actual decode paths; this must remain documented before claiming negotiated parity.
 3. RDPGFX ClearCodec, CAProgressive/CAProgressiveV2, and AVC444/AVC444v2 have partial/minimal opt-in production encoders, but still need broader spec/client proof before release-default status.
 4. RDPGFX AVC444/AVC444v2 still need real Android auxiliary-plane AVC generation rather than deterministic bounded test access units.

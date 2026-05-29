@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
@@ -109,20 +110,24 @@ func TestBuildSolidBitmapUpdateUsesRLEWhenEnabled(t *testing.T) {
 }
 
 func TestBitmapRLEStatsFromUpdates(t *testing.T) {
-	rect := buildSolidBitmapRect(64, 64, 0xff336699)
-	update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
-	if !ok {
-		t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
-	}
-	rects, bytes, saved := bitmapRLEStatsFromUpdates([][]byte{update})
-	if rects != 1 {
-		t.Fatalf("rects = %d, want 1", rects)
-	}
-	if bytes <= 0 {
-		t.Fatalf("bytes = %d, want positive", bytes)
-	}
-	if saved <= 0 {
-		t.Fatalf("saved = %d, want positive", saved)
+	for _, bpp := range []uint16{bitmapBPP8, bitmapBPP15, bitmapBPP16, bitmapBPP24} {
+		t.Run(fmt.Sprintf("%dbpp", bpp), func(t *testing.T) {
+			rect := buildSolidBitmapRectForBPP(64, 64, 0xff336699, bpp)
+			update, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
+			if !ok {
+				t.Fatal("buildCompressedBitmapRLEUpdate() ok = false")
+			}
+			rects, bytes, saved := bitmapRLEStatsFromUpdates([][]byte{update})
+			if rects != 1 {
+				t.Fatalf("rects = %d, want 1", rects)
+			}
+			if bytes <= 0 {
+				t.Fatalf("bytes = %d, want positive", bytes)
+			}
+			if saved <= 0 {
+				t.Fatalf("saved = %d, want positive", saved)
+			}
+		})
 	}
 }
 

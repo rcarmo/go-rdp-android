@@ -25,7 +25,7 @@ func bitmapRLEStatsFromUpdates(updates [][]byte) (rects int64, bytes int64, save
 			if flags&(bitmapCompressionFlag|noBitmapCompressionHeader) == bitmapCompressionFlag|noBitmapCompressionHeader {
 				rects++
 				bytes += int64(dataLen)
-				if bpp == bitmapBPP24 && width > 0 && height > 0 {
+				if _, ok := bitmapRLEBytesPerPixel(bpp); ok && width > 0 && height > 0 {
 					uncompressed := int64(alignedBitmapRowBytes(width, bpp) * height)
 					if uncompressed > int64(dataLen) {
 						savedBytes += uncompressed - int64(dataLen)
