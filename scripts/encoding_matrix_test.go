@@ -36,6 +36,8 @@ func TestEncodingMatrixIncludesRDPGFXFixtureCases(t *testing.T) {
 		"run_case rdpgfx-clearcodec-fixture",
 		"-clearcodec-file $OUT/codec-fixture.bin",
 		"run_case rdpgfx-progressive-encoded",
+		"run_case rdpgfx-progressivev2-encoded",
+		"rdpgfx_progressive_v2_selected",
 		"run_case rdpgfx-progressive-fixture",
 		"-progressive-file $OUT/codec-fixture.bin",
 		"run_case rdpgfx-avc444-encoded",
@@ -149,6 +151,7 @@ func TestEncodingMatrixCodecCoverageJSONShape(t *testing.T) {
 	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX ClearCodec", "production_encoder", true)
 	assertEntryHasString(t, coverage.RuntimeEmitters, "RDPGFX AVC444", "client_proof", "missing-production-client-proof")
 	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX AVC444", "production_encoder", true)
+	assertEntryHasBool(t, coverage.RuntimeEmitters, "RDPGFX Progressive / other progressive codecs", "production_encoder", true)
 	assertEntryNamed(t, coverage.MissingRuntimeEmitters, "RDPGFX Progressive / other progressive codecs")
 	assertStringPresent(t, coverage.ReleaseDefaults, "RDPGFX Planar")
 	assertStringPresent(t, coverage.NonDefaultExperimentalEmitters, "PNG bitmap codec")
