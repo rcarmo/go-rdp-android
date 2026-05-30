@@ -126,27 +126,36 @@ func h264HasStartCode(data []byte) bool {
 }
 
 func h264LengthPrefixedToAnnexB(data []byte) ([]byte, bool) {
-	out := make([]byte, 0, len(data)+16)
-	if cap(out) > h264MaxAccessUnitLen {
-		out = make([]byte, 0, h264MaxAccessUnitLen)
-	}
+	outLen := 0
 	for offset := 0; offset < len(data); {
 		if len(data)-offset < 4 {
 			return nil, false
 		}
 		nalLen := int(binary.BigEndian.Uint32(data[offset : offset+4]))
 		offset += 4
-		if nalLen <= 0 || nalLen > len(data)-offset {
+		if nalLen <= 0 || nalLen > len(data)-offset || outLen > h264MaxAccessUnitLen-4-nalLen {
 			return nil, false
 		}
-		if len(out) > h264MaxAccessUnitLen-4-nalLen {
-			return nil, false
-		}
-		out = append(out, 0, 0, 0, 1)
-		out = append(out, data[offset:offset+nalLen]...)
+		outLen += 4 + nalLen
 		offset += nalLen
 	}
-	return out, len(out) > 0
+	if outLen == 0 {
+		return nil, false
+	}
+	out := make([]byte, outLen)
+	writeOff := 0
+	for offset := 0; offset < len(data); {
+		nalLen := int(binary.BigEndian.Uint32(data[offset : offset+4]))
+		offset += 4
+		out[writeOff+0] = 0
+		out[writeOff+1] = 0
+		out[writeOff+2] = 0
+		out[writeOff+3] = 1
+		writeOff += 4
+		writeOff += copy(out[writeOff:], data[offset:offset+nalLen])
+		offset += nalLen
+	}
+	return out, true
 }
 
 func h264AnnexBContainsNALType(data []byte, nalType byte) bool {

@@ -53,6 +53,18 @@ func BenchmarkH264PrepareForWireAnnexBKeyframe(b *testing.B) {
 	}
 }
 
+func BenchmarkH264NormalizeLengthPrefixed(b *testing.B) {
+	data := []byte{0, 0, 0, 3, 0x67, 0x01, 0x02, 0, 0, 0, 2, 0x68, 0x03, 0, 0, 0, 4, 0x65, 0x04, 0x05, 0x06}
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		annexB, ok := h264NormalizeAnnexB(data)
+		if !ok || len(annexB) != len(data) {
+			b.Fatal("bad normalized access unit")
+		}
+	}
+}
+
 func TestH264NormalizeAnnexB(t *testing.T) {
 	annexB, ok := h264NormalizeAnnexB([]byte{0, 0, 0, 1, 0x65})
 	if !ok || string(annexB) != string([]byte{0, 0, 0, 1, 0x65}) {
