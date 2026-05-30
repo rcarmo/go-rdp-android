@@ -30,18 +30,33 @@ var (
 
 func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []clientChannel) error {
 	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol, channels))
-	body := new(bytes.Buffer)
+	body := bytes.NewBuffer(make([]byte, 0, 16+len(defaultDomainParametersBER)+len(gcc)))
 	berWriteEnumerated(mcsResultSuccessful, body)
 	berWriteInteger(1001, body) // calledConnectId
 	berWriteSequence(defaultDomainParameters().serialize(), body)
 	berWriteOctetString(gcc, body)
 
-	mcs := new(bytes.Buffer)
+	mcs := bytes.NewBuffer(make([]byte, 0, body.Len()+4))
 	berWriteApplicationTag(mcsConnectResponseAppTag, body.Len(), mcs)
 	mcs.Write(body.Bytes())
 
-	x224 := append([]byte{0x02, x224TypeData, 0x80}, mcs.Bytes()...)
-	return writeTPKT(conn, x224)
+	mcsBytes := mcs.Bytes()
+	totalLen := 4 + 3 + len(mcsBytes)
+	if totalLen > 0xffff {
+		return fmt.Errorf("MCS Connect Response too large: %d", len(mcsBytes))
+	}
+	out := make([]byte, totalLen)
+	out[0] = tpktVersion
+	binary.BigEndian.PutUint16(out[2:4], uint16(totalLen))
+	out[4] = 0x02
+	out[5] = x224TypeData
+	out[6] = 0x80
+	copy(out[7:], mcsBytes)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", totalLen-4)
+	}
+	return err
 }
 
 type domainParameters struct {
@@ -85,7 +100,7 @@ func (p domainParameters) serialize() []byte {
 }
 
 func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
-	inner := new(bytes.Buffer)
+	inner := bytes.NewBuffer(make([]byte, 0, 16+len(serverUserData)))
 	perWriteChoice(0, inner)
 	perWriteInteger16(1001, inner)
 	perWriteInteger(1, inner)
@@ -96,7 +111,7 @@ func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
 	perWriteLength(len(serverUserData), inner)
 	inner.Write(serverUserData)
 
-	buf := new(bytes.Buffer)
+	buf := bytes.NewBuffer(make([]byte, 0, inner.Len()+8))
 	perWriteChoice(0, buf)
 	perWriteObjectIdentifier(t12402098OID, buf)
 	perWriteLength(inner.Len(), buf)

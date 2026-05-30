@@ -2,6 +2,17 @@ package rdpserver
 
 import "testing"
 
+func BenchmarkWriteMCSConnectResponse(b *testing.B) {
+	channels := []clientChannel{{Name: "rdpdr", ID: 1004}, {Name: "cliprdr", ID: 1005}, {Name: "drdynvc", ID: 1006}}
+	conn := discardConn{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeMCSConnectResponse(conn, protocolSSL, channels); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkDefaultDomainParametersSerialize(b *testing.B) {
 	params := defaultDomainParameters()
 	b.ReportAllocs()
