@@ -393,16 +393,27 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 		return m.writeStaticDRDYNVCDataPayload(conn, m.rdpgfxChannelID, []byte{0xe0, 0x00}, payload)
 	}
 	firstPayloadLen := drdynvcWriteChunkSize - 2
-	if err := m.writeStaticDRDYNVCDataFirstPayload(conn, m.rdpgfxChannelID, uint32(wrappedLen), []byte{0xe0, 0x00}, payload[:firstPayloadLen]); err != nil { // #nosec G115 -- wrapped length is bounded by allocation.
-		return err
+	totalLen := m.staticDRDYNVCDataFirstPacketLen(m.rdpgfxChannelID, uint32(wrappedLen), 2+firstPayloadLen)
+	fragments := 1
+	for offset := firstPayloadLen; offset < len(payload); offset += drdynvcWriteChunkSize {
+		chunkLen := minInt(len(payload)-offset, drdynvcWriteChunkSize)
+		totalLen += m.staticDRDYNVCDataPacketLen(m.rdpgfxChannelID, chunkLen)
+		fragments++
 	}
+	if totalLen <= 0 {
+		return fmt.Errorf("RDPGFX payload too large: %d", len(payload))
+	}
+	out := make([]byte, 0, totalLen)
+	out = m.appendStaticDRDYNVCDataFirstPacket(out, m.rdpgfxChannelID, uint32(wrappedLen), []byte{0xe0, 0x00}, payload[:firstPayloadLen]) // #nosec G115 -- wrapped length is bounded above.
 	for offset := firstPayloadLen; offset < len(payload); offset += drdynvcWriteChunkSize {
 		end := minInt(len(payload), offset+drdynvcWriteChunkSize)
-		if err := m.writeStaticDRDYNVCDataPayload(conn, m.rdpgfxChannelID, nil, payload[offset:end]); err != nil {
-			return err
-		}
+		out = m.appendStaticDRDYNVCDataPacket(out, m.rdpgfxChannelID, nil, payload[offset:end])
 	}
-	return nil
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "fragments=%d payload_len=%d", fragments, len(out))
+	}
+	return err
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
@@ -415,10 +426,7 @@ func (m *drdynvcManager) writeStaticDRDYNVCDataPayload(conn net.Conn, channelID 
 	cb := drdynvcCbChID(channelID)
 	drdynvcLen := 1 + dvcChannelIDLen(cb) + len(prefix) + len(payload)
 	return m.writeStaticPayloadParts(conn, drdynvcLen, func(out []byte) {
-		out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()
-		off := writeDVCChannelID(out[1:], cb, channelID) + 1
-		copy(out[off:], prefix)
-		copy(out[off+len(prefix):], payload)
+		writeDRDYNVCDataPayloadAt(out, cb, channelID, prefix, payload)
 	})
 }
 
@@ -427,39 +435,94 @@ func (m *drdynvcManager) writeStaticDRDYNVCDataFirstPayload(conn net.Conn, chann
 	sp := drdynvcSpLength(length)
 	drdynvcLen := 1 + dvcChannelIDLen(cb) + dvcLengthLen(sp) + len(prefix) + len(payload)
 	return m.writeStaticPayloadParts(conn, drdynvcLen, func(out []byte) {
-		out[0] = (drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()
-		off := writeDVCChannelID(out[1:], cb, channelID) + 1
-		off += writeDVCLength(out[off:], sp, length)
-		copy(out[off:], prefix)
-		copy(out[off+len(prefix):], payload)
+		writeDRDYNVCDataFirstPayloadAt(out, cb, sp, channelID, length, prefix, payload)
 	})
+}
+
+func (m *drdynvcManager) staticDRDYNVCDataPacketLen(channelID uint32, payloadLen int) int {
+	return m.staticPayloadPacketLen(1 + dvcChannelIDLen(drdynvcCbChID(channelID)) + payloadLen)
+}
+
+func (m *drdynvcManager) staticDRDYNVCDataFirstPacketLen(channelID uint32, length uint32, payloadLen int) int {
+	return m.staticPayloadPacketLen(1 + dvcChannelIDLen(drdynvcCbChID(channelID)) + dvcLengthLen(drdynvcSpLength(length)) + payloadLen)
+}
+
+func (m *drdynvcManager) appendStaticDRDYNVCDataPacket(out []byte, channelID uint32, prefix []byte, payload []byte) []byte {
+	cb := drdynvcCbChID(channelID)
+	drdynvcLen := 1 + dvcChannelIDLen(cb) + len(prefix) + len(payload)
+	return m.appendStaticPayloadPacket(out, drdynvcLen, func(payloadOut []byte) {
+		writeDRDYNVCDataPayloadAt(payloadOut, cb, channelID, prefix, payload)
+	})
+}
+
+func (m *drdynvcManager) appendStaticDRDYNVCDataFirstPacket(out []byte, channelID uint32, length uint32, prefix []byte, payload []byte) []byte {
+	cb := drdynvcCbChID(channelID)
+	sp := drdynvcSpLength(length)
+	drdynvcLen := 1 + dvcChannelIDLen(cb) + dvcLengthLen(sp) + len(prefix) + len(payload)
+	return m.appendStaticPayloadPacket(out, drdynvcLen, func(payloadOut []byte) {
+		writeDRDYNVCDataFirstPayloadAt(payloadOut, cb, sp, channelID, length, prefix, payload)
+	})
+}
+
+func writeDRDYNVCDataPayloadAt(out []byte, cb uint8, channelID uint32, prefix []byte, payload []byte) {
+	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	copy(out[off:], prefix)
+	copy(out[off+len(prefix):], payload)
+}
+
+func writeDRDYNVCDataFirstPayloadAt(out []byte, cb uint8, sp uint8, channelID uint32, length uint32, prefix []byte, payload []byte) {
+	out[0] = (drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	off += writeDVCLength(out[off:], sp, length)
+	copy(out[off:], prefix)
+	copy(out[off+len(prefix):], payload)
 }
 
 func (m *drdynvcManager) writeStaticPayloadParts(conn net.Conn, payloadLen int, writePayload func([]byte)) error {
 	if !m.enabled() {
 		return nil
 	}
-	staticLen := 8 + payloadLen
-	perLen := encodedPERLengthSize(staticLen)
-	bodyLen := 2 + 2 + 1 + perLen + staticLen
-	totalLen := 4 + 3 + 1 + bodyLen
-	if staticLen > drdynvcMaxStaticPayload || totalLen > 0xffff {
+	totalLen := m.staticPayloadPacketLen(payloadLen)
+	if totalLen <= 0 {
 		return fmt.Errorf("drdynvc static payload too large: %d", payloadLen)
 	}
-	out := make([]byte, totalLen)
-	writeTPKTX224MCSHeader(out, mcsSendDataIndicationApp, bodyLen)
-	binary.BigEndian.PutUint16(out[8:10], serverChannelID-defaultMCSUserID)
-	binary.BigEndian.PutUint16(out[10:12], m.staticChannelID)
-	out[12] = 0x70
-	staticOff := 13 + writePERLength(out[13:], staticLen)
-	binary.LittleEndian.PutUint32(out[staticOff:staticOff+4], uint32(payloadLen)) // #nosec G115 -- payload length is bounded above.
-	binary.LittleEndian.PutUint32(out[staticOff+4:staticOff+8], channelFlagFirst|channelFlagLast)
-	writePayload(out[staticOff+8 : staticOff+8+payloadLen])
+	out := make([]byte, 0, totalLen)
+	out = m.appendStaticPayloadPacket(out, payloadLen, writePayload)
 	_, err := conn.Write(out)
 	if err == nil && traceEnabled {
 		tracef("tpkt_write", "payload_len=%d", totalLen-4)
 	}
 	return err
+}
+
+func (m *drdynvcManager) staticPayloadPacketLen(payloadLen int) int {
+	staticLen := 8 + payloadLen
+	perLen := encodedPERLengthSize(staticLen)
+	bodyLen := 2 + 2 + 1 + perLen + staticLen
+	totalLen := 4 + 3 + 1 + bodyLen
+	if staticLen > drdynvcMaxStaticPayload || totalLen > 0xffff {
+		return 0
+	}
+	return totalLen
+}
+
+func (m *drdynvcManager) appendStaticPayloadPacket(out []byte, payloadLen int, writePayload func([]byte)) []byte {
+	totalLen := m.staticPayloadPacketLen(payloadLen)
+	start := len(out)
+	out = out[:start+totalLen]
+	packet := out[start : start+totalLen]
+	staticLen := 8 + payloadLen
+	bodyLen := totalLen - 4 - 3 - 1
+	writeTPKTX224MCSHeader(packet, mcsSendDataIndicationApp, bodyLen)
+	binary.BigEndian.PutUint16(packet[8:10], serverChannelID-defaultMCSUserID)
+	binary.BigEndian.PutUint16(packet[10:12], m.staticChannelID)
+	packet[12] = 0x70
+	staticOff := 13 + writePERLength(packet[13:], staticLen)
+	binary.LittleEndian.PutUint32(packet[staticOff:staticOff+4], uint32(payloadLen)) // #nosec G115 -- payload length is bounded above.
+	binary.LittleEndian.PutUint32(packet[staticOff+4:staticOff+8], channelFlagFirst|channelFlagLast)
+	writePayload(packet[staticOff+8 : staticOff+8+payloadLen])
+	return out
 }
 
 func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink, lifecycle *input.TouchLifecycleCoalescer) error {
