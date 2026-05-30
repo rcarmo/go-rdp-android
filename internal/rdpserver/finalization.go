@@ -456,14 +456,41 @@ func writeShareDataPDU(conn net.Conn, pduType2 uint8, payload []byte) error {
 	if traceEnabled {
 		tracef("share_data_write", "type2=0x%02x payload_len=%d", pduType2, len(payload))
 	}
-	data := buildShareDataPDU(pduType2, payload)
-	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, data)
-	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
+	dataLen := 18 + len(payload)
+	perLen := encodedPERLengthSize(dataLen)
+	bodyLen := 2 + 2 + 1 + perLen + dataLen
+	totalLen := 4 + 3 + 1 + bodyLen
+	if dataLen > 0xffff || totalLen > 0xffff {
+		return fmt.Errorf("Share Data PDU payload too large: %d", len(payload))
+	}
+	out := make([]byte, totalLen)
+	binary.BigEndian.PutUint16(out[2:4], uint16(totalLen))
+	out[0] = tpktVersion
+	out[4] = 0x02
+	out[5] = x224TypeData
+	out[6] = 0x80
+	out[7] = byte(mcsSendDataIndicationApp << 2)
+	binary.BigEndian.PutUint16(out[8:10], serverChannelID-defaultMCSUserID)
+	binary.BigEndian.PutUint16(out[10:12], globalChannelID)
+	out[12] = 0x70
+	dataOff := 13 + writePERLength(out[13:], dataLen)
+	writeShareDataPDUAt(out[dataOff:dataOff+dataLen], pduType2, payload)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", totalLen-4)
+	}
+	return err
 }
 
 func buildShareDataPDU(pduType2 uint8, payload []byte) []byte {
 	totalLength := 18 + len(payload)
 	out := make([]byte, totalLength)
+	writeShareDataPDUAt(out, pduType2, payload)
+	return out
+}
+
+func writeShareDataPDUAt(out []byte, pduType2 uint8, payload []byte) {
+	totalLength := 18 + len(payload)
 	binary.LittleEndian.PutUint16(out[0:2], uint16(totalLength))
 	binary.LittleEndian.PutUint16(out[2:4], pduTypeData)
 	binary.LittleEndian.PutUint16(out[4:6], serverChannelID)
@@ -475,7 +502,6 @@ func buildShareDataPDU(pduType2 uint8, payload []byte) []byte {
 	out[15] = 0x00 // compressedType
 	binary.LittleEndian.PutUint16(out[16:18], 0)
 	copy(out[18:], payload)
-	return out
 }
 
 func buildSynchronizePayload() []byte {

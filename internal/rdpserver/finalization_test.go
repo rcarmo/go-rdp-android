@@ -68,6 +68,18 @@ func BenchmarkWriteMCSDomainPDU_4KiB(b *testing.B) {
 	}
 }
 
+func BenchmarkWriteShareDataPDU_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	conn := &benchmarkWriteConn{}
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeShareDataPDU(conn, pduType2Update, payload); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkBuildShareDataPDU_4KiB(b *testing.B) {
 	payload := make([]byte, 4096)
 	for i := range payload {

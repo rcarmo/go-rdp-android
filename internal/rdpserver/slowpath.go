@@ -119,3 +119,19 @@ func encodePERLength(length int) []byte {
 	}
 	return []byte{byte(length)}
 }
+
+func encodedPERLengthSize(length int) int {
+	if length > 0x7f {
+		return 2
+	}
+	return 1
+}
+
+func writePERLength(out []byte, length int) int {
+	if length > 0x7f {
+		binary.BigEndian.PutUint16(out[0:2], uint16(length)|0x8000)
+		return 2
+	}
+	out[0] = byte(length)
+	return 1
+}
