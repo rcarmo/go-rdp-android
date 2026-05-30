@@ -179,7 +179,7 @@ func (m *drdynvcManager) handleStaticPDU(conn net.Conn, payload []byte) error {
 			return err
 		}
 		if code == drdynvcCreateOK && pdu.Name == rdpeiDynamicChannelName {
-			return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(pdu.ChannelID, buildRDPEISCReadyPDU(rdpeiProtocolV300, nil)))
+			return m.writeStaticDRDYNVCDataPayload(conn, pdu.ChannelID, nil, buildRDPEISCReadyPDU(rdpeiProtocolV300, nil))
 		}
 	case drdynvcCmdData:
 		if err := m.requireOpenChannel(pdu.Header.Cmd, pdu.ChannelID); err != nil {

@@ -291,7 +291,16 @@ func parseRDPEIDismissHoveringTouchContact(cur *rdpeiCursor) (*rdpeiDismissHover
 	return &rdpeiDismissHoveringTouchContactPDU{ContactID: contactID}, nil
 }
 
+var rdpeiSCReadyV300PDU = [...]byte{
+	byte(rdpeiEventSCReady), byte(rdpeiEventSCReady >> 8),
+	10, 0, 0, 0,
+	byte(rdpeiProtocolV300 & 0xff), byte((rdpeiProtocolV300 >> 8) & 0xff), byte((rdpeiProtocolV300 >> 16) & 0xff), byte((rdpeiProtocolV300 >> 24) & 0xff),
+}
+
 func buildRDPEISCReadyPDU(protocolVersion uint32, supportedFeatures *uint32) []byte {
+	if protocolVersion == rdpeiProtocolV300 && supportedFeatures == nil {
+		return rdpeiSCReadyV300PDU[:]
+	}
 	payloadLen := 4
 	if supportedFeatures != nil {
 		payloadLen += 4
