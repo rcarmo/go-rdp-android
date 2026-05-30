@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -41,6 +42,29 @@ func TestBuildAndParseShareDataPDU(t *testing.T) {
 	}
 	if data.PDUType2 != pduType2Synchronize || data.ShareID != defaultShareID || len(data.Payload) != 4 {
 		t.Fatalf("unexpected share data: %#v", data)
+	}
+}
+
+type benchmarkWriteConn struct{ n int }
+
+func (c *benchmarkWriteConn) Read(_ []byte) (int, error)         { return 0, nil }
+func (c *benchmarkWriteConn) Write(p []byte) (int, error)        { c.n += len(p); return len(p), nil }
+func (c *benchmarkWriteConn) Close() error                       { return nil }
+func (c *benchmarkWriteConn) LocalAddr() net.Addr                { return nil }
+func (c *benchmarkWriteConn) RemoteAddr() net.Addr               { return nil }
+func (c *benchmarkWriteConn) SetDeadline(_ time.Time) error      { return nil }
+func (c *benchmarkWriteConn) SetReadDeadline(_ time.Time) error  { return nil }
+func (c *benchmarkWriteConn) SetWriteDeadline(_ time.Time) error { return nil }
+
+func BenchmarkWriteMCSDomainPDU_4KiB(b *testing.B) {
+	body := make([]byte, 4096)
+	conn := &benchmarkWriteConn{}
+	b.SetBytes(int64(len(body)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 

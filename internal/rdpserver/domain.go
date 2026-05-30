@@ -252,9 +252,24 @@ func writeMCSChannelJoinConfirm(conn net.Conn, initiator, channelID uint16) erro
 }
 
 func writeMCSDomainPDU(conn net.Conn, application int, body []byte) error {
-	mcs := append([]byte{byte(application << 2)}, body...)
-	x224 := append([]byte{0x02, x224TypeData, 0x80}, mcs...)
-	return writeTPKT(conn, x224)
+	length := 4 + 3 + 1 + len(body)
+	if length > 0xffff {
+		return fmt.Errorf("TPKT payload too large: %d", length-4)
+	}
+	out := make([]byte, length)
+	out[0] = tpktVersion
+	out[1] = 0
+	binary.BigEndian.PutUint16(out[2:4], uint16(length))
+	out[4] = 0x02
+	out[5] = x224TypeData
+	out[6] = 0x80
+	out[7] = byte(application << 2)
+	copy(out[8:], body)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", length-4)
+	}
+	return err
 }
 
 func encodePERInteger16(value, minimum uint16) []byte {
