@@ -63,6 +63,21 @@ func TestBuildDRDYNVCCreateResponsePDU(t *testing.T) {
 	}
 }
 
+func BenchmarkBuildDRDYNVCControlPDUs(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(buildDRDYNVCCapsPDU(drdynvcCapsVersion1)) != 4 {
+			b.Fatal("bad caps length")
+		}
+		if len(buildDRDYNVCCreateResponsePDU(9, 0)) == 0 {
+			b.Fatal("bad create response length")
+		}
+		if len(buildDRDYNVCCreateRequestPDU(9, rdpgfxDynamicChannelName)) == 0 {
+			b.Fatal("bad create request length")
+		}
+	}
+}
+
 func BenchmarkBuildDRDYNVCDataPDU_4KiB(b *testing.B) {
 	payload := make([]byte, 4096)
 	b.SetBytes(int64(len(payload)))

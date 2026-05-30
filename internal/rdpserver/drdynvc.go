@@ -583,25 +583,28 @@ func parseDRDYNVCPDU(data []byte) (*drdynvcPDU, error) {
 }
 
 func buildDRDYNVCCapsPDU(version uint16) []byte {
-	out := []byte{drdynvcHeader{Cmd: drdynvcCmdCapability}.serialize(), 0}
-	out = append(out, byte(version), byte(version>>8))
+	out := make([]byte, 4)
+	out[0] = drdynvcHeader{Cmd: drdynvcCmdCapability}.serialize()
+	out[1] = 0
+	binary.LittleEndian.PutUint16(out[2:4], version)
 	return out
 }
 
 func buildDRDYNVCCreateResponsePDU(channelID uint32, creationCode uint32) []byte {
 	cb := drdynvcCbChID(channelID)
-	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()}
-	out = appendDVCChannelID(out, cb, channelID)
-	out = appendLE32Bytes(out, creationCode)
+	out := make([]byte, 1+dvcChannelIDLen(cb)+4)
+	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	binary.LittleEndian.PutUint32(out[off:off+4], creationCode)
 	return out
 }
 
 func buildDRDYNVCCreateRequestPDU(channelID uint32, name string) []byte {
 	cb := drdynvcCbChID(channelID)
-	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()}
-	out = appendDVCChannelID(out, cb, channelID)
-	out = append(out, []byte(name)...)
-	out = append(out, 0)
+	out := make([]byte, 1+dvcChannelIDLen(cb)+len(name)+1)
+	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	copy(out[off:], name)
 	return out
 }
 
