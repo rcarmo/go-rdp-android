@@ -116,7 +116,7 @@ func h264NormalizeAnnexB(data []byte) ([]byte, bool) {
 		return nil, false
 	}
 	if h264HasStartCode(data) {
-		return append([]byte(nil), data...), true
+		return data, true
 	}
 	return h264LengthPrefixedToAnnexB(data)
 }

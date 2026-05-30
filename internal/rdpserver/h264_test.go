@@ -41,6 +41,18 @@ func TestH264EnabledFromEnv(t *testing.T) {
 	}
 }
 
+func BenchmarkH264PrepareForWireAnnexBKeyframe(b *testing.B) {
+	data := []byte{0, 0, 0, 1, 0x65, 0x01, 0x02, 0x03}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var state h264StreamState
+		unit, ok := state.prepareForWire(h264AccessUnit{PresentationTimeUS: int64(i), KeyFrame: true, Data: data})
+		if !ok || len(unit.Data) != len(data) {
+			b.Fatal("bad H.264 wire unit")
+		}
+	}
+}
+
 func TestH264NormalizeAnnexB(t *testing.T) {
 	annexB, ok := h264NormalizeAnnexB([]byte{0, 0, 0, 1, 0x65})
 	if !ok || string(annexB) != string([]byte{0, 0, 0, 1, 0x65}) {
