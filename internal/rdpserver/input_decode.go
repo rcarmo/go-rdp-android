@@ -126,56 +126,68 @@ func parseFastPathInputEvents(payload []byte, count int) ([]decodedInputEvent, e
 }
 
 func dispatchSlowPathInput(payload []byte, sink input.Sink) error {
-	events, err := parseSlowPathInput(payload)
-	if err != nil {
-		return err
+	if len(payload) < 4 {
+		return fmt.Errorf("short Input PDU")
 	}
-	return dispatchDecodedInputEvents(events, sink)
+	count := int(binary.LittleEndian.Uint16(payload[0:2]))
+	offset := 4
+	for i := 0; i < count; i++ {
+		if len(payload)-offset < 12 {
+			return fmt.Errorf("short Input event")
+		}
+		event := decodedSlowPathInputEvent(payload[offset : offset+12])
+		if err := dispatchDecodedInputEvent(event, sink); err != nil {
+			return err
+		}
+		offset += 12
+	}
+	return nil
 }
 
 func dispatchDecodedInputEvents(events []decodedInputEvent, sink input.Sink) error {
+	for _, event := range events {
+		if err := dispatchDecodedInputEvent(event, sink); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func dispatchDecodedInputEvent(event decodedInputEvent, sink input.Sink) error {
 	if sink == nil {
 		return nil
 	}
-	for _, event := range events {
-		switch event.MessageType {
-		case slowInputScanCode:
-			released := event.Flags&slowKeyboardFlagRelease != 0
-			if event.FastPath {
-				released = event.Flags&fastPathKeyboardFlagRelease != 0
-			}
-			if err := sink.Key(event.Code, !released); err != nil {
+	switch event.MessageType {
+	case slowInputScanCode:
+		released := event.Flags&slowKeyboardFlagRelease != 0
+		if event.FastPath {
+			released = event.Flags&fastPathKeyboardFlagRelease != 0
+		}
+		return sink.Key(event.Code, !released)
+	case slowInputUnicode:
+		released := event.Flags&slowKeyboardFlagRelease != 0
+		if event.FastPath {
+			released = event.Flags&fastPathKeyboardFlagRelease != 0
+		}
+		if !released {
+			return sink.Unicode(rune(event.Code))
+		}
+	case slowInputMouse, slowInputMouseX:
+		if event.Flags&slowPointerFlagMove != 0 {
+			if err := sink.PointerMove(int(event.X), int(event.Y)); err != nil {
 				return err
 			}
-		case slowInputUnicode:
-			released := event.Flags&slowKeyboardFlagRelease != 0
-			if event.FastPath {
-				released = event.Flags&fastPathKeyboardFlagRelease != 0
-			}
-			if !released {
-				if err := sink.Unicode(rune(event.Code)); err != nil {
+		}
+		if event.MessageType == slowInputMouse && event.Flags&(slowPointerFlagWheel|slowPointerFlagHWheel) != 0 {
+			if wheelSink, ok := sink.(input.WheelSink); ok {
+				if err := wheelSink.PointerWheel(int(event.X), int(event.Y), pointerWheelDelta(event.Flags), event.Flags&slowPointerFlagHWheel != 0); err != nil {
 					return err
 				}
 			}
-		case slowInputMouse, slowInputMouseX:
-			if event.Flags&slowPointerFlagMove != 0 {
-				if err := sink.PointerMove(int(event.X), int(event.Y)); err != nil {
-					return err
-				}
-			}
-			if event.MessageType == slowInputMouse && event.Flags&(slowPointerFlagWheel|slowPointerFlagHWheel) != 0 {
-				if wheelSink, ok := sink.(input.WheelSink); ok {
-					if err := wheelSink.PointerWheel(int(event.X), int(event.Y), pointerWheelDelta(event.Flags), event.Flags&slowPointerFlagHWheel != 0); err != nil {
-						return err
-					}
-				}
-			}
-			buttons := pointerButtons(event.Flags)
-			if buttons != 0 {
-				if err := sink.PointerButton(int(event.X), int(event.Y), buttons, event.Flags&slowPointerFlagDown != 0); err != nil {
-					return err
-				}
-			}
+		}
+		buttons := pointerButtons(event.Flags)
+		if buttons != 0 {
+			return sink.PointerButton(int(event.X), int(event.Y), buttons, event.Flags&slowPointerFlagDown != 0)
 		}
 	}
 	return nil
@@ -192,25 +204,29 @@ func parseSlowPathInput(payload []byte) ([]decodedInputEvent, error) {
 		if len(payload)-offset < 12 {
 			return nil, fmt.Errorf("short Input event")
 		}
-		messageType := binary.LittleEndian.Uint16(payload[offset+4 : offset+6])
-		event := decodedInputEvent{MessageType: messageType}
-		switch messageType {
-		case slowInputSync:
-			event.Flags = binary.LittleEndian.Uint16(payload[offset+6 : offset+8])
-		case slowInputScanCode, slowInputUnicode:
-			event.Flags = binary.LittleEndian.Uint16(payload[offset+6 : offset+8])
-			event.Code = binary.LittleEndian.Uint16(payload[offset+8 : offset+10])
-		case slowInputMouse, slowInputMouseX:
-			event.Flags = binary.LittleEndian.Uint16(payload[offset+6 : offset+8])
-			event.X = binary.LittleEndian.Uint16(payload[offset+8 : offset+10])
-			event.Y = binary.LittleEndian.Uint16(payload[offset+10 : offset+12])
-		default:
-			// Preserve unknown event type but do not dispatch it.
-		}
-		events = append(events, event)
+		events = append(events, decodedSlowPathInputEvent(payload[offset:offset+12]))
 		offset += 12
 	}
 	return events, nil
+}
+
+func decodedSlowPathInputEvent(data []byte) decodedInputEvent {
+	messageType := binary.LittleEndian.Uint16(data[4:6])
+	event := decodedInputEvent{MessageType: messageType}
+	switch messageType {
+	case slowInputSync:
+		event.Flags = binary.LittleEndian.Uint16(data[6:8])
+	case slowInputScanCode, slowInputUnicode:
+		event.Flags = binary.LittleEndian.Uint16(data[6:8])
+		event.Code = binary.LittleEndian.Uint16(data[8:10])
+	case slowInputMouse, slowInputMouseX:
+		event.Flags = binary.LittleEndian.Uint16(data[6:8])
+		event.X = binary.LittleEndian.Uint16(data[8:10])
+		event.Y = binary.LittleEndian.Uint16(data[10:12])
+	default:
+		// Preserve unknown event type but do not dispatch it.
+	}
+	return event
 }
 
 func pointerWheelDelta(flags uint16) int {

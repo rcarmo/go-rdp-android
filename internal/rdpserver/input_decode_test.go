@@ -57,6 +57,23 @@ func (s *recordingInputSink) PointerWheel(x, y int, delta int, horizontal bool) 
 	return nil
 }
 
+func BenchmarkDispatchSlowPathInput(b *testing.B) {
+	payload := buildSlowPathInputPDU(
+		buildSlowPathInputEvent(slowInputScanCode, 0, 0x1e, 0),
+		buildSlowPathInputEvent(slowInputScanCode, slowKeyboardFlagRelease, 0x1e, 0),
+		buildSlowPathInputEvent(slowInputMouse, slowPointerFlagMove, 12, 34),
+	)
+	sink := &recordingInputSink{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		sink.moves = sink.moves[:0]
+		sink.keys = sink.keys[:0]
+		if err := dispatchSlowPathInput(payload, sink); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestParseSlowPathInput(t *testing.T) {
 	payload := buildSlowPathInputPDU(
 		buildSlowPathInputEvent(slowInputScanCode, 0, 0x1e, 0),
