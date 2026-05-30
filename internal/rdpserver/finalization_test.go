@@ -56,6 +56,30 @@ func (c *benchmarkWriteConn) SetDeadline(_ time.Time) error      { return nil }
 func (c *benchmarkWriteConn) SetReadDeadline(_ time.Time) error  { return nil }
 func (c *benchmarkWriteConn) SetWriteDeadline(_ time.Time) error { return nil }
 
+func BenchmarkBuildMCSSendDataIndication_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		body := buildMCSSendDataIndication(serverChannelID, globalChannelID, payload)
+		if len(body) <= len(payload) {
+			b.Fatalf("buildMCSSendDataIndication len=%d", len(body))
+		}
+	}
+}
+
+func BenchmarkBuildMCSSendDataRequest_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		body := buildMCSSendDataRequest(defaultMCSUserID, globalChannelID, payload)
+		if len(body) <= len(payload) {
+			b.Fatalf("buildMCSSendDataRequest len=%d", len(body))
+		}
+	}
+}
+
 func BenchmarkWriteMCSDomainPDU_4KiB(b *testing.B) {
 	body := make([]byte, 4096)
 	conn := &benchmarkWriteConn{}

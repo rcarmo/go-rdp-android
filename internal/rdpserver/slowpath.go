@@ -88,11 +88,13 @@ func parseSecurityPDU(data []byte) (*securityPDU, error) {
 }
 
 func buildMCSSendDataRequest(initiator, channelID uint16, data []byte) []byte {
-	body := encodePERInteger16(initiator, defaultMCSUserID)
-	body = append(body, encodePERInteger16(channelID, 0)...)
-	body = append(body, 0x70)
-	body = append(body, encodePERLength(len(data))...)
-	body = append(body, data...)
+	perLen := encodedPERLengthSize(len(data))
+	body := make([]byte, 2+2+1+perLen+len(data))
+	binary.BigEndian.PutUint16(body[0:2], initiator-defaultMCSUserID)
+	binary.BigEndian.PutUint16(body[2:4], channelID)
+	body[4] = 0x70
+	off := 5 + writePERLength(body[5:], len(data))
+	copy(body[off:], data)
 	return body
 }
 
