@@ -95,6 +95,9 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 	}
 
 	rleEnabled := bitmapRLEEnabledFromEnv()
+	if cache == nil && !rleEnabled {
+		return buildFrameBitmapUpdatesNoCacheBPP(src, stride, bpp)
+	}
 	updates := make([][]byte, 0, ((src.Width+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate)*((src.Height+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate))
 	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
 		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
@@ -139,6 +142,70 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 		}
 	}
 	return updates, true
+}
+
+func buildFrameBitmapUpdatesNoCacheBPP(src frame.Frame, stride int, bpp uint16) ([][]byte, bool) {
+	bytesPerPixel, ok := rawBitmapBytesPerPixel(bpp)
+	if !ok {
+		return nil, false
+	}
+	tilesX := (src.Width + maxInitialBitmapUpdate - 1) / maxInitialBitmapUpdate
+	tilesY := (src.Height + maxInitialBitmapUpdate - 1) / maxInitialBitmapUpdate
+	updates := make([][]byte, 0, tilesX*tilesY)
+	totalBytes := 0
+	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
+		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
+		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
+			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
+			totalBytes += 4 + 18 + alignedBitmapRowBytes(tileWidth, bpp)*tileHeight
+		}
+	}
+	buf := make([]byte, 0, totalBytes)
+	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
+		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
+		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
+			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
+			start := len(buf)
+			var ok bool
+			buf, ok = appendFrameBitmapTileUpdateForBPP(buf, src, stride, x, y, tileWidth, tileHeight, bpp, bytesPerPixel)
+			if !ok {
+				return nil, false
+			}
+			update := buf[start:len(buf):len(buf)]
+			if traceEnabled {
+				tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
+			}
+			updates = append(updates, update)
+		}
+	}
+	return updates, true
+}
+
+func appendFrameBitmapTileUpdateForBPP(out []byte, src frame.Frame, stride, x0, y0, width, height int, bpp uint16, bytesPerPixel int) ([]byte, bool) {
+	rowBytes := alignedBitmapRowBytes(width, bpp)
+	rect := bitmapRect{Left: uint16(x0), Top: uint16(y0), Right: uint16(x0 + width - 1), Bottom: uint16(y0 + height - 1), Width: uint16(width), Height: uint16(height), BPP: bpp}
+	out = appendLE16Bytes(out, updateTypeBitmap)
+	out = appendLE16Bytes(out, 1)
+	out = appendBitmapRectHeader(out, rect, 0, rowBytes*height)
+	for y := 0; y < height; y++ {
+		rowOffset := (y0 + y) * stride
+		row := src.Data[rowOffset:]
+		dst := out[len(out) : len(out)+rowBytes]
+		out = out[:len(out)+rowBytes]
+		for x := 0; x < width; x++ {
+			si := (x0 + x) * 4
+			di := x * bytesPerPixel
+			if si+3 >= len(row) {
+				return nil, false
+			}
+			r, g, b, ok := frameRGB(row, si, src.Format)
+			if !ok {
+				return nil, false
+			}
+			writeRawBitmapPixel(dst, di, bpp, r, g, b)
+		}
+	}
+	return out, true
 }
 
 func buildFrameBitmapTile(src frame.Frame, stride, x0, y0, width, height int) (bitmapRect, uint64, bool) {
