@@ -1,8 +1,8 @@
 # Project status
 
-Last updated: 2026-05-28
-Current evidence commit: `661e3c4`
-Latest referenced CI run: `26588988822` (`main` CI; latest post-plan commit passed)
+Last updated: 2026-05-30
+Current evidence commit: `8e9a247`
+Latest referenced CI run: `26694719900` (`main` CI; latest allocation/input dispatch slice passed)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -21,7 +21,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | FreeRDP `/sec:nla /gfx` | Blocking/pass | RDPGFX proof gate with `rdpgfx_seen=true`, `active_seen=true`, `fastpath_seen=true`, screenshot present, and `exit_code=131`; CI disables RDPGFX only for the three bitmap fallback gates. |
-| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26588988822` for commit `e3395d9`, with prior ClearCodec fixture acceptance evidence from run `26545046046`. Local 2026-05-28 matrix also completed after keeping non-default experimental codec write counters informational until client proof is stable. |
+| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26694719900` for commit `8e9a247`. Local matrix execution still requires FreeRDP/Xvfb tooling and may be unavailable in minimal API containers. |
 | CI diagnostic artifacts | Passing | Mock/probe, auth, FreeRDP, Android build, gomobile, and emulator/UX paths emit or preserve relevant mock-server/client logs, JSON/Markdown summaries, screenshots, and inspection artifacts where applicable. Server trace logs can be enabled with legacy `GO_RDP_ANDROID_TRACE=1` or `GO_RDP_ANDROID_LOG_LEVEL=trace/debug`. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
 | Protocol regression fixtures | Covered in unit/probe tests | Explicit fixtures now lock in prior bugfix behavior for licensing skip (including NLA path), Client Info external terminators, Fast-Path vs slow-path input equivalence, CredSSP server-nonce `PubKeyAuth`, auth success/failure smoke outcomes, and `drdynvc` DATA_FIRST fragmentation reassembly plus DVC fragment counter accounting. |
@@ -34,7 +34,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26317417910`:
+Latest checked artifact from CI run `26694719900`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -64,7 +64,8 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; allowlists are server-core/mock-server-only for the first polished APK, and Android TLS certificate rotation remains pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics now has a default RDPGFX Planar path plus explicit slow-path bitmap fallback evidence in CI. Remaining graphics blockers are physical-device/constrained-network validation, Microsoft-client validation, and performance comparison on target hardware.
-- Release preflight currently passes clean/synced/version/latest-CI checks, but signing secret presence still cannot be confirmed from automation (`make release-preflight` on 2026-05-20 failed only on missing/not-visible `RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`); controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets.
+- Release preflight clean/synced/version checks pass, and latest CI was verified through the GitHub API, but local `make release-preflight` on 2026-05-30 is blocked by missing `gh`; signing secret presence still cannot be confirmed from this automation token (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are not visible through the available API token). Controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets.
+- Local `make coverage` currently reports 71.1% total coverage against the configured 75.0% threshold, largely because command/script and long-running streaming paths are included in the repository-wide profile. Treat this as a release-readiness follow-up unless the coverage target is scoped or additional tests are added.
 
 ## Documentation update policy
 
