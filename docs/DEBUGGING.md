@@ -303,7 +303,7 @@ Before pushing a release tag, run:
 make release-preflight
 ```
 
-The target runs `scripts/release-preflight.go` and fails if the working tree is dirty, the branch is not synced with upstream, version identifiers are misaligned, the latest `main` CI run is not green, or required release signing secrets are not visible through `gh secret list --repo rcarmo/go-rdp-android`. If `gh` is unavailable, the script falls back to the GitHub REST API when `GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_PICLAW_BOT` is set. If you need to inspect everything except signing-secret visibility while the owner is still provisioning secrets, run:
+The target runs `scripts/release-preflight.go` and fails if the working tree is dirty, the branch is not synced with upstream, version identifiers are misaligned, the target `vVERSION` tag already exists on a different commit, the latest `main` CI run is not green, or required release signing secrets are not visible through `gh secret list --repo rcarmo/go-rdp-android`. If `gh` is unavailable, the script falls back to the GitHub REST API when `GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_PICLAW_BOT` is set. If you need to inspect everything except signing-secret visibility while the owner is still provisioning secrets, run:
 
 ```bash
 GOTMPDIR="$PWD/.gotmp" go run ./scripts/release-preflight.go -require-secrets=false

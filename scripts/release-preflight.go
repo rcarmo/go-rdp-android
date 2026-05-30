@@ -32,6 +32,7 @@ func main() {
 		{"git working tree clean", checkGitClean},
 		{"local branch synced with upstream", checkGitSynced},
 		{"release version identifiers aligned", checkVersionAlignment},
+		{"release tag availability", checkReleaseTagAvailability},
 		{"latest GitHub Actions run green", func() error { return checkLatestCI(*repo) }},
 		{"GitHub Actions signing secrets visible", func() error { return checkSigningSecrets(*repo, *requireSecrets) }},
 	}
@@ -79,14 +80,22 @@ func checkGitSynced() error {
 	return nil
 }
 
-func checkVersionAlignment() error {
+func projectVersion() (string, error) {
 	versionBytes, err := os.ReadFile("VERSION")
 	if err != nil {
-		return err
+		return "", err
 	}
 	version := strings.TrimSpace(string(versionBytes))
 	if version == "" {
-		return fmt.Errorf("VERSION is empty")
+		return "", fmt.Errorf("VERSION is empty")
+	}
+	return version, nil
+}
+
+func checkVersionAlignment() error {
+	version, err := projectVersion()
+	if err != nil {
+		return err
 	}
 	gradle, err := os.ReadFile("android/app/build.gradle.kts")
 	if err != nil {
@@ -101,6 +110,34 @@ func checkVersionAlignment() error {
 		return fmt.Errorf("Android versionCode not found")
 	}
 	return nil
+}
+
+func checkReleaseTagAvailability() error {
+	version, err := projectVersion()
+	if err != nil {
+		return err
+	}
+	tag := "v" + version
+	tagCommit, err := runGit("rev-parse", "-q", "--verify", "refs/tags/"+tag+"^{}")
+	if err != nil {
+		return nil
+	}
+	head, err := runGit("rev-parse", "HEAD")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(tagCommit) != strings.TrimSpace(head) {
+		return fmt.Errorf("release tag %s already exists at %s; bump VERSION/versionName/versionCode before tagging current HEAD %s", tag, shortSHA(tagCommit), shortSHA(head))
+	}
+	return nil
+}
+
+func shortSHA(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) > 12 {
+		return s[:12]
+	}
+	return s
 }
 
 func checkLatestCI(repo string) error {
