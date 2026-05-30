@@ -239,22 +239,32 @@ func writeMCSAttachUserConfirm(conn net.Conn, initiator uint16) error {
 	if traceEnabled {
 		tracef("mcs_attach_user_confirm", "initiator=%d", initiator)
 	}
-	body := make([]byte, 3)
-	body[0] = 0 // result: rt-successful
-	binary.BigEndian.PutUint16(body[1:3], initiator-defaultMCSUserID)
-	return writeMCSDomainPDU(conn, mcsAttachUserConfirmApp, body)
+	var out [11]byte
+	writeTPKTX224MCSHeader(out[:], mcsAttachUserConfirmApp, 3)
+	out[8] = 0 // result: rt-successful
+	binary.BigEndian.PutUint16(out[9:11], initiator-defaultMCSUserID)
+	_, err := conn.Write(out[:])
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", len(out)-4)
+	}
+	return err
 }
 
 func writeMCSChannelJoinConfirm(conn net.Conn, initiator, channelID uint16) error {
 	if traceEnabled {
 		tracef("mcs_channel_join_confirm", "initiator=%d channel=%d", initiator, channelID)
 	}
-	body := make([]byte, 7)
-	body[0] = 0 // result: rt-successful
-	binary.BigEndian.PutUint16(body[1:3], initiator-defaultMCSUserID)
-	binary.BigEndian.PutUint16(body[3:5], channelID)
-	binary.BigEndian.PutUint16(body[5:7], channelID)
-	return writeMCSDomainPDU(conn, mcsChannelJoinConfirmApp, body)
+	var out [15]byte
+	writeTPKTX224MCSHeader(out[:], mcsChannelJoinConfirmApp, 7)
+	out[8] = 0 // result: rt-successful
+	binary.BigEndian.PutUint16(out[9:11], initiator-defaultMCSUserID)
+	binary.BigEndian.PutUint16(out[11:13], channelID)
+	binary.BigEndian.PutUint16(out[13:15], channelID)
+	_, err := conn.Write(out[:])
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", len(out)-4)
+	}
+	return err
 }
 
 func writeMCSDomainPDU(conn net.Conn, application int, body []byte) error {
@@ -263,6 +273,17 @@ func writeMCSDomainPDU(conn net.Conn, application int, body []byte) error {
 		return fmt.Errorf("TPKT payload too large: %d", length-4)
 	}
 	out := make([]byte, length)
+	writeTPKTX224MCSHeader(out, application, len(body))
+	copy(out[8:], body)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", length-4)
+	}
+	return err
+}
+
+func writeTPKTX224MCSHeader(out []byte, application int, bodyLen int) {
+	length := 4 + 3 + 1 + bodyLen
 	out[0] = tpktVersion
 	out[1] = 0
 	binary.BigEndian.PutUint16(out[2:4], uint16(length))
@@ -270,12 +291,6 @@ func writeMCSDomainPDU(conn net.Conn, application int, body []byte) error {
 	out[5] = x224TypeData
 	out[6] = 0x80
 	out[7] = byte(application << 2)
-	copy(out[8:], body)
-	_, err := conn.Write(out)
-	if err == nil && traceEnabled {
-		tracef("tpkt_write", "payload_len=%d", length-4)
-	}
-	return err
 }
 
 func encodePERInteger16(value, minimum uint16) []byte {
