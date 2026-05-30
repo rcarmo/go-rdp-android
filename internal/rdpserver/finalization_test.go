@@ -80,6 +80,26 @@ func BenchmarkBuildMCSSendDataRequest_4KiB(b *testing.B) {
 	}
 }
 
+func BenchmarkWriteMCSAttachUserConfirm(b *testing.B) {
+	conn := &benchmarkWriteConn{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeMCSAttachUserConfirm(conn, defaultMCSUserID); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWriteMCSChannelJoinConfirm(b *testing.B) {
+	conn := &benchmarkWriteConn{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeMCSChannelJoinConfirm(conn, defaultMCSUserID, globalChannelID); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkWriteMCSDomainPDU_4KiB(b *testing.B) {
 	body := make([]byte, 4096)
 	conn := &benchmarkWriteConn{}

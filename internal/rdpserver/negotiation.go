@@ -168,7 +168,7 @@ func writeTPKT(w io.Writer, payload []byte) error {
 		return err
 	}
 	_, err := w.Write(payload)
-	if err == nil {
+	if err == nil && traceEnabled {
 		tracef("tpkt_write", "payload_len=%d", len(payload))
 	}
 	return err

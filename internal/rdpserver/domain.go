@@ -236,18 +236,24 @@ func parseMCSDomainPDU(data []byte) (*domainPDU, error) {
 }
 
 func writeMCSAttachUserConfirm(conn net.Conn, initiator uint16) error {
-	tracef("mcs_attach_user_confirm", "initiator=%d", initiator)
-	body := []byte{0} // result: rt-successful
-	body = append(body, encodePERInteger16(initiator, defaultMCSUserID)...)
+	if traceEnabled {
+		tracef("mcs_attach_user_confirm", "initiator=%d", initiator)
+	}
+	body := make([]byte, 3)
+	body[0] = 0 // result: rt-successful
+	binary.BigEndian.PutUint16(body[1:3], initiator-defaultMCSUserID)
 	return writeMCSDomainPDU(conn, mcsAttachUserConfirmApp, body)
 }
 
 func writeMCSChannelJoinConfirm(conn net.Conn, initiator, channelID uint16) error {
-	tracef("mcs_channel_join_confirm", "initiator=%d channel=%d", initiator, channelID)
-	body := []byte{0} // result: rt-successful
-	body = append(body, encodePERInteger16(initiator, defaultMCSUserID)...)
-	body = append(body, encodePERInteger16(channelID, 0)...)
-	body = append(body, encodePERInteger16(channelID, 0)...)
+	if traceEnabled {
+		tracef("mcs_channel_join_confirm", "initiator=%d channel=%d", initiator, channelID)
+	}
+	body := make([]byte, 7)
+	body[0] = 0 // result: rt-successful
+	binary.BigEndian.PutUint16(body[1:3], initiator-defaultMCSUserID)
+	binary.BigEndian.PutUint16(body[3:5], channelID)
+	binary.BigEndian.PutUint16(body[5:7], channelID)
 	return writeMCSDomainPDU(conn, mcsChannelJoinConfirmApp, body)
 }
 
