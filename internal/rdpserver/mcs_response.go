@@ -100,23 +100,38 @@ func (p domainParameters) serialize() []byte {
 }
 
 func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
-	inner := bytes.NewBuffer(make([]byte, 0, 16+len(serverUserData)))
-	perWriteChoice(0, inner)
-	perWriteInteger16(1001, inner)
-	perWriteInteger(1, inner)
-	perWriteEnumerates(0, inner)
-	perWriteNumberOfSet(1, inner)
-	perWriteChoice(0xc0, inner)
-	perWriteOctetStream("McDn", 4, inner)
-	perWriteLength(len(serverUserData), inner)
-	inner.Write(serverUserData)
+	innerLen := 14 + encodedPERLengthSize(len(serverUserData)) + len(serverUserData)
+	totalLen := 1 + 6 + encodedPERLengthSize(innerLen) + innerLen
+	out := make([]byte, totalLen)
+	off := 0
+	out[off] = 0 // choice
+	off++
+	off += writePERObjectIdentifier(out[off:], t12402098OID)
+	off += writePERLength(out[off:], innerLen)
+	out[off] = 0 // choice
+	off++
+	binary.BigEndian.PutUint16(out[off:off+2], 0) // calledConnectId: 1001 encoded relative to 1001.
+	off += 2
+	out[off] = 1 // PER length for integer(1)
+	out[off+1] = 1
+	off += 2
+	out[off] = 0      // enumerates
+	out[off+1] = 1    // numberOfSet
+	out[off+2] = 0xc0 // choice
+	off += 3
+	out[off] = 0 // octet-stream length for "McDn" relative to min 4.
+	copy(out[off+1:off+5], "McDn")
+	off += 5
+	off += writePERLength(out[off:], len(serverUserData))
+	copy(out[off:], serverUserData)
+	return out
+}
 
-	buf := bytes.NewBuffer(make([]byte, 0, inner.Len()+8))
-	perWriteChoice(0, buf)
-	perWriteObjectIdentifier(t12402098OID, buf)
-	perWriteLength(inner.Len(), buf)
-	buf.Write(inner.Bytes())
-	return buf.Bytes()
+func writePERObjectIdentifier(out []byte, oid [6]byte) int {
+	out[0] = 5
+	out[1] = (oid[0] << 4) | (oid[1] & 0x0f)
+	copy(out[2:6], oid[2:])
+	return 6
 }
 
 func berWriteApplicationTag(tag int, size int, w io.Writer) {
