@@ -70,11 +70,11 @@ func buildClearCodecRects(src frame.Frame, stride int, rawBytes int) ([]byte, bo
 	}
 	headerLen := 4 + 2 + 2 + 2
 	maxRectHeaderLen := numRects * (1 + 2 + 2 + 2 + 2 + 4)
-	payload := make([]byte, 0, headerLen+src.Width*src.Height*2+maxRectHeaderLen)
-	payload = append(payload, clearCodecMagic...)
-	payload = appendLE16Bytes(payload, uint16(src.Width))
-	payload = appendLE16Bytes(payload, uint16(src.Height))
-	payload = appendLE16Bytes(payload, 0) // patched with rect count below
+	payload := make([]byte, headerLen, headerLen+src.Width*src.Height*2+maxRectHeaderLen)
+	copy(payload[0:4], clearCodecMagic)
+	binary.LittleEndian.PutUint16(payload[4:6], uint16(src.Width))
+	binary.LittleEndian.PutUint16(payload[6:8], uint16(src.Height))
+	// Rect count at payload[8:10] is patched below.
 	rectCount := 0
 	for y0 := 0; y0 < src.Height; y0 += tileSize {
 		h := tileSize
