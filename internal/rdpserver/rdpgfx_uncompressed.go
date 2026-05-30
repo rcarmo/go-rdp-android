@@ -1,6 +1,7 @@
 package rdpserver
 
 import (
+	"encoding/binary"
 	"os"
 	"strings"
 
@@ -30,7 +31,13 @@ func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src fram
 		return nil, false
 	}
 	bitmapLen := normalized.Width * normalized.Height * 4
-	wire := make([]byte, rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen+bitmapLen)
+	wireLen := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen + bitmapLen
+	backing := make([]byte, 16+wireLen+12)
+	start := backing[:16]
+	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
+	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
+	binary.LittleEndian.PutUint32(start[12:16], frameID)
+	wire := backing[16 : 16+wireLen]
 	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecUncompressed, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width), uint16(normalized.Height), bitmapLen) // #nosec G115 dimensions bounded above.
 	pixels := wire[rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen:]
 	for y := 0; y < normalized.Height; y++ {
@@ -50,6 +57,8 @@ func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src fram
 			pixels[di+3] = 0xff
 		}
 	}
-	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
+	end := backing[16+wireLen:]
+	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
+	binary.LittleEndian.PutUint32(end[8:12], frameID)
 	return [][]byte{start, wire, end}, true
 }
