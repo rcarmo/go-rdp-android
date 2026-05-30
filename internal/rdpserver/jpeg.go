@@ -1,13 +1,37 @@
 package rdpserver
 
 import (
-	"bytes"
 	"image/jpeg"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
 const bitmapCodecJPEGDefaultID byte = 2
+
+type jpegSurfaceBitsWriter struct {
+	buf []byte
+}
+
+func newJPEGSurfaceBitsWriter(capacity int) jpegSurfaceBitsWriter {
+	if capacity < 0 {
+		capacity = 0
+	}
+	return jpegSurfaceBitsWriter{buf: make([]byte, 0, capacity)}
+}
+
+func (w *jpegSurfaceBitsWriter) Write(p []byte) (int, error) {
+	w.buf = append(w.buf, p...)
+	return len(p), nil
+}
+
+func (w *jpegSurfaceBitsWriter) WriteByte(b byte) error {
+	w.buf = append(w.buf, b)
+	return nil
+}
+
+func (w *jpegSurfaceBitsWriter) Flush() error { return nil }
+
+func (w *jpegSurfaceBitsWriter) Bytes() []byte { return w.buf }
 
 func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]byte, bool) {
 	if codecID == 0 {
@@ -20,8 +44,7 @@ func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]
 	if !ok {
 		return nil, false
 	}
-	var buf bytes.Buffer
-	buf.Grow(surfaceBitsHeaderLen + jpegSurfaceBitsCapacityHint(src.Width, src.Height))
+	buf := newJPEGSurfaceBitsWriter(surfaceBitsHeaderLen + jpegSurfaceBitsCapacityHint(src.Width, src.Height))
 	_, _ = buf.Write(emptySurfaceBitsHeader[:])
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, false
