@@ -463,15 +463,18 @@ func writeShareDataPDU(conn net.Conn, pduType2 uint8, payload []byte) error {
 
 func buildShareDataPDU(pduType2 uint8, payload []byte) []byte {
 	totalLength := 18 + len(payload)
-	out := appendShareControlHeaderBytes(nil, totalLength, pduTypeData, serverChannelID)
-	out = appendLE32Bytes(out, defaultShareID)
-	out = append(out, 0x00) // pad1
-	out = append(out, 0x01) // STREAM_LOW
-	out = appendLE16Bytes(out, uint16(4+len(payload)))
-	out = append(out, pduType2)
-	out = append(out, 0x00)       // compressedType
-	out = appendLE16Bytes(out, 0) // compressedLength
-	out = append(out, payload...)
+	out := make([]byte, totalLength)
+	binary.LittleEndian.PutUint16(out[0:2], uint16(totalLength))
+	binary.LittleEndian.PutUint16(out[2:4], pduTypeData)
+	binary.LittleEndian.PutUint16(out[4:6], serverChannelID)
+	binary.LittleEndian.PutUint32(out[6:10], defaultShareID)
+	out[10] = 0x00 // pad1
+	out[11] = 0x01 // STREAM_LOW
+	binary.LittleEndian.PutUint16(out[12:14], uint16(4+len(payload)))
+	out[14] = pduType2
+	out[15] = 0x00 // compressedType
+	binary.LittleEndian.PutUint16(out[16:18], 0)
+	copy(out[18:], payload)
 	return out
 }
 

@@ -44,6 +44,21 @@ func TestBuildAndParseShareDataPDU(t *testing.T) {
 	}
 }
 
+func BenchmarkBuildShareDataPDU_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	for i := range payload {
+		payload[i] = byte(i)
+	}
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		wire := buildShareDataPDU(pduType2Update, payload)
+		if len(wire) != len(payload)+18 {
+			b.Fatalf("buildShareDataPDU len=%d", len(wire))
+		}
+	}
+}
+
 func TestControlAndFontPayloads(t *testing.T) {
 	ctrl := buildControlPayload(controlActionGrantedControl)
 	action, err := parseControlAction(ctrl)
