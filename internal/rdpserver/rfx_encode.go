@@ -474,18 +474,26 @@ func buildRFXTileBlock(tileX, tileY uint16, yData, cbData, crData []byte) ([]byt
 }
 
 func buildRFXEncodedTile(src frame.Frame, tileX, tileY int, quantRaw []byte) ([]byte, bool) {
-	if tileX%rfxTileSize != 0 || tileY%rfxTileSize != 0 {
+	yData, coData, cgData, ok := buildRFXEncodedTileParts(src, tileX, tileY, quantRaw)
+	if !ok {
 		return nil, false
+	}
+	return buildRFXTileBlock(uint16(tileX/rfxTileSize), uint16(tileY/rfxTileSize), yData, coData, cgData)
+}
+
+func buildRFXEncodedTileParts(src frame.Frame, tileX, tileY int, quantRaw []byte) ([]byte, []byte, []byte, bool) {
+	if tileX%rfxTileSize != 0 || tileY%rfxTileSize != 0 {
+		return nil, nil, nil, false
 	}
 	tile, ok := buildRFXYCoCgTile(src, tileX, tileY)
 	if !ok {
-		return nil, false
+		return nil, nil, nil, false
 	}
 	q := rfxDefaultQuant
 	if len(quantRaw) > 0 {
 		parsed, parsedOK := parseRFXQuant(quantRaw)
 		if !parsedOK {
-			return nil, false
+			return nil, nil, nil, false
 		}
 		q = parsed
 	}
@@ -504,32 +512,36 @@ func buildRFXEncodedTile(src frame.Frame, tileX, tileY int, quantRaw []byte) ([]
 	cgp := serializeRFXComponentForRLGR(&cg)
 	yData, ok := encodeRFXRLGR(yp[:], rfxRLGR1)
 	if !ok {
-		return nil, false
+		return nil, nil, nil, false
 	}
 	coData, ok := encodeRFXRLGR(cop[:], rfxRLGR3)
 	if !ok {
-		return nil, false
+		return nil, nil, nil, false
 	}
 	cgData, ok := encodeRFXRLGR(cgp[:], rfxRLGR3)
 	if !ok {
-		return nil, false
+		return nil, nil, nil, false
 	}
-	return buildRFXTileBlock(uint16(tileX/rfxTileSize), uint16(tileY/rfxTileSize), yData, coData, cgData)
+	return yData, coData, cgData, true
 }
 
 func buildRFXMessageSingleTile(src frame.Frame, width, height int, frameID uint32, tileX, tileY int, quantRaw []byte) ([]byte, bool) {
 	if width <= 0 || height <= 0 || width > 0xffff || height > 0xffff {
 		return nil, false
 	}
-	tileBlock, ok := buildRFXEncodedTile(src, tileX, tileY, quantRaw)
+	yData, coData, cgData, ok := buildRFXEncodedTileParts(src, tileX, tileY, quantRaw)
 	if !ok {
+		return nil, false
+	}
+	if len(yData) == 0 || len(coData) == 0 || len(cgData) == 0 || len(yData) > 0xffff || len(coData) > 0xffff || len(cgData) > 0xffff {
 		return nil, false
 	}
 	quantLen := len(quantRaw)
 	if quantLen == 0 {
 		quantLen = len(defaultRFXQuantBytes)
 	}
-	total := 12 + 10 + 13 + 13 + 14 + 17 + 20 + quantLen + len(tileBlock) + 6
+	tileLen := 19 + len(yData) + len(coData) + len(cgData)
+	total := 12 + 10 + 13 + 13 + 14 + 17 + 20 + quantLen + tileLen + 6
 	if total <= 0 || total > rfxMaxEncodedPayloadLen {
 		return nil, false
 	}
@@ -540,7 +552,7 @@ func buildRFXMessageSingleTile(src frame.Frame, width, height int, frameID uint3
 	out = appendRFXContextBlock(out, uint16(width), uint16(height))
 	out = appendRFXFrameBeginBlock(out, frameID)
 	out = appendRFXRegionBlock(out, uint16(tileX), uint16(tileY), rfxTileSize, rfxTileSize)
-	out = appendRFXTilesetBlock(out, tileBlock, quantRaw)
+	out = appendRFXTilesetBlockParts(out, uint16(tileX/rfxTileSize), uint16(tileY/rfxTileSize), yData, coData, cgData, quantRaw)
 	out = appendRFXFrameEndBlock(out)
 	return out, true
 }
@@ -652,6 +664,27 @@ func appendRFXTilesetBlock(out, tileBlock, quantRaw []byte) []byte {
 		quant = defaultRFXQuantBytes[:]
 	}
 	start := len(out)
+	out = appendRFXTilesetHeader(out, len(tileBlock), quant)
+	out = append(out, tileBlock...)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], uint32(len(out)-start))
+	return out
+}
+
+func appendRFXTilesetBlockParts(out []byte, tileX, tileY uint16, yData, cbData, crData, quantRaw []byte) []byte {
+	quant := quantRaw
+	if len(quant) == 0 {
+		quant = defaultRFXQuantBytes[:]
+	}
+	tileLen := 19 + len(yData) + len(cbData) + len(crData)
+	start := len(out)
+	out = appendRFXTilesetHeader(out, tileLen, quant)
+	out = appendRFXTileBlockParts(out, tileX, tileY, yData, cbData, crData)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], uint32(len(out)-start))
+	return out
+}
+
+func appendRFXTilesetHeader(out []byte, tileDataLen int, quant []byte) []byte {
+	start := len(out)
 	out = append(out, make([]byte, 20)...)
 	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeTileset)
 	binary.LittleEndian.PutUint16(out[start+6:start+8], 0xCAC1)
@@ -660,11 +693,27 @@ func appendRFXTilesetBlock(out, tileBlock, quantRaw []byte) []byte {
 	out[start+12] = 1
 	out[start+13] = rfxTileSize
 	binary.LittleEndian.PutUint16(out[start+14:start+16], 1)
-	binary.LittleEndian.PutUint32(out[start+16:start+20], uint32(len(tileBlock)))
-	out = append(out, quant...)
-	out = append(out, tileBlock...)
-	binary.LittleEndian.PutUint32(out[start+2:start+6], uint32(len(out)-start))
-	return out
+	binary.LittleEndian.PutUint32(out[start+16:start+20], uint32(tileDataLen))
+	return append(out, quant...)
+}
+
+func appendRFXTileBlockParts(out []byte, tileX, tileY uint16, yData, cbData, crData []byte) []byte {
+	start := len(out)
+	blockLen := 19 + len(yData) + len(cbData) + len(crData)
+	out = append(out, make([]byte, 19)...)
+	binary.LittleEndian.PutUint16(out[start:start+2], rfxBlockTypeTile)
+	binary.LittleEndian.PutUint32(out[start+2:start+6], uint32(blockLen))
+	out[start+6] = 0 // quantIdxY
+	out[start+7] = 0 // quantIdxCb
+	out[start+8] = 0 // quantIdxCr
+	binary.LittleEndian.PutUint16(out[start+9:start+11], tileX)
+	binary.LittleEndian.PutUint16(out[start+11:start+13], tileY)
+	binary.LittleEndian.PutUint16(out[start+13:start+15], uint16(len(yData)))
+	binary.LittleEndian.PutUint16(out[start+15:start+17], uint16(len(cbData)))
+	binary.LittleEndian.PutUint16(out[start+17:start+19], uint16(len(crData)))
+	out = append(out, yData...)
+	out = append(out, cbData...)
+	return append(out, crData...)
 }
 
 func buildRFXFrameEndBlock() []byte {
