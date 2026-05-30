@@ -429,7 +429,9 @@ func parseShareDataPDU(share *shareControlPDU) (*shareDataPDU, error) {
 }
 
 func writeShareDataPDU(conn net.Conn, pduType2 uint8, payload []byte) error {
-	tracef("share_data_write", "type2=0x%02x payload_len=%d", pduType2, len(payload))
+	if traceEnabled {
+		tracef("share_data_write", "type2=0x%02x payload_len=%d", pduType2, len(payload))
+	}
 	data := buildShareDataPDU(pduType2, payload)
 	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, data)
 	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
