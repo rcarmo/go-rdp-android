@@ -100,7 +100,7 @@ func (p domainParameters) serialize() []byte {
 }
 
 func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
-	innerLen := 14 + encodedPERLengthSize(len(serverUserData)) + len(serverUserData)
+	innerLen := 13 + encodedPERLengthSize(len(serverUserData)) + len(serverUserData)
 	totalLen := 1 + 6 + encodedPERLengthSize(innerLen) + innerLen
 	out := make([]byte, totalLen)
 	off := 0
