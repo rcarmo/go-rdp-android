@@ -60,6 +60,21 @@ func BenchmarkBuildClearCodecEncoder_320x240(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildRDPGFXH264FramePDUs_320x240(b *testing.B) {
+	unit := h264AccessUnit{PresentationTimeUS: 42, KeyFrame: true, Data: make([]byte, 4096)}
+	for i := range unit.Data {
+		unit.Data[i] = byte(i)
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pdus, ok := buildRDPGFXH264FramePDUs(0, uint32(i+1), unit, 320, 240)
+		if !ok || len(pdus) != 3 {
+			b.Fatalf("buildRDPGFXH264FramePDUs len=%d ok=%t", len(pdus), ok)
+		}
+		b.SetBytes(totalPayloadBytes(pdus))
+	}
+}
+
 func BenchmarkBuildRDPGFXUncompressedFramePDUs_320x240(b *testing.B) {
 	fr := benchmarkCodecFrame(320, 240)
 	b.ReportAllocs()
