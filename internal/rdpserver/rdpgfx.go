@@ -268,12 +268,36 @@ func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Fram
 	if normalized.Width > maxInt/4 || normalized.Height > maxInt/(normalized.Width*4) {
 		return nil, false
 	}
-	wire, ok := buildRDPGFXPlanarWireToSurfacePDU(surfaceID, normalized, stride)
+	start, wire, end, ok := buildRDPGFXPlanarFramePDUBacking(surfaceID, frameID, normalized, stride)
 	if !ok {
 		return nil, false
 	}
-	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
 	return [][]byte{start, wire, end}, true
+}
+
+func buildRDPGFXPlanarFramePDUBacking(surfaceID uint16, frameID uint32, src frame.Frame, stride int) ([]byte, []byte, []byte, bool) {
+	bitmapStart := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen
+	planeSize := src.Width * src.Height
+	payloadCap := 1 + planeSize*3 + planeSize/4 + 64
+	backing := make([]byte, 16+bitmapStart, 16+bitmapStart+payloadCap+planeSize+12)
+	start := backing[:16]
+	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
+	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
+	binary.LittleEndian.PutUint32(start[12:16], frameID)
+	wire := backing[16 : 16+bitmapStart : 16+bitmapStart+payloadCap]
+	plane := backing[16+bitmapStart+payloadCap : 16+bitmapStart+payloadCap+planeSize]
+	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(src.Width), uint16(src.Height), 0) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+	wire, ok := appendPlanarRLEPayloadWithPlane(wire, src, stride, plane)
+	if !ok {
+		return nil, nil, nil, false
+	}
+	binary.LittleEndian.PutUint32(wire[21:25], uint32(len(wire)-bitmapStart)) // #nosec G115 -- payload length is bounded by allocation.
+	binary.LittleEndian.PutUint32(wire[4:8], uint32(len(wire)))               // #nosec G115 -- PDU length is bounded by allocation.
+	endStart := 16 + len(wire)
+	end := backing[endStart : endStart+12]
+	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
+	binary.LittleEndian.PutUint32(end[8:12], frameID)
+	return start, wire, end, true
 }
 
 func buildRDPGFXFrameBoundaryPDUs(frameID uint32) ([]byte, []byte) {
