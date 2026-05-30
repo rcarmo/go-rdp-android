@@ -1,9 +1,6 @@
 package rdpserver
 
-import (
-	"bytes"
-	"encoding/binary"
-)
+import "encoding/binary"
 
 const (
 	gccUserDataSC_CORE     = 0x0c01
@@ -19,48 +16,54 @@ const (
 // ENCRYPTION_LEVEL_NONE because transport security is provided by the selected
 // external protocol.
 func buildServerUserData(selectedProtocol uint32, channels []clientChannel) []byte {
-	buf := new(bytes.Buffer)
-	writeServerCoreData(buf, selectedProtocol)
-	writeServerSecurityData(buf, selectedProtocol)
-	writeServerNetworkData(buf, channels)
-	return buf.Bytes()
+	networkPayloadLen := 4 + 2*len(channels)
+	if len(channels)%2 == 1 {
+		networkPayloadLen += 2
+	}
+	totalLen := 4 + 12 + 4 + 8 + 4 + networkPayloadLen
+	out := make([]byte, totalLen)
+	off := 0
+	off += writeServerCoreDataAt(out[off:], selectedProtocol)
+	off += writeServerSecurityDataAt(out[off:], selectedProtocol)
+	writeServerNetworkDataAt(out[off:], channels)
+	return out
 }
 
-func writeServerCoreData(buf *bytes.Buffer, selectedProtocol uint32) {
-	payload := new(bytes.Buffer)
-	_ = binary.Write(payload, binary.LittleEndian, uint32(rdpVersion10))
-	_ = binary.Write(payload, binary.LittleEndian, selectedProtocol)
-	_ = binary.Write(payload, binary.LittleEndian, uint32(0)) // earlyCapabilityFlags
-	writeGCCUserDataBlock(buf, gccUserDataSC_CORE, payload.Bytes())
+func writeServerCoreDataAt(out []byte, selectedProtocol uint32) int {
+	writeGCCUserDataBlockHeaderAt(out, gccUserDataSC_CORE, 12)
+	binary.LittleEndian.PutUint32(out[4:8], rdpVersion10)
+	binary.LittleEndian.PutUint32(out[8:12], selectedProtocol)
+	// earlyCapabilityFlags remains zero at out[12:16].
+	return 16
 }
 
-func writeServerSecurityData(buf *bytes.Buffer, selectedProtocol uint32) {
-	payload := new(bytes.Buffer)
+func writeServerSecurityDataAt(out []byte, selectedProtocol uint32) int {
 	// ENCRYPTION_METHOD_NONE / ENCRYPTION_LEVEL_NONE. This is the correct GCC
 	// surface when selectedProtocol is SSL/Hybrid. The classic-RDP branch is kept
 	// explicit so future proprietary/X.509 certificate data can be attached here
 	// without changing the response envelope.
 	_ = selectedProtocol
-	_ = binary.Write(payload, binary.LittleEndian, uint32(0))
-	_ = binary.Write(payload, binary.LittleEndian, uint32(0))
-	writeGCCUserDataBlock(buf, gccUserDataSC_SECURITY, payload.Bytes())
+	writeGCCUserDataBlockHeaderAt(out, gccUserDataSC_SECURITY, 8)
+	return 12
 }
 
-func writeServerNetworkData(buf *bytes.Buffer, channels []clientChannel) {
-	payload := new(bytes.Buffer)
-	_ = binary.Write(payload, binary.LittleEndian, uint16(globalChannelID))
-	_ = binary.Write(payload, binary.LittleEndian, uint16(len(channels)))
-	for _, ch := range channels {
-		_ = binary.Write(payload, binary.LittleEndian, ch.ID)
-	}
+func writeServerNetworkDataAt(out []byte, channels []clientChannel) int {
+	payloadLen := 4 + 2*len(channels)
 	if len(channels)%2 == 1 {
-		_ = binary.Write(payload, binary.LittleEndian, uint16(0))
+		payloadLen += 2
 	}
-	writeGCCUserDataBlock(buf, gccUserDataSC_NET, payload.Bytes())
+	writeGCCUserDataBlockHeaderAt(out, gccUserDataSC_NET, payloadLen)
+	binary.LittleEndian.PutUint16(out[4:6], globalChannelID)
+	binary.LittleEndian.PutUint16(out[6:8], uint16(len(channels))) // #nosec G115 -- channel count is bounded by negotiation input.
+	off := 8
+	for _, ch := range channels {
+		binary.LittleEndian.PutUint16(out[off:off+2], ch.ID)
+		off += 2
+	}
+	return 4 + payloadLen
 }
 
-func writeGCCUserDataBlock(buf *bytes.Buffer, blockType uint16, payload []byte) {
-	_ = binary.Write(buf, binary.LittleEndian, blockType)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(len(payload)+4))
-	_, _ = buf.Write(payload)
+func writeGCCUserDataBlockHeaderAt(out []byte, blockType uint16, payloadLen int) {
+	binary.LittleEndian.PutUint16(out[0:2], blockType)
+	binary.LittleEndian.PutUint16(out[2:4], uint16(payloadLen+4)) // #nosec G115 -- GCC user-data blocks are bounded by allocation.
 }

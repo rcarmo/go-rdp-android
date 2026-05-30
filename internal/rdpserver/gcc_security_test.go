@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func BenchmarkBuildServerUserData(b *testing.B) {
+	channels := []clientChannel{{Name: "rdpdr", ID: 1004}, {Name: "cliprdr", ID: 1005}, {Name: "drdynvc", ID: 1006}}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(buildServerUserData(protocolSSL, channels)) == 0 {
+			b.Fatal("empty server user data")
+		}
+	}
+}
+
 func TestBuildServerUserDataIncludesCoreSecurityAndNetwork(t *testing.T) {
 	data := buildServerUserData(protocolSSL, nil)
 	blocks := parseGCCUserDataBlocksForTest(t, data)
