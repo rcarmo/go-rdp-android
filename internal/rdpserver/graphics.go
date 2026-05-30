@@ -2,7 +2,6 @@ package rdpserver
 
 import (
 	"encoding/binary"
-	"hash/fnv"
 	"os"
 	"strings"
 
@@ -109,9 +108,9 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 				}
 				cache.hashes[key] = hash
 			}
-			update := buildBitmapUpdate([]bitmapRect{tile})
+			update := buildBitmapUpdateSingle(tile)
 			if bitmapRLEEnabledFromEnv() {
-				if compressed, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{tile}); ok && len(compressed) < len(update) {
+				if compressed, ok := buildCompressedBitmapRLEUpdateSingle(tile); ok && len(compressed) < len(update) {
 					tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
 					update = compressed
 				}
@@ -230,9 +229,16 @@ func alignedBitmapRowBytes(width int, bpp uint16) int {
 }
 
 func hashBytes(data []byte) uint64 {
-	h := fnv.New64a()
-	_, _ = h.Write(data)
-	return h.Sum64()
+	const (
+		fnv64Offset = 14695981039346656037
+		fnv64Prime  = 1099511628211
+	)
+	h := uint64(fnv64Offset)
+	for _, b := range data {
+		h ^= uint64(b)
+		h *= fnv64Prime
+	}
+	return h
 }
 
 func normalizedFrameStride(src frame.Frame) (int, bool) {
@@ -377,13 +383,16 @@ func buildBitmapUpdate(rects []bitmapRect) []byte {
 	for _, rect := range rects {
 		capHint += 18 + len(rect.Data)
 	}
-	out := make([]byte, 0, capHint)
-	out = appendLE16Bytes(out, updateTypeBitmap)
-	out = appendLE16Bytes(out, uint16(len(rects)))
+	out := makeBitmapUpdateHeader(capHint, len(rects))
 	for _, rect := range rects {
 		out = appendBitmapRect(out, rect, 0, rect.Data)
 	}
 	return out
+}
+
+func buildBitmapUpdateSingle(rect bitmapRect) []byte {
+	out := makeBitmapUpdateHeader(4+18+len(rect.Data), 1)
+	return appendBitmapRect(out, rect, 0, rect.Data)
 }
 
 func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
@@ -391,9 +400,7 @@ func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
 	for _, rect := range rects {
 		capHint += 18 + len(rect.Data)
 	}
-	out := make([]byte, 0, capHint)
-	out = appendLE16Bytes(out, updateTypeBitmap)
-	out = appendLE16Bytes(out, uint16(len(rects)))
+	out := makeBitmapUpdateHeader(capHint, len(rects))
 	for _, rect := range rects {
 		encoded, ok := encodeBitmapRLECopyOnly(rect)
 		if !ok || len(encoded) == 0 || len(encoded) >= len(rect.Data) || len(encoded) > int(^uint16(0)) {
@@ -402,6 +409,21 @@ func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
 		out = appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded)
 	}
 	return out, true
+}
+
+func buildCompressedBitmapRLEUpdateSingle(rect bitmapRect) ([]byte, bool) {
+	encoded, ok := encodeBitmapRLECopyOnly(rect)
+	if !ok || len(encoded) == 0 || len(encoded) >= len(rect.Data) || len(encoded) > int(^uint16(0)) {
+		return nil, false
+	}
+	out := makeBitmapUpdateHeader(4+18+len(encoded), 1)
+	return appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded), true
+}
+
+func makeBitmapUpdateHeader(capHint int, rectCount int) []byte {
+	out := make([]byte, 0, capHint)
+	out = appendLE16Bytes(out, updateTypeBitmap)
+	return appendLE16Bytes(out, uint16(rectCount))
 }
 
 func appendBitmapRect(out []byte, rect bitmapRect, flags uint16, data []byte) []byte {
