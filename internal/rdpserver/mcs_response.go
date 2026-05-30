@@ -30,20 +30,12 @@ var (
 
 func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []clientChannel) error {
 	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol, channels))
-	body := bytes.NewBuffer(make([]byte, 0, 16+len(defaultDomainParametersBER)+len(gcc)))
-	berWriteEnumerated(mcsResultSuccessful, body)
-	berWriteInteger(1001, body) // calledConnectId
-	berWriteSequence(defaultDomainParameters().serialize(), body)
-	berWriteOctetString(gcc, body)
-
-	mcs := bytes.NewBuffer(make([]byte, 0, body.Len()+4))
-	berWriteApplicationTag(mcsConnectResponseAppTag, body.Len(), mcs)
-	mcs.Write(body.Bytes())
-
-	mcsBytes := mcs.Bytes()
-	totalLen := 4 + 3 + len(mcsBytes)
+	params := defaultDomainParameters().serialize()
+	bodyLen := 3 + 4 + 1 + berLengthSize(len(params)) + len(params) + 1 + berLengthSize(len(gcc)) + len(gcc)
+	mcsLen := 2 + berLengthSize(bodyLen) + bodyLen
+	totalLen := 4 + 3 + mcsLen
 	if totalLen > 0xffff {
-		return fmt.Errorf("MCS Connect Response too large: %d", len(mcsBytes))
+		return fmt.Errorf("MCS Connect Response too large: %d", mcsLen)
 	}
 	out := make([]byte, totalLen)
 	out[0] = tpktVersion
@@ -51,12 +43,57 @@ func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []
 	out[4] = 0x02
 	out[5] = x224TypeData
 	out[6] = 0x80
-	copy(out[7:], mcsBytes)
+	off := 7
+	out[off] = 0x7f
+	out[off+1] = byte(mcsConnectResponseAppTag)
+	off += 2
+	off += writeBERLength(out[off:], bodyLen)
+	out[off] = 0x0a // ENUMERATED
+	out[off+1] = 1
+	out[off+2] = mcsResultSuccessful
+	off += 3
+	out[off] = 0x02 // INTEGER calledConnectId
+	out[off+1] = 2
+	binary.BigEndian.PutUint16(out[off+2:off+4], 1001)
+	off += 4
+	out[off] = 0x30 // SEQUENCE domain parameters
+	off++
+	off += writeBERLength(out[off:], len(params))
+	off += copy(out[off:], params)
+	out[off] = 0x04 // OCTET STRING GCC Conference Create Response
+	off++
+	off += writeBERLength(out[off:], len(gcc))
+	copy(out[off:], gcc)
 	_, err := conn.Write(out)
 	if err == nil && traceEnabled {
 		tracef("tpkt_write", "payload_len=%d", totalLen-4)
 	}
 	return err
+}
+
+func berLengthSize(size int) int {
+	if size > 0xff {
+		return 3
+	}
+	if size > 0x7f {
+		return 2
+	}
+	return 1
+}
+
+func writeBERLength(out []byte, size int) int {
+	if size > 0xff {
+		out[0] = 0x82
+		binary.BigEndian.PutUint16(out[1:3], uint16(size)) // #nosec G115 -- BER payloads are bounded by allocation.
+		return 3
+	}
+	if size > 0x7f {
+		out[0] = 0x81
+		out[1] = byte(size)
+		return 2
+	}
+	out[0] = byte(size)
+	return 1
 }
 
 type domainParameters struct {
