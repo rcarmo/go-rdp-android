@@ -1,7 +1,6 @@
 package rdpserver
 
 import (
-	"bytes"
 	"encoding/binary"
 	"net"
 )
@@ -16,22 +15,34 @@ const (
 	licenseBlobError         = 0x0004
 )
 
+var licenseValidClientPDU = [...]byte{
+	byte(secLicensePacket), byte(secLicensePacket >> 8), 0, 0,
+	licenseErrorAlert, licensePreambleVersion3, 16, 0,
+	byte(licenseStatusValidClient), byte(licenseStatusValidClient >> 8), byte(licenseStatusValidClient >> 16), byte(licenseStatusValidClient >> 24),
+	byte(licenseStateNoTransition), byte(licenseStateNoTransition >> 8), byte(licenseStateNoTransition >> 16), byte(licenseStateNoTransition >> 24),
+	byte(licenseBlobError), byte(licenseBlobError >> 8), 0, 0,
+}
+
 func writeLicenseValidClient(conn net.Conn) error {
 	pdu := buildLicenseValidClientPDU()
-	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, pdu)
-	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
+	dataLen := len(pdu)
+	perLen := encodedPERLengthSize(dataLen)
+	bodyLen := 2 + 2 + 1 + perLen + dataLen
+	totalLen := 4 + 3 + 1 + bodyLen
+	out := make([]byte, totalLen)
+	writeTPKTX224MCSHeader(out, mcsSendDataIndicationApp, bodyLen)
+	binary.BigEndian.PutUint16(out[8:10], serverChannelID-defaultMCSUserID)
+	binary.BigEndian.PutUint16(out[10:12], globalChannelID)
+	out[12] = 0x70
+	dataOff := 13 + writePERLength(out[13:], dataLen)
+	copy(out[dataOff:], pdu)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", totalLen-4)
+	}
+	return err
 }
 
 func buildLicenseValidClientPDU() []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(secLicensePacket))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))
-	_ = binary.Write(buf, binary.LittleEndian, uint8(licenseErrorAlert))
-	_ = binary.Write(buf, binary.LittleEndian, uint8(licensePreambleVersion3))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(16))
-	_ = binary.Write(buf, binary.LittleEndian, uint32(licenseStatusValidClient))
-	_ = binary.Write(buf, binary.LittleEndian, uint32(licenseStateNoTransition))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(licenseBlobError))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))
-	return buf.Bytes()
+	return licenseValidClientPDU[:]
 }

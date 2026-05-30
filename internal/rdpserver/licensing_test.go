@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func BenchmarkBuildLicenseValidClientPDU(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(buildLicenseValidClientPDU()) != 20 {
+			b.Fatal("bad license PDU length")
+		}
+	}
+}
+
+func BenchmarkWriteLicenseValidClient(b *testing.B) {
+	conn := discardConn{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeLicenseValidClient(conn); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestBuildLicenseValidClientPDU(t *testing.T) {
 	pdu := buildLicenseValidClientPDU()
 	if len(pdu) != 20 {
