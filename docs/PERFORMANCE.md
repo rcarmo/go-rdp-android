@@ -108,7 +108,7 @@ The current slow-path bitmap renderer sends uncompressed 24-bit BGR tiles with 4
 ceil(1080/80) * ceil(2400/80) = 14 * 30 = 420 bitmap updates
 ```
 
-This is intentionally simple and measurable. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
+This is intentionally simple and measurable. The bitmap-update builder now pre-sizes classic bitmap update payloads so the 320x240 fallback benchmark dropped from roughly 73 to 37 allocations/op while preserving the same tile/update shape. The primary optimization targets are unchanged-tile suppression, adaptive frame pacing, optional downscaling, compressed bitmap/RDPGFX-style updates, and H.264/AVC video transport.
 
 ## FreeRDP soak snapshot: 2026-05-21 scheduled run
 

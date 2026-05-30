@@ -373,7 +373,12 @@ func buildSolidBitmapRectForBPP(width, height int, argb uint32, bpp uint16) bitm
 }
 
 func buildBitmapUpdate(rects []bitmapRect) []byte {
-	out := appendLE16Bytes(nil, updateTypeBitmap)
+	capHint := 4
+	for _, rect := range rects {
+		capHint += 18 + len(rect.Data)
+	}
+	out := make([]byte, 0, capHint)
+	out = appendLE16Bytes(out, updateTypeBitmap)
 	out = appendLE16Bytes(out, uint16(len(rects)))
 	for _, rect := range rects {
 		out = appendBitmapRect(out, rect, 0, rect.Data)
@@ -382,7 +387,12 @@ func buildBitmapUpdate(rects []bitmapRect) []byte {
 }
 
 func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
-	out := appendLE16Bytes(nil, updateTypeBitmap)
+	capHint := 4
+	for _, rect := range rects {
+		capHint += 18 + len(rect.Data)
+	}
+	out := make([]byte, 0, capHint)
+	out = appendLE16Bytes(out, updateTypeBitmap)
 	out = appendLE16Bytes(out, uint16(len(rects)))
 	for _, rect := range rects {
 		encoded, ok := encodeBitmapRLECopyOnly(rect)
