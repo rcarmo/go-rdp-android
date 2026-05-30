@@ -14,9 +14,9 @@ This page is the compact, human-readable status matrix for production readiness.
 | Go vet | Passing | `go vet ./...` in CI and locally. |
 | Go race/fuzz smoke | Passing in CI | Race suite plus short parser fuzz smoke. |
 | gosec static scan | Passing in CI | `gosec` JSON + markdown summary emitted in Go artifacts; current scan excludes `G115` cast-noise and is clean for remaining rules. |
-| Android debug APK | Passing in CI | Gradle debug build plus APK inspection artifact. |
-| gomobile AAR/API | Passing in CI | `mobile.aar` build plus `scripts/check-aar-api.go`; includes touch callbacks (`TouchFrameStart`, `TouchContact`, `TouchFrameEnd`). |
-| Go-backed APK | Passing in CI | Go-backed debug APK build and native-library inspection. |
+| Android debug APK | Passing in CI | Gradle debug build plus APK inspection artifact; latest artifact inspection shows manifest/classes present and no bundled Go JNI libraries in the plain debug APK. |
+| gomobile AAR/API | Passing in CI | `mobile.aar` build plus `scripts/check-aar-api.go`; includes touch callbacks (`TouchFrameStart`, `TouchContact`, `TouchFrameEnd`). Latest artifact inspection confirms `classes.jar` and Go JNI libraries for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`. |
+| Go-backed APK | Passing in CI | Go-backed debug APK/AAB build and native-library inspection; latest artifacts include manifest/classes plus Go JNI libraries for `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`. |
 | FreeRDP `/sec:rdp` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
