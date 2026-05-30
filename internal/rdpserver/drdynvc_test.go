@@ -63,6 +63,30 @@ func TestBuildDRDYNVCCreateResponsePDU(t *testing.T) {
 	}
 }
 
+func BenchmarkBuildDRDYNVCDataPDU_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		wire := buildDRDYNVCDataPDU(9, payload)
+		if len(wire) <= len(payload) {
+			b.Fatalf("buildDRDYNVCDataPDU len=%d", len(wire))
+		}
+	}
+}
+
+func BenchmarkBuildDRDYNVCDataFirstPDU_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		wire := buildDRDYNVCDataFirstPDU(9, uint32(len(payload)), payload)
+		if len(wire) <= len(payload) {
+			b.Fatalf("buildDRDYNVCDataFirstPDU len=%d", len(wire))
+		}
+	}
+}
+
 func TestBuildDRDYNVCDataPDU(t *testing.T) {
 	data := buildRDPEISCReadyPDU(rdpeiProtocolV300, nil)
 	wire := buildDRDYNVCDataPDU(3, data)

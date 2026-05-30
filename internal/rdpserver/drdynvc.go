@@ -607,19 +607,21 @@ func buildDRDYNVCCreateRequestPDU(channelID uint32, name string) []byte {
 
 func buildDRDYNVCDataPDU(channelID uint32, data []byte) []byte {
 	cb := drdynvcCbChID(channelID)
-	out := []byte{(drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()}
-	out = appendDVCChannelID(out, cb, channelID)
-	out = append(out, data...)
+	out := make([]byte, 1+dvcChannelIDLen(cb)+len(data))
+	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	copy(out[off:], data)
 	return out
 }
 
 func buildDRDYNVCDataFirstPDU(channelID uint32, length uint32, data []byte) []byte {
 	cb := drdynvcCbChID(channelID)
 	sp := drdynvcSpLength(length)
-	out := []byte{(drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()}
-	out = appendDVCChannelID(out, cb, channelID)
-	out = appendDVCLength(out, sp, length)
-	out = append(out, data...)
+	out := make([]byte, 1+dvcChannelIDLen(cb)+dvcLengthLen(sp)+len(data))
+	out[0] = (drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()
+	off := writeDVCChannelID(out[1:], cb, channelID) + 1
+	off += writeDVCLength(out[off:], sp, length)
+	copy(out[off:], data)
 	return out
 }
 
@@ -639,15 +641,34 @@ func (h drdynvcHeader) serialize() byte {
 }
 
 func appendDVCChannelID(out []byte, cb uint8, channelID uint32) []byte {
+	start := len(out)
+	out = append(out, make([]byte, dvcChannelIDLen(cb))...)
+	writeDVCChannelID(out[start:], cb, channelID)
+	return out
+}
+
+func dvcChannelIDLen(cb uint8) int {
+	if cb == 0 {
+		return 1
+	}
+	if cb == 1 {
+		return 2
+	}
+	return 4
+}
+
+func writeDVCChannelID(out []byte, cb uint8, channelID uint32) int {
 	switch cb {
 	case 0:
-		out = append(out, byte(channelID))
+		out[0] = byte(channelID)
+		return 1
 	case 1:
-		out = appendLE16Bytes(out, uint16(channelID)) // #nosec G115 -- cb selected from channelID range.
+		binary.LittleEndian.PutUint16(out[0:2], uint16(channelID)) // #nosec G115 -- cb selected from channelID range.
+		return 2
 	default:
-		out = appendLE32Bytes(out, channelID)
+		binary.LittleEndian.PutUint32(out[0:4], channelID)
+		return 4
 	}
-	return out
 }
 
 func drdynvcSpLength(length uint32) uint8 {
@@ -662,15 +683,34 @@ func drdynvcSpLength(length uint32) uint8 {
 }
 
 func appendDVCLength(out []byte, sp uint8, length uint32) []byte {
+	start := len(out)
+	out = append(out, make([]byte, dvcLengthLen(sp))...)
+	writeDVCLength(out[start:], sp, length)
+	return out
+}
+
+func dvcLengthLen(sp uint8) int {
+	if sp == 0 {
+		return 1
+	}
+	if sp == 1 {
+		return 2
+	}
+	return 4
+}
+
+func writeDVCLength(out []byte, sp uint8, length uint32) int {
 	switch sp {
 	case 0:
-		out = append(out, byte(length))
+		out[0] = byte(length)
+		return 1
 	case 1:
-		out = appendLE16Bytes(out, uint16(length)) // #nosec G115 -- sp selected from length range.
+		binary.LittleEndian.PutUint16(out[0:2], uint16(length)) // #nosec G115 -- sp selected from length range.
+		return 2
 	default:
-		out = appendLE32Bytes(out, length)
+		binary.LittleEndian.PutUint32(out[0:4], length)
+		return 4
 	}
-	return out
 }
 
 type bytesCursor struct {
