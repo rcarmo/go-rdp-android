@@ -75,6 +75,30 @@ func BenchmarkBuildRDPGFXH264FramePDUs_320x240(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildRDPGFXAVC444FramePDUs_320x240(b *testing.B) {
+	in := avc444EncoderInput{
+		Width:       320,
+		Height:      240,
+		BaseLayer:   h264AccessUnit{PresentationTimeUS: 42, KeyFrame: true, Data: make([]byte, 4096)},
+		AuxLayer:    h264AccessUnit{PresentationTimeUS: 42, KeyFrame: true, Data: make([]byte, 2048)},
+		RegionRects: []avc444RegionRect{{Left: 0, Top: 0, Right: 320, Bottom: 240}},
+	}
+	for i := range in.BaseLayer.Data {
+		in.BaseLayer.Data[i] = byte(i)
+	}
+	for i := range in.AuxLayer.Data {
+		in.AuxLayer.Data[i] = byte(i >> 1)
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pdus, ok := buildRDPGFXAVC444FramePDUs(0, uint32(i+1), in)
+		if !ok || len(pdus) != 3 {
+			b.Fatalf("buildRDPGFXAVC444FramePDUs len=%d ok=%t", len(pdus), ok)
+		}
+		b.SetBytes(totalPayloadBytes(pdus))
+	}
+}
+
 func BenchmarkBuildRDPGFXUncompressedFramePDUs_320x240(b *testing.B) {
 	fr := benchmarkCodecFrame(320, 240)
 	b.ReportAllocs()

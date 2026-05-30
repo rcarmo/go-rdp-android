@@ -8,13 +8,28 @@ func buildRDPGFXAVC444BitmapStream(in avc444EncoderInput) ([]byte, bool) {
 	if err := validateAVC444EncoderInput(in); err != nil {
 		return nil, false
 	}
-	rectsLen := len(in.RegionRects) * 8
-	headLen := 4 + rectsLen + 4 + 4 + 2 + 2
-	total := headLen + len(in.BaseLayer.Data) + len(in.AuxLayer.Data)
+	total := avc444BitmapStreamLen(in)
 	if total <= 0 || total > avc444MaxBitmapStreamLen {
 		return nil, false
 	}
 	out := make([]byte, total)
+	if !writeRDPGFXAVC444BitmapStream(out, in) {
+		return nil, false
+	}
+	return out, true
+}
+
+func avc444BitmapStreamLen(in avc444EncoderInput) int {
+	rectsLen := len(in.RegionRects) * 8
+	headLen := 4 + rectsLen + 4 + 4 + 2 + 2
+	return headLen + len(in.BaseLayer.Data) + len(in.AuxLayer.Data)
+}
+
+func writeRDPGFXAVC444BitmapStream(out []byte, in avc444EncoderInput) bool {
+	total := avc444BitmapStreamLen(in)
+	if total <= 0 || total > len(out) {
+		return false
+	}
 	off := 0
 	binary.LittleEndian.PutUint32(out[off:off+4], uint32(len(in.RegionRects)))
 	off += 4
@@ -39,7 +54,7 @@ func buildRDPGFXAVC444BitmapStream(in avc444EncoderInput) ([]byte, bool) {
 	off += 2
 	off += copy(out[off:], in.BaseLayer.Data)
 	copy(out[off:], in.AuxLayer.Data)
-	return out, true
+	return true
 }
 
 func buildRDPGFXAVC444v2BitmapStream(in avc444EncoderInput) ([]byte, bool) {
