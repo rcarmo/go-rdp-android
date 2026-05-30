@@ -17,6 +17,9 @@ const (
 	bitmapBPP16            = 16
 	bitmapBPP24            = 24
 	maxInitialBitmapUpdate = 80
+
+	fnv64Offset = 14695981039346656037
+	fnv64Prime  = 1099511628211
 )
 
 type bitmapRect struct {
@@ -91,14 +94,31 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 		return nil, false
 	}
 
+	rleEnabled := bitmapRLEEnabledFromEnv()
 	updates := make([][]byte, 0, ((src.Width+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate)*((src.Height+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate))
 	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
 		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
 		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
 			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
-			tile, hash, ok := buildFrameBitmapTileForBPP(src, stride, x, y, tileWidth, tileHeight, bpp)
-			if !ok {
-				return nil, false
+			var update []byte
+			var hash uint64
+			if rleEnabled {
+				tile, tileHash, ok := buildFrameBitmapTileForBPP(src, stride, x, y, tileWidth, tileHeight, bpp)
+				if !ok {
+					return nil, false
+				}
+				hash = tileHash
+				update = buildBitmapUpdateSingle(tile)
+				if compressed, ok := buildCompressedBitmapRLEUpdateSingle(tile); ok && len(compressed) < len(update) {
+					tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
+					update = compressed
+				}
+			} else {
+				var ok bool
+				update, hash, ok = buildFrameBitmapTileUpdateForBPP(src, stride, x, y, tileWidth, tileHeight, bpp)
+				if !ok {
+					return nil, false
+				}
 			}
 			key := bitmapTileKey{x: x, y: y, width: tileWidth, height: tileHeight}
 			if cache != nil {
@@ -107,13 +127,6 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 					continue
 				}
 				cache.hashes[key] = hash
-			}
-			update := buildBitmapUpdateSingle(tile)
-			if bitmapRLEEnabledFromEnv() {
-				if compressed, ok := buildCompressedBitmapRLEUpdateSingle(tile); ok && len(compressed) < len(update) {
-					tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
-					update = compressed
-				}
 			}
 			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
 			updates = append(updates, update)
@@ -162,6 +175,53 @@ func buildFrameBitmapTileForBPP(src frame.Frame, stride, x0, y0, width, height i
 		BPP:    bpp,
 		Data:   data,
 	}, hashBytes(data), true
+}
+
+func buildFrameBitmapTileUpdateForBPP(src frame.Frame, stride, x0, y0, width, height int, bpp uint16) ([]byte, uint64, bool) {
+	if width <= 0 || height <= 0 {
+		return nil, 0, false
+	}
+	bytesPerPixel, ok := rawBitmapBytesPerPixel(bpp)
+	if !ok {
+		return nil, 0, false
+	}
+	rowBytes := alignedBitmapRowBytes(width, bpp)
+	rect := bitmapRect{
+		Left:   uint16(x0),
+		Top:    uint16(y0),
+		Right:  uint16(x0 + width - 1),
+		Bottom: uint16(y0 + height - 1),
+		Width:  uint16(width),
+		Height: uint16(height),
+		BPP:    bpp,
+	}
+	dataLen := rowBytes * height
+	out := makeBitmapUpdateHeader(4+18+dataLen, 1)
+	out = appendBitmapRectHeader(out, rect, 0, dataLen)
+	hash := uint64(fnv64Offset)
+	for y := 0; y < height; y++ {
+		rowOffset := (y0 + y) * stride
+		row := src.Data[rowOffset:]
+		dst := out[len(out) : len(out)+rowBytes]
+		out = out[:len(out)+rowBytes]
+		for x := 0; x < width; x++ {
+			si := (x0 + x) * 4
+			di := x * bytesPerPixel
+			if si+3 >= len(row) {
+				return nil, 0, false
+			}
+			r, g, b, ok := frameRGB(row, si, src.Format)
+			if !ok {
+				return nil, 0, false
+			}
+			writeRawBitmapPixel(dst, di, bpp, r, g, b)
+		}
+		for _, b := range dst {
+			hash ^= uint64(b)
+			hash *= fnv64Prime
+		}
+	}
+	return out, hash, true
 }
 
 func rawBitmapBytesPerPixel(bpp uint16) (int, bool) {
@@ -229,10 +289,6 @@ func alignedBitmapRowBytes(width int, bpp uint16) int {
 }
 
 func hashBytes(data []byte) uint64 {
-	const (
-		fnv64Offset = 14695981039346656037
-		fnv64Prime  = 1099511628211
-	)
 	h := uint64(fnv64Offset)
 	for _, b := range data {
 		h ^= uint64(b)
@@ -427,6 +483,12 @@ func makeBitmapUpdateHeader(capHint int, rectCount int) []byte {
 }
 
 func appendBitmapRect(out []byte, rect bitmapRect, flags uint16, data []byte) []byte {
+	out = appendBitmapRectHeader(out, rect, flags, len(data))
+	out = append(out, data...)
+	return out
+}
+
+func appendBitmapRectHeader(out []byte, rect bitmapRect, flags uint16, dataLen int) []byte {
 	out = appendLE16Bytes(out, rect.Left)
 	out = appendLE16Bytes(out, rect.Top)
 	out = appendLE16Bytes(out, rect.Right)
@@ -435,8 +497,7 @@ func appendBitmapRect(out []byte, rect bitmapRect, flags uint16, data []byte) []
 	out = appendLE16Bytes(out, rect.Height)
 	out = appendLE16Bytes(out, rect.BPP)
 	out = appendLE16Bytes(out, flags)
-	out = appendLE16Bytes(out, uint16(len(data)))
-	out = append(out, data...)
+	out = appendLE16Bytes(out, uint16(dataLen))
 	return out
 }
 
