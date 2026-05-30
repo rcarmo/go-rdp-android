@@ -95,8 +95,13 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 	}
 
 	rleEnabled := bitmapRLEEnabledFromEnv()
-	if cache == nil && !rleEnabled {
-		return buildFrameBitmapUpdatesNoCacheBPP(src, stride, bpp)
+	if !rleEnabled {
+		if cache == nil {
+			return buildFrameBitmapUpdatesNoCacheBPP(src, stride, bpp)
+		}
+		if !dirtyOnly {
+			return buildFrameBitmapUpdatesInitialCacheBPP(src, stride, cache, bpp)
+		}
 	}
 	updates := make([][]byte, 0, ((src.Width+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate)*((src.Height+maxInitialBitmapUpdate-1)/maxInitialBitmapUpdate))
 	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
@@ -135,6 +140,45 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 				}
 				cache.hashes[key] = hash
 			}
+			if traceEnabled {
+				tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
+			}
+			updates = append(updates, update)
+		}
+	}
+	return updates, true
+}
+
+func buildFrameBitmapUpdatesInitialCacheBPP(src frame.Frame, stride int, cache *bitmapTileCache, bpp uint16) ([][]byte, bool) {
+	bytesPerPixel, ok := rawBitmapBytesPerPixel(bpp)
+	if !ok {
+		return nil, false
+	}
+	tilesX := (src.Width + maxInitialBitmapUpdate - 1) / maxInitialBitmapUpdate
+	tilesY := (src.Height + maxInitialBitmapUpdate - 1) / maxInitialBitmapUpdate
+	updates := make([][]byte, 0, tilesX*tilesY)
+	totalBytes := 0
+	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
+		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
+		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
+			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
+			totalBytes += 4 + 18 + alignedBitmapRowBytes(tileWidth, bpp)*tileHeight
+		}
+	}
+	buf := make([]byte, 0, totalBytes)
+	for y := 0; y < src.Height; y += maxInitialBitmapUpdate {
+		tileHeight := minInt(maxInitialBitmapUpdate, src.Height-y)
+		for x := 0; x < src.Width; x += maxInitialBitmapUpdate {
+			tileWidth := minInt(maxInitialBitmapUpdate, src.Width-x)
+			start := len(buf)
+			var ok bool
+			buf, ok = appendFrameBitmapTileUpdateForBPP(buf, src, stride, x, y, tileWidth, tileHeight, bpp, bytesPerPixel)
+			if !ok {
+				return nil, false
+			}
+			update := buf[start:len(buf):len(buf)]
+			dataOffset := start + 4 + 18
+			cache.hashes[bitmapTileKey{x: x, y: y, width: tileWidth, height: tileHeight}] = hashBytes(buf[dataOffset:len(buf)])
 			if traceEnabled {
 				tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
 			}

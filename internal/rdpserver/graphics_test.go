@@ -333,6 +333,20 @@ func BenchmarkBuildFrameBitmapUpdates24BGR(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildFrameBitmapUpdates24BGRInitialCache(b *testing.B) {
+	fr := benchmarkFrame(320, 240)
+	b.SetBytes(int64(fr.Width * fr.Height * 4))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache := newBitmapTileCache()
+		updates, ok := buildFrameBitmapUpdatesWithCache(fr, cache, false)
+		if !ok || len(updates) == 0 || len(cache.hashes) == 0 {
+			b.Fatalf("expected cached initial updates, got ok=%v updates=%d hashes=%d", ok, len(updates), len(cache.hashes))
+		}
+	}
+}
+
 func benchmarkFrame(width, height int) frame.Frame {
 	data := make([]byte, width*height*4)
 	for i := 0; i < len(data); i += 4 {
