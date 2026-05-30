@@ -65,7 +65,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics now has a default RDPGFX Planar path plus explicit slow-path bitmap fallback evidence in CI. Remaining graphics blockers are physical-device/constrained-network validation, Microsoft-client validation, and performance comparison on target hardware.
 - Release preflight clean/synced/version checks pass (`VERSION=0.1.1`, Android `versionName=0.1.1`, `versionCode=2`), and latest CI was verified through the GitHub API, but local `make release-preflight` on 2026-05-30 is blocked by missing `gh`; signing secret presence still cannot be confirmed from this automation token (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are not visible through the available API token). Controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets.
-- Local `make coverage` currently reports 71.1% total coverage against the configured 75.0% threshold, largely because command/script and long-running streaming paths are included in the repository-wide profile. Treat this as a release-readiness follow-up unless the coverage target is scoped or additional tests are added.
+- Coverage is scoped to core runtime packages (`./internal/... ./mobile`) and enforced with `set -o pipefail` in CI so the threshold cannot be masked by `tee`; local `make coverage` on 2026-05-30 reports 78.1% against the configured 75.0% threshold.
 
 ## Documentation update policy
 

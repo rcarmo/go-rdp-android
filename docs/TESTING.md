@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Go unit tests | Parser, graphics, input, bridge, lifecycle coverage, including bitmap fallback conversion/tiling, RDPGFX Planar round-trip encoding, and slow-path/Fast-Path input sink equivalence | `go test ./...` |
 | RDPEI/drdynvc summary | Machine-readable evidence for RDPEI parser, DVC routing, synthetic touch sequence, touch lifecycle metadata, and DVC fragment counter behavior | `test-artifacts/go/rdpei-tests.json`, `test-artifacts/go/rdpei-test-summary.md` |
-| Go coverage | Enforce minimum project coverage | `make coverage COVERAGE_MIN=75.0` |
+| Go coverage | Enforce minimum core runtime coverage (`./internal/... ./mobile`) | `make coverage COVERAGE_MIN=75.0` |
 | gosec scan | Static security scan with triaged overflow-noise exclusion (`G115`) | `test-artifacts/go/gosec-report.json`, `test-artifacts/go/gosec-summary.md` |
 | Race/fuzz smoke | Catch concurrency and parser edge issues | `go test -race ./...`, short fuzz run |
 | Mock/probe smoke | Exercise desktop RDP handshake, bitmap path, TLS-only auth, and Hybrid/NLA auth; emits JSON/Markdown probe summaries, logs/traces, and an RDP screenshot | `mock-probe-artifacts` |

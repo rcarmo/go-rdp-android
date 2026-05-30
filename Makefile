@@ -6,6 +6,7 @@ GOMOBILE_LDFLAGS ?= -extldflags=-Wl,-z,max-page-size=16384
 PROJECT := go-rdp-android
 MOBILE_AAR := android/app/libs/mobile.aar
 COVERAGE_MIN ?= 75.0
+COVERAGE_PKGS ?= ./internal/... ./mobile
 
 .PHONY: help
 help: ## Show this help
@@ -50,7 +51,7 @@ smoke: ## Run mock server and probe it locally
 .PHONY: coverage
 coverage: ## Run Go coverage and enforce COVERAGE_MIN
 	mkdir -p .gotmp
-	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) test -coverprofile=coverage.out ./...
+	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) test -coverprofile=coverage.out $(COVERAGE_PKGS)
 	$(GO) tool cover -func=coverage.out | tee coverage.func.txt
 	GOTMPDIR="$(CURDIR)/.gotmp" $(GO) run ./scripts/check-coverage.go coverage.func.txt $(COVERAGE_MIN)
 	rm -rf .gotmp

@@ -86,6 +86,7 @@ jobs:
         run: go vet ./...
       - name: Go coverage
         run: |
+          set -o pipefail
           mkdir -p test-artifacts/go
           make coverage COVERAGE_MIN=75.0 | tee test-artifacts/go/coverage.log
           cp coverage.out coverage.func.txt test-artifacts/go/
