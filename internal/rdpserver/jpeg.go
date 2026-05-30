@@ -21,12 +21,15 @@ func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]
 		return nil, false
 	}
 	var buf bytes.Buffer
+	_, _ = buf.Write(emptySurfaceBitsHeader[:])
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, false
 	}
-	encoded := buf.Bytes()
-	if len(encoded) == 0 || len(encoded) > rdpgfxMaxPDUSize {
+	out := buf.Bytes()
+	encodedLen := len(out) - surfaceBitsHeaderLen
+	if !validSurfaceBitsCommand(src.Width, src.Height, codecID, encodedLen) {
 		return nil, false
 	}
-	return buildSurfaceBitsCommand(src.Width, src.Height, codecID, encoded)
+	writeSurfaceBitsHeader(out[:surfaceBitsHeaderLen], src.Width, src.Height, codecID, encodedLen)
+	return out, true
 }

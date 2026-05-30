@@ -16,13 +16,16 @@ func buildPNGSurfaceBitsCommand(src frame.Frame, codecID byte) ([]byte, bool) {
 		return nil, false
 	}
 	var buf bytes.Buffer
+	_, _ = buf.Write(emptySurfaceBitsHeader[:])
 	encoder := png.Encoder{CompressionLevel: pngCompressionLevelFromEnv()}
 	if err := encoder.Encode(&buf, img); err != nil {
 		return nil, false
 	}
-	encoded := buf.Bytes()
-	if len(encoded) == 0 || len(encoded) > rdpgfxMaxPDUSize {
+	out := buf.Bytes()
+	encodedLen := len(out) - surfaceBitsHeaderLen
+	if !validSurfaceBitsCommand(src.Width, src.Height, codecID, encodedLen) {
 		return nil, false
 	}
-	return buildSurfaceBitsCommand(src.Width, src.Height, codecID, encoded)
+	writeSurfaceBitsHeader(out[:surfaceBitsHeaderLen], src.Width, src.Height, codecID, encodedLen)
+	return out, true
 }
