@@ -3,9 +3,31 @@ package rdpserver
 import (
 	"bytes"
 	"image/png"
+	"sync"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
+
+var pngSurfaceBitsBufferPool pooledPNGEncoderBufferPool
+
+type pooledPNGEncoderBufferPool struct {
+	pool sync.Pool
+}
+
+func (p *pooledPNGEncoderBufferPool) Get() *png.EncoderBuffer {
+	if v := p.pool.Get(); v != nil {
+		if b, ok := v.(*png.EncoderBuffer); ok {
+			return b
+		}
+	}
+	return new(png.EncoderBuffer)
+}
+
+func (p *pooledPNGEncoderBufferPool) Put(b *png.EncoderBuffer) {
+	if b != nil {
+		p.pool.Put(b)
+	}
+}
 
 func buildPNGSurfaceBitsCommand(src frame.Frame, codecID byte) ([]byte, bool) {
 	if codecID == 0 {
@@ -18,7 +40,7 @@ func buildPNGSurfaceBitsCommand(src frame.Frame, codecID byte) ([]byte, bool) {
 	var buf bytes.Buffer
 	buf.Grow(surfaceBitsHeaderLen + pngSurfaceBitsCapacityHint(src.Width, src.Height))
 	_, _ = buf.Write(emptySurfaceBitsHeader[:])
-	encoder := png.Encoder{CompressionLevel: pngCompressionLevelFromEnv()}
+	encoder := png.Encoder{CompressionLevel: pngCompressionLevelFromEnv(), BufferPool: &pngSurfaceBitsBufferPool}
 	if err := encoder.Encode(&buf, img); err != nil {
 		return nil, false
 	}
