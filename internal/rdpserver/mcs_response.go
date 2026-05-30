@@ -13,7 +13,20 @@ const (
 	mcsResultSuccessful      = 0
 )
 
-var t12402098OID = [6]byte{0, 0, 20, 124, 0, 1}
+var (
+	t12402098OID = [6]byte{0, 0, 20, 124, 0, 1}
+
+	defaultDomainParametersBER = [...]byte{
+		0x02, 0x01, 34, // maxChannelIds
+		0x02, 0x01, 2, // maxUserIds
+		0x02, 0x01, 0, // maxTokenIds
+		0x02, 0x01, 1, // numPriorities
+		0x02, 0x01, 0, // minThroughput
+		0x02, 0x01, 1, // maxHeight
+		0x02, 0x02, 0xff, 0xff, // maxMCSPDUSize
+		0x02, 0x01, 2, // protocolVersion
+	}
+)
 
 func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []clientChannel) error {
 	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol, channels))
@@ -56,6 +69,9 @@ func defaultDomainParameters() domainParameters {
 }
 
 func (p domainParameters) serialize() []byte {
+	if p == defaultDomainParameters() {
+		return defaultDomainParametersBER[:]
+	}
 	buf := new(bytes.Buffer)
 	berWriteInteger(p.maxChannelIds, buf)
 	berWriteInteger(p.maxUserIds, buf)

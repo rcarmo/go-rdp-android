@@ -1,7 +1,6 @@
 package rdpserver
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -474,12 +473,6 @@ func parseBitmapCodecsCapability(payload []byte, caps *confirmActiveCapabilities
 	}
 	caps.BitmapCodecs.Present = true
 	caps.BitmapCodecs.Codecs = codecs
-}
-
-func writeShareControlHeader(buf *bytes.Buffer, totalLength int, pduType uint16, source uint16) {
-	_ = binary.Write(buf, binary.LittleEndian, uint16(totalLength))
-	_ = binary.Write(buf, binary.LittleEndian, pduType)
-	_ = binary.Write(buf, binary.LittleEndian, source)
 }
 
 func writeShareControlHeaderAt(out []byte, totalLength int, pduType uint16, source uint16) {

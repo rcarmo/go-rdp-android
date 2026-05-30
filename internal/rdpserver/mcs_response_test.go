@@ -2,6 +2,16 @@ package rdpserver
 
 import "testing"
 
+func BenchmarkDefaultDomainParametersSerialize(b *testing.B) {
+	params := defaultDomainParameters()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(params.serialize()) != len(defaultDomainParametersBER) {
+			b.Fatal("bad domain parameter length")
+		}
+	}
+}
+
 func TestBuildGCCConferenceCreateResponse(t *testing.T) {
 	resp := buildGCCConferenceCreateResponse(nil)
 	if len(resp) == 0 {
