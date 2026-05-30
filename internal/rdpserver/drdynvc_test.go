@@ -102,6 +102,19 @@ func BenchmarkBuildDRDYNVCDataFirstPDU_4KiB(b *testing.B) {
 	}
 }
 
+func BenchmarkWriteDRDYNVCStaticPayload_4KiB(b *testing.B) {
+	payload := make([]byte, 4096)
+	m := newDRDYNVCManager([]clientChannel{{Name: drdynvcStaticChannelName, ID: 1005}}, nil, serverMetrics{})
+	conn := discardConn{}
+	b.SetBytes(int64(len(payload)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := m.writeStaticPayload(conn, payload); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestBuildDRDYNVCDataPDU(t *testing.T) {
 	data := buildRDPEISCReadyPDU(rdpeiProtocolV300, nil)
 	wire := buildDRDYNVCDataPDU(3, data)

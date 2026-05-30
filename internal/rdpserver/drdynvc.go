@@ -409,9 +409,27 @@ func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error
 	if !m.enabled() {
 		return nil
 	}
-	static := buildStaticVirtualChannelPDU(payload)
-	body := buildMCSSendDataIndication(serverChannelID, m.staticChannelID, static)
-	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
+	staticLen := 8 + len(payload)
+	perLen := encodedPERLengthSize(staticLen)
+	bodyLen := 2 + 2 + 1 + perLen + staticLen
+	totalLen := 4 + 3 + 1 + bodyLen
+	if staticLen > drdynvcMaxStaticPayload || totalLen > 0xffff {
+		return fmt.Errorf("drdynvc static payload too large: %d", len(payload))
+	}
+	out := make([]byte, totalLen)
+	writeTPKTX224MCSHeader(out, mcsSendDataIndicationApp, bodyLen)
+	binary.BigEndian.PutUint16(out[8:10], serverChannelID-defaultMCSUserID)
+	binary.BigEndian.PutUint16(out[10:12], m.staticChannelID)
+	out[12] = 0x70
+	staticOff := 13 + writePERLength(out[13:], staticLen)
+	binary.LittleEndian.PutUint32(out[staticOff:staticOff+4], uint32(len(payload))) // #nosec G115 -- payload length is bounded above.
+	binary.LittleEndian.PutUint32(out[staticOff+4:staticOff+8], channelFlagFirst|channelFlagLast)
+	copy(out[staticOff+8:], payload)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", totalLen-4)
+	}
+	return err
 }
 
 func dispatchRDPEITouchEvent(pdu *rdpeiPDU, sink input.Sink, lifecycle *input.TouchLifecycleCoalescer) error {
