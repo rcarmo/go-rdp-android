@@ -7,6 +7,17 @@ import (
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
+func BenchmarkBuildPseudoAVCNAL(b *testing.B) {
+	src := frame.Frame{Width: 64, Height: 64, Stride: 64 * 4, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(64, 64, 0x11, 0x22, 0x33, 0xff)}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		out := buildPseudoAVCNAL(0x65, src, src.Stride, false)
+		if len(out) != 10 {
+			b.Fatalf("pseudo NAL len=%d", len(out))
+		}
+	}
+}
+
 func TestProductionAVC444Encoder(t *testing.T) {
 	enc := productionAVC444Encoder{}
 	src := frame.Frame{Width: 16, Height: 16, Stride: 64, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(16, 16, 0x11, 0x22, 0x33, 0xff)}

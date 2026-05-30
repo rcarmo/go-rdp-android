@@ -42,8 +42,8 @@ func buildPseudoAVCNAL(nalType byte, src frame.Frame, stride int, aux bool) []by
 	// encoder supplies separate base/aux units so AVC444/AVC444v2 production
 	// server plumbing, framing, bounds, and negotiation can be exercised without
 	// fixture bytes.
-	out := make([]byte, 0, 4+1+16)
-	out = append(out, 0x00, 0x00, 0x00, 0x01, nalType)
+	out := make([]byte, 10)
+	out[0], out[1], out[2], out[3], out[4] = 0x00, 0x00, 0x00, 0x01, nalType
 	var rSum, gSum, bSum uint32
 	for y := 0; y < src.Height; y++ {
 		row := y * stride
@@ -67,7 +67,7 @@ func buildPseudoAVCNAL(nalType byte, src frame.Frame, stride int, aux bool) []by
 	if pixels == 0 {
 		pixels = 1
 	}
-	out = append(out, byte(rSum/pixels), byte(gSum/pixels), byte(bSum/pixels), byte(src.Width), byte(src.Height))
+	out[5], out[6], out[7], out[8], out[9] = byte(rSum/pixels), byte(gSum/pixels), byte(bSum/pixels), byte(src.Width), byte(src.Height)
 	return out
 }
 
