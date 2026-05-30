@@ -582,7 +582,41 @@ func parseDRDYNVCPDU(data []byte) (*drdynvcPDU, error) {
 	return pdu, nil
 }
 
+var (
+	drdynvcCapsVersion1PDU = [...]byte{(drdynvcHeader{Cmd: drdynvcCmdCapability}).serialize(), 0, byte(drdynvcCapsVersion1), byte(drdynvcCapsVersion1 >> 8)}
+
+	drdynvcCreateOKResponseSmall            = buildDRDYNVCCreateResponseSmallTable(drdynvcCreateOK)
+	drdynvcCreateAlreadyExistsResponseSmall = buildDRDYNVCCreateResponseSmallTable(drdynvcCreateAlreadyExists)
+	drdynvcCreateNoListenerResponseSmall    = buildDRDYNVCCreateResponseSmallTable(drdynvcCreateNoListener)
+	rdpgfxCreateRequestSmall                = buildDRDYNVCCreateRequestSmallTable(rdpgfxDynamicChannelName)
+)
+
+func buildDRDYNVCCreateResponseSmallTable(creationCode uint32) [256][6]byte {
+	var table [256][6]byte
+	for channelID := range table {
+		out := table[channelID][:]
+		out[0] = (drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize()
+		out[1] = byte(channelID)
+		binary.LittleEndian.PutUint32(out[2:6], creationCode)
+	}
+	return table
+}
+
+func buildDRDYNVCCreateRequestSmallTable(name string) [256][1 + 1 + len(rdpgfxDynamicChannelName) + 1]byte {
+	var table [256][1 + 1 + len(rdpgfxDynamicChannelName) + 1]byte
+	for channelID := range table {
+		out := table[channelID][:]
+		out[0] = (drdynvcHeader{CbChID: 0, Cmd: drdynvcCmdCreate}).serialize()
+		out[1] = byte(channelID)
+		copy(out[2:], name)
+	}
+	return table
+}
+
 func buildDRDYNVCCapsPDU(version uint16) []byte {
+	if version == drdynvcCapsVersion1 {
+		return drdynvcCapsVersion1PDU[:]
+	}
 	out := make([]byte, 4)
 	out[0] = drdynvcHeader{Cmd: drdynvcCmdCapability}.serialize()
 	out[1] = 0
@@ -591,6 +625,17 @@ func buildDRDYNVCCapsPDU(version uint16) []byte {
 }
 
 func buildDRDYNVCCreateResponsePDU(channelID uint32, creationCode uint32) []byte {
+	if channelID <= 0xff {
+		smallID := byte(channelID)
+		switch creationCode {
+		case drdynvcCreateOK:
+			return drdynvcCreateOKResponseSmall[smallID][:]
+		case drdynvcCreateAlreadyExists:
+			return drdynvcCreateAlreadyExistsResponseSmall[smallID][:]
+		case drdynvcCreateNoListener:
+			return drdynvcCreateNoListenerResponseSmall[smallID][:]
+		}
+	}
 	cb := drdynvcCbChID(channelID)
 	out := make([]byte, 1+dvcChannelIDLen(cb)+4)
 	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()
@@ -600,6 +645,9 @@ func buildDRDYNVCCreateResponsePDU(channelID uint32, creationCode uint32) []byte
 }
 
 func buildDRDYNVCCreateRequestPDU(channelID uint32, name string) []byte {
+	if channelID <= 0xff && name == rdpgfxDynamicChannelName {
+		return rdpgfxCreateRequestSmall[byte(channelID)][:]
+	}
 	cb := drdynvcCbChID(channelID)
 	out := make([]byte, 1+dvcChannelIDLen(cb)+len(name)+1)
 	out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdCreate}).serialize()
