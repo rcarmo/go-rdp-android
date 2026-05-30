@@ -5,10 +5,11 @@ func buildRDPGFXAVC444FramePDUs(surfaceID uint16, frameID uint32, in avc444Encod
 	if !ok {
 		return nil, false
 	}
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
 	return [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
+		start,
 		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC444, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(in.Width), uint16(in.Height), payload), // #nosec G115 -- validateAVC444EncoderInput bounds width/height.
-		buildRDPGFXEndFramePDU(frameID),
+		end,
 	}, true
 }
 
@@ -17,9 +18,10 @@ func buildRDPGFXAVC444v2FramePDUs(surfaceID uint16, frameID uint32, in avc444Enc
 	if !ok {
 		return nil, false
 	}
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
 	return [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
+		start,
 		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC444v2, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(in.Width), uint16(in.Height), payload), // #nosec G115 -- validateAVC444EncoderInput bounds width/height.
-		buildRDPGFXEndFramePDU(frameID),
+		end,
 	}, true
 }

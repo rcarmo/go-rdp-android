@@ -24,9 +24,10 @@ func buildRDPGFXEncodedFramePDUs(surfaceID uint16, frameID uint32, src frame.Fra
 	if !ok || len(encoded) == 0 || len(encoded) > rdpgfxMaxPDUSize {
 		return nil, "", false
 	}
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
 	return [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
+		start,
 		buildRDPGFXWireToSurface1PDU(surfaceID, codecID, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width), uint16(normalized.Height), encoded), // #nosec G115 -- dimensions bounded by normalizeFrameForDesktop/normalizedFrameStride.
-		buildRDPGFXEndFramePDU(frameID),
+		end,
 	}, path, true
 }

@@ -236,10 +236,11 @@ func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessU
 		return nil, false
 	}
 	avc420Payload := buildRDPGFXAVC420BitmapStream(unit.Data, uint16(width), uint16(height)) // #nosec G115 -- dimensions bounded above.
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
 	pdus := [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
+		start,
 		buildRDPGFXWireToSurface1PDU(surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), avc420Payload), // #nosec G115 -- dimensions bounded above.
-		buildRDPGFXEndFramePDU(frameID),
+		end,
 	}
 	return pdus, true
 }
@@ -271,11 +272,20 @@ func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Fram
 	if !ok {
 		return nil, false
 	}
-	return [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
-		wire,
-		buildRDPGFXEndFramePDU(frameID),
-	}, true
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
+	return [][]byte{start, wire, end}, true
+}
+
+func buildRDPGFXFrameBoundaryPDUs(frameID uint32) ([]byte, []byte) {
+	out := make([]byte, 28)
+	start := out[:16]
+	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
+	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
+	binary.LittleEndian.PutUint32(start[12:16], frameID)
+	end := out[16:28]
+	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
+	binary.LittleEndian.PutUint32(end[8:12], frameID)
+	return start, end
 }
 
 func buildRDPGFXPlanarWireToSurfacePDU(surfaceID uint16, src frame.Frame, stride int) ([]byte, bool) {

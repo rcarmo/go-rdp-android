@@ -50,9 +50,6 @@ func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src fram
 			pixels[di+3] = 0xff
 		}
 	}
-	return [][]byte{
-		buildRDPGFXStartFramePDU(frameID),
-		wire,
-		buildRDPGFXEndFramePDU(frameID),
-	}, true
+	start, end := buildRDPGFXFrameBoundaryPDUs(frameID)
+	return [][]byte{start, wire, end}, true
 }
