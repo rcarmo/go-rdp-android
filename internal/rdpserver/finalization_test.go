@@ -45,6 +45,8 @@ func TestBuildAndParseShareDataPDU(t *testing.T) {
 	}
 }
 
+var benchmarkPayloadSink []byte
+
 type benchmarkWriteConn struct{ n int }
 
 func (c *benchmarkWriteConn) Read(_ []byte) (int, error)         { return 0, nil }
@@ -135,6 +137,24 @@ func BenchmarkBuildShareDataPDU_4KiB(b *testing.B) {
 		wire := buildShareDataPDU(pduType2Update, payload)
 		if len(wire) != len(payload)+18 {
 			b.Fatalf("buildShareDataPDU len=%d", len(wire))
+		}
+	}
+}
+
+func BenchmarkBuildSmallSharePayloads(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		benchmarkPayloadSink = buildSynchronizePayload()
+		if len(benchmarkPayloadSink) != 4 {
+			b.Fatal("unexpected synchronize payload length")
+		}
+		benchmarkPayloadSink = buildControlPayload(controlActionGrantedControl)
+		if len(benchmarkPayloadSink) != 8 {
+			b.Fatal("unexpected control payload length")
+		}
+		benchmarkPayloadSink = buildFontMapPayload()
+		if len(benchmarkPayloadSink) != 8 {
+			b.Fatal("unexpected font map payload length")
 		}
 	}
 }

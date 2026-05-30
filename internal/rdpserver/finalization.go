@@ -505,23 +505,26 @@ func writeShareDataPDUAt(out []byte, pduType2 uint8, payload []byte) {
 }
 
 func buildSynchronizePayload() []byte {
-	out := appendLE16Bytes(nil, 1)
-	out = appendLE16Bytes(out, serverChannelID)
+	out := make([]byte, 4)
+	binary.LittleEndian.PutUint16(out[0:2], 1)
+	binary.LittleEndian.PutUint16(out[2:4], serverChannelID)
 	return out
 }
 
 func buildControlPayload(action uint16) []byte {
-	out := appendLE16Bytes(nil, action)
-	out = appendLE16Bytes(out, 0)
-	out = appendLE32Bytes(out, 0)
+	out := make([]byte, 8)
+	binary.LittleEndian.PutUint16(out[0:2], action)
+	binary.LittleEndian.PutUint16(out[2:4], 0)
+	binary.LittleEndian.PutUint32(out[4:8], 0)
 	return out
 }
 
 func buildFontMapPayload() []byte {
-	out := appendLE16Bytes(nil, 0) // numberEntries
-	out = appendLE16Bytes(out, 0)  // totalNumEntries
-	out = appendLE16Bytes(out, 3)  // FONTMAP_FIRST | FONTMAP_LAST
-	out = appendLE16Bytes(out, 4)  // entrySize
+	out := make([]byte, 8)
+	binary.LittleEndian.PutUint16(out[0:2], 0) // numberEntries
+	binary.LittleEndian.PutUint16(out[2:4], 0) // totalNumEntries
+	binary.LittleEndian.PutUint16(out[4:6], 3) // FONTMAP_FIRST | FONTMAP_LAST
+	binary.LittleEndian.PutUint16(out[6:8], 4) // entrySize
 	return out
 }
 
