@@ -116,7 +116,7 @@ func parseProgressivePayload(data []byte) (progressivePayload, bool) {
 	if dataLen <= 0 || dataLen > len(data)-off {
 		return out, false
 	}
-	out.Data = append([]byte(nil), data[off:off+dataLen]...)
+	out.Data = data[off : off+dataLen]
 	if !validateProgressivePayload(out) {
 		return progressivePayload{}, false
 	}

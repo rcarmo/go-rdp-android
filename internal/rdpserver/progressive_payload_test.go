@@ -2,6 +2,30 @@ package rdpserver
 
 import "testing"
 
+func BenchmarkParseProgressivePayload(b *testing.B) {
+	seed := progressivePayload{
+		Width:      64,
+		Height:     64,
+		LayerCount: 1,
+		Quant:      4,
+		RegionRects: []progressiveRect{{
+			Left: 0, Top: 0, Right: 64, Bottom: 64,
+		}},
+		Data: []byte{9, 8, 7, 6, 5, 4},
+	}
+	wire, ok := buildProgressivePayload(seed)
+	if !ok {
+		b.Fatal("bad progressive seed")
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		parsed, ok := parseProgressivePayload(wire)
+		if !ok || len(parsed.Data) != len(seed.Data) {
+			b.Fatal("bad progressive parse")
+		}
+	}
+}
+
 func TestBuildAndParseProgressivePayload(t *testing.T) {
 	in := progressivePayload{
 		Width:      64,
