@@ -16,6 +16,25 @@ func BenchmarkBuildServerCapabilityLeaves(b *testing.B) {
 	}
 }
 
+func BenchmarkBuildDemandActivePDU(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(buildDemandActivePDU(1280, 720)) != demandActivePDULen() {
+			b.Fatal("bad Demand Active length")
+		}
+	}
+}
+
+func BenchmarkWriteDemandActive(b *testing.B) {
+	conn := discardConn{}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if err := writeDemandActive(conn, 1280, 720); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestBuildDemandActivePDU(t *testing.T) {
 	pdu := buildDemandActivePDU(800, 600)
 	if len(pdu) < 32 {

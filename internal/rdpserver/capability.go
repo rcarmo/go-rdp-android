@@ -137,47 +137,85 @@ func (c bitmapCodecsCapabilityInfo) remoteFXImageCodecID() (byte, bool) {
 }
 
 func writeDemandActive(conn net.Conn, width, height int) error {
-	pdu := buildDemandActivePDU(width, height)
-	body := buildMCSSendDataIndication(serverChannelID, globalChannelID, pdu)
-	return writeMCSDomainPDU(conn, mcsSendDataIndicationApp, body)
+	pduLen := demandActivePDULen()
+	perLen := encodedPERLengthSize(pduLen)
+	bodyLen := 2 + 2 + 1 + perLen + pduLen
+	totalLen := 4 + 3 + 1 + bodyLen
+	out := make([]byte, totalLen)
+	writeTPKTX224MCSHeader(out, mcsSendDataIndicationApp, bodyLen)
+	binary.BigEndian.PutUint16(out[8:10], serverChannelID-defaultMCSUserID)
+	binary.BigEndian.PutUint16(out[10:12], globalChannelID)
+	out[12] = 0x70
+	pduOff := 13 + writePERLength(out[13:], pduLen)
+	writeDemandActivePDUAt(out[pduOff:pduOff+pduLen], width, height)
+	_, err := conn.Write(out)
+	if err == nil && traceEnabled {
+		tracef("tpkt_write", "payload_len=%d", totalLen-4)
+	}
+	return err
 }
 
 func buildDemandActivePDU(width, height int) []byte {
-	caps := buildServerCapabilitySets(width, height)
-	combinedCapsLen := 4 + len(caps)
-	source := []byte(serverSourceName)
-	totalLength := 6 + 4 + 2 + 2 + len(source) + combinedCapsLen + 4
+	out := make([]byte, demandActivePDULen())
+	writeDemandActivePDUAt(out, width, height)
+	return out
+}
 
-	buf := new(bytes.Buffer)
-	writeShareControlHeader(buf, totalLength, pduTypeDemandActive, serverChannelID)
-	_ = binary.Write(buf, binary.LittleEndian, uint32(defaultShareID))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(len(source)))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(combinedCapsLen))
-	buf.Write(source)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(6)) // capability count
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0)) // pad2Octets
-	buf.Write(caps)
-	_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // sessionId
-	return buf.Bytes()
+func demandActivePDULen() int {
+	return 6 + 4 + 2 + 2 + len(serverSourceName) + 4 + serverCapabilitySetsLen() + 4
+}
+
+func writeDemandActivePDUAt(out []byte, width, height int) {
+	combinedCapsLen := 4 + serverCapabilitySetsLen()
+	writeShareControlHeaderAt(out, demandActivePDULen(), pduTypeDemandActive, serverChannelID)
+	binary.LittleEndian.PutUint32(out[6:10], defaultShareID)
+	binary.LittleEndian.PutUint16(out[10:12], uint16(len(serverSourceName)))
+	binary.LittleEndian.PutUint16(out[12:14], uint16(combinedCapsLen))
+	copy(out[14:], serverSourceName)
+	off := 14 + len(serverSourceName)
+	binary.LittleEndian.PutUint16(out[off:off+2], 6) // capability count
+	off += 4                                         // pad2Octets is already zero
+	writeServerCapabilitySetsAt(out[off:off+serverCapabilitySetsLen()], width, height)
 }
 
 func buildServerCapabilitySets(width, height int) []byte {
-	buf := new(bytes.Buffer)
-	buf.Write(capabilitySet(capTypeGeneral, buildGeneralCapability()))
-	buf.Write(capabilitySet(capTypeBitmap, buildBitmapCapability(width, height)))
-	buf.Write(capabilitySet(capTypePointer, buildPointerCapability()))
-	buf.Write(capabilitySet(capTypeInput, buildInputCapability()))
-	buf.Write(capabilitySet(capTypeFont, buildFontCapability()))
-	buf.Write(capabilitySet(capTypeShare, buildShareCapability()))
-	return buf.Bytes()
+	out := make([]byte, serverCapabilitySetsLen())
+	writeServerCapabilitySetsAt(out, width, height)
+	return out
+}
+
+func serverCapabilitySetsLen() int {
+	return 4 + len(generalCapability) + 4 + 24 + 4 + len(pointerCapability) + 4 + len(inputCapability) + 4 + len(fontCapability) + 4 + len(shareCapability)
+}
+
+func writeServerCapabilitySetsAt(out []byte, width, height int) {
+	off := 0
+	off += writeCapabilitySetAt(out[off:], capTypeGeneral, generalCapability[:])
+	off += writeBitmapCapabilitySetAt(out[off:], width, height)
+	off += writeCapabilitySetAt(out[off:], capTypePointer, pointerCapability[:])
+	off += writeCapabilitySetAt(out[off:], capTypeInput, inputCapability[:])
+	off += writeCapabilitySetAt(out[off:], capTypeFont, fontCapability[:])
+	writeCapabilitySetAt(out[off:], capTypeShare, shareCapability[:])
 }
 
 func capabilitySet(capType uint16, payload []byte) []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, capType)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(4+len(payload)))
-	buf.Write(payload)
-	return buf.Bytes()
+	out := make([]byte, 4+len(payload))
+	writeCapabilitySetAt(out, capType, payload)
+	return out
+}
+
+func writeCapabilitySetAt(out []byte, capType uint16, payload []byte) int {
+	binary.LittleEndian.PutUint16(out[0:2], capType)
+	binary.LittleEndian.PutUint16(out[2:4], uint16(4+len(payload))) // #nosec G115 -- capability payloads are fixed/bounded.
+	copy(out[4:], payload)
+	return 4 + len(payload)
+}
+
+func writeBitmapCapabilitySetAt(out []byte, width, height int) int {
+	binary.LittleEndian.PutUint16(out[0:2], capTypeBitmap)
+	binary.LittleEndian.PutUint16(out[2:4], 28)
+	writeBitmapCapabilityAt(out[4:28], width, height)
+	return 28
 }
 
 var (
@@ -214,6 +252,11 @@ func buildGeneralCapability() []byte {
 
 func buildBitmapCapability(width, height int) []byte {
 	out := make([]byte, 24)
+	writeBitmapCapabilityAt(out, width, height)
+	return out
+}
+
+func writeBitmapCapabilityAt(out []byte, width, height int) {
 	binary.LittleEndian.PutUint16(out[0:2], 32) // preferredBitsPerPixel
 	binary.LittleEndian.PutUint16(out[2:4], 1)  // receive1BitPerPixel
 	binary.LittleEndian.PutUint16(out[4:6], 1)  // receive4BitsPerPixel
@@ -223,7 +266,6 @@ func buildBitmapCapability(width, height int) []byte {
 	binary.LittleEndian.PutUint16(out[14:16], 1) // desktopResizeFlag
 	binary.LittleEndian.PutUint16(out[16:18], 1) // bitmapCompressionFlag
 	binary.LittleEndian.PutUint16(out[20:22], 1) // multipleRectangleSupport
-	return out
 }
 
 func buildPointerCapability() []byte {
@@ -438,4 +480,10 @@ func writeShareControlHeader(buf *bytes.Buffer, totalLength int, pduType uint16,
 	_ = binary.Write(buf, binary.LittleEndian, uint16(totalLength))
 	_ = binary.Write(buf, binary.LittleEndian, pduType)
 	_ = binary.Write(buf, binary.LittleEndian, source)
+}
+
+func writeShareControlHeaderAt(out []byte, totalLength int, pduType uint16, source uint16) {
+	binary.LittleEndian.PutUint16(out[0:2], uint16(totalLength)) // #nosec G115 -- share PDUs are bounded by allocation.
+	binary.LittleEndian.PutUint16(out[2:4], pduType)
+	binary.LittleEndian.PutUint16(out[4:6], source)
 }
