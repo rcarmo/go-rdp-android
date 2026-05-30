@@ -190,14 +190,18 @@ func (m serverMetrics) recordRDPGFXFramePath(pdus [][]byte, path string) {
 }
 
 func (m serverMetrics) recordH264Frame(accessUnits [][]byte) {
+	m.recordH264FrameBytes(totalPayloadBytes(accessUnits))
+}
+
+func (m serverMetrics) recordH264FrameBytes(bytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
 	if m.h264Frames != nil {
 		m.h264Frames.Add(1)
 	}
-	if m.h264Bytes != nil {
-		m.h264Bytes.Add(totalPayloadBytes(accessUnits))
+	if bytes > 0 && m.h264Bytes != nil {
+		m.h264Bytes.Add(bytes)
 	}
 }
 

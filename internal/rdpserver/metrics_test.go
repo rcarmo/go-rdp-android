@@ -207,14 +207,15 @@ func TestServerMetricsRecordH264Frame(t *testing.T) {
 	metrics := serverMetrics{framesSent: &framesSent, h264Frames: &h264Frames, h264Bytes: &h264Bytes}
 
 	metrics.recordH264Frame([][]byte{[]byte("abc"), []byte("de")})
+	metrics.recordH264FrameBytes(7)
 
-	if got := framesSent.Load(); got != 1 {
+	if got := framesSent.Load(); got != 2 {
 		t.Fatalf("framesSent = %d, want 1", got)
 	}
-	if got := h264Frames.Load(); got != 1 {
-		t.Fatalf("h264Frames = %d, want 1", got)
+	if got := h264Frames.Load(); got != 2 {
+		t.Fatalf("h264Frames = %d, want 2", got)
 	}
-	if got := h264Bytes.Load(); got != 5 {
-		t.Fatalf("h264Bytes = %d, want 5", got)
+	if got := h264Bytes.Load(); got != 12 {
+		t.Fatalf("h264Bytes = %d, want 12", got)
 	}
 }
