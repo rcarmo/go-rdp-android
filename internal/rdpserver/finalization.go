@@ -504,28 +504,35 @@ func writeShareDataPDUAt(out []byte, pduType2 uint8, payload []byte) {
 	copy(out[18:], payload)
 }
 
+var (
+	synchronizePayload      = [...]byte{0x01, 0x00, byte(serverChannelID & 0xff), byte(serverChannelID >> 8)}
+	controlGrantedPayload   = [...]byte{byte(controlActionGrantedControl), byte(controlActionGrantedControl >> 8), 0, 0, 0, 0, 0, 0}
+	controlCooperatePayload = [...]byte{byte(controlActionCooperate), byte(controlActionCooperate >> 8), 0, 0, 0, 0, 0, 0}
+	controlRequestPayload   = [...]byte{byte(controlActionRequestControl), byte(controlActionRequestControl >> 8), 0, 0, 0, 0, 0, 0}
+	fontMapPayload          = [...]byte{0, 0, 0, 0, 3, 0, 4, 0}
+)
+
 func buildSynchronizePayload() []byte {
-	out := make([]byte, 4)
-	binary.LittleEndian.PutUint16(out[0:2], 1)
-	binary.LittleEndian.PutUint16(out[2:4], serverChannelID)
-	return out
+	return synchronizePayload[:]
 }
 
 func buildControlPayload(action uint16) []byte {
-	out := make([]byte, 8)
-	binary.LittleEndian.PutUint16(out[0:2], action)
-	binary.LittleEndian.PutUint16(out[2:4], 0)
-	binary.LittleEndian.PutUint32(out[4:8], 0)
-	return out
+	switch action {
+	case controlActionGrantedControl:
+		return controlGrantedPayload[:]
+	case controlActionCooperate:
+		return controlCooperatePayload[:]
+	case controlActionRequestControl:
+		return controlRequestPayload[:]
+	default:
+		out := make([]byte, 8)
+		binary.LittleEndian.PutUint16(out[0:2], action)
+		return out
+	}
 }
 
 func buildFontMapPayload() []byte {
-	out := make([]byte, 8)
-	binary.LittleEndian.PutUint16(out[0:2], 0) // numberEntries
-	binary.LittleEndian.PutUint16(out[2:4], 0) // totalNumEntries
-	binary.LittleEndian.PutUint16(out[4:6], 3) // FONTMAP_FIRST | FONTMAP_LAST
-	binary.LittleEndian.PutUint16(out[6:8], 4) // entrySize
-	return out
+	return fontMapPayload[:]
 }
 
 func parseControlAction(payload []byte) (uint16, error) {
