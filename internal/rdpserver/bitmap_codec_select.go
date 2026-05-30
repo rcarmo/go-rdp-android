@@ -57,16 +57,16 @@ func buildRemoteFXBitmapCodecCommand(src frame.Frame, caps confirmActiveCapabili
 func recordExperimentalBitmapCodecFrame(metrics serverMetrics, cmd bitmapCodecCommand) bool {
 	switch cmd.Name {
 	case "nscodec":
-		metrics.recordNSCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
+		metrics.recordNSCodecFrameBytes(int64(len(cmd.Command)), int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	case "jpeg-codec":
-		metrics.recordJPEGCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
+		metrics.recordJPEGCodecFrameBytes(int64(len(cmd.Command)), int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	case "png-codec":
-		metrics.recordPNGCodecFrameSavings([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
+		metrics.recordPNGCodecFrameBytes(int64(len(cmd.Command)), int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	case "rfx-codec":
-		metrics.recordRFXCodecFrame([][]byte{cmd.Command}, int64(cmd.RawBytes), int64(cmd.savedBytes()))
+		metrics.recordRFXCodecFrameBytes(int64(len(cmd.Command)), int64(cmd.RawBytes), int64(cmd.savedBytes()))
 		return true
 	default:
 		return false

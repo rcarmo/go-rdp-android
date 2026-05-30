@@ -109,15 +109,16 @@ func TestServerMetricsRecordNSCodecFrame(t *testing.T) {
 	metrics := serverMetrics{framesSent: &framesSent, nsCodecFrames: &nsCodecFrames, nsCodecBytes: &nsCodecBytes}
 
 	metrics.recordNSCodecFrame([][]byte{[]byte("abc"), []byte("defg")})
+	metrics.recordNSCodecFrameBytes(5, 0, 0)
 
-	if got := framesSent.Load(); got != 1 {
+	if got := framesSent.Load(); got != 2 {
 		t.Fatalf("framesSent = %d, want 1", got)
 	}
-	if got := nsCodecFrames.Load(); got != 1 {
-		t.Fatalf("nsCodecFrames = %d, want 1", got)
+	if got := nsCodecFrames.Load(); got != 2 {
+		t.Fatalf("nsCodecFrames = %d, want 2", got)
 	}
-	if got := nsCodecBytes.Load(); got != 7 {
-		t.Fatalf("nsCodecBytes = %d, want 7", got)
+	if got := nsCodecBytes.Load(); got != 12 {
+		t.Fatalf("nsCodecBytes = %d, want 12", got)
 	}
 }
 
@@ -128,15 +129,16 @@ func TestServerMetricsRecordJPEGCodecFrame(t *testing.T) {
 	metrics := serverMetrics{framesSent: &framesSent, jpegCodecFrames: &jpegCodecFrames, jpegCodecBytes: &jpegCodecBytes}
 
 	metrics.recordJPEGCodecFrame([][]byte{[]byte("jpeg")})
+	metrics.recordJPEGCodecFrameBytes(6, 0, 0)
 
-	if got := framesSent.Load(); got != 1 {
+	if got := framesSent.Load(); got != 2 {
 		t.Fatalf("framesSent = %d, want 1", got)
 	}
-	if got := jpegCodecFrames.Load(); got != 1 {
-		t.Fatalf("jpegCodecFrames = %d, want 1", got)
+	if got := jpegCodecFrames.Load(); got != 2 {
+		t.Fatalf("jpegCodecFrames = %d, want 2", got)
 	}
-	if got := jpegCodecBytes.Load(); got != 4 {
-		t.Fatalf("jpegCodecBytes = %d, want 4", got)
+	if got := jpegCodecBytes.Load(); got != 10 {
+		t.Fatalf("jpegCodecBytes = %d, want 10", got)
 	}
 }
 
@@ -147,15 +149,16 @@ func TestServerMetricsRecordPNGCodecFrame(t *testing.T) {
 	metrics := serverMetrics{framesSent: &framesSent, pngCodecFrames: &pngCodecFrames, pngCodecBytes: &pngCodecBytes}
 
 	metrics.recordPNGCodecFrame([][]byte{[]byte("png")})
+	metrics.recordPNGCodecFrameBytes(4, 0, 0)
 
-	if got := framesSent.Load(); got != 1 {
+	if got := framesSent.Load(); got != 2 {
 		t.Fatalf("framesSent = %d, want 1", got)
 	}
-	if got := pngCodecFrames.Load(); got != 1 {
-		t.Fatalf("pngCodecFrames = %d, want 1", got)
+	if got := pngCodecFrames.Load(); got != 2 {
+		t.Fatalf("pngCodecFrames = %d, want 2", got)
 	}
-	if got := pngCodecBytes.Load(); got != 3 {
-		t.Fatalf("pngCodecBytes = %d, want 3", got)
+	if got := pngCodecBytes.Load(); got != 7 {
+		t.Fatalf("pngCodecBytes = %d, want 7", got)
 	}
 }
 

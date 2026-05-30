@@ -79,14 +79,18 @@ func (m serverMetrics) recordNSCodecFrame(commands [][]byte) {
 }
 
 func (m serverMetrics) recordNSCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
+	m.recordNSCodecFrameBytes(totalPayloadBytes(commands), rawBytes, savedBytes)
+}
+
+func (m serverMetrics) recordNSCodecFrameBytes(bytes, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
 	if m.nsCodecFrames != nil {
 		m.nsCodecFrames.Add(1)
 	}
-	if m.nsCodecBytes != nil {
-		m.nsCodecBytes.Add(totalPayloadBytes(commands))
+	if bytes > 0 && m.nsCodecBytes != nil {
+		m.nsCodecBytes.Add(bytes)
 	}
 	if rawBytes > 0 && m.nsCodecRawBytes != nil {
 		m.nsCodecRawBytes.Add(rawBytes)
@@ -101,14 +105,18 @@ func (m serverMetrics) recordJPEGCodecFrame(commands [][]byte) {
 }
 
 func (m serverMetrics) recordJPEGCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
+	m.recordJPEGCodecFrameBytes(totalPayloadBytes(commands), rawBytes, savedBytes)
+}
+
+func (m serverMetrics) recordJPEGCodecFrameBytes(bytes, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
 	if m.jpegCodecFrames != nil {
 		m.jpegCodecFrames.Add(1)
 	}
-	if m.jpegCodecBytes != nil {
-		m.jpegCodecBytes.Add(totalPayloadBytes(commands))
+	if bytes > 0 && m.jpegCodecBytes != nil {
+		m.jpegCodecBytes.Add(bytes)
 	}
 	if rawBytes > 0 && m.jpegCodecRawBytes != nil {
 		m.jpegCodecRawBytes.Add(rawBytes)
@@ -123,14 +131,18 @@ func (m serverMetrics) recordPNGCodecFrame(commands [][]byte) {
 }
 
 func (m serverMetrics) recordPNGCodecFrameSavings(commands [][]byte, rawBytes, savedBytes int64) {
+	m.recordPNGCodecFrameBytes(totalPayloadBytes(commands), rawBytes, savedBytes)
+}
+
+func (m serverMetrics) recordPNGCodecFrameBytes(bytes, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
 	if m.pngCodecFrames != nil {
 		m.pngCodecFrames.Add(1)
 	}
-	if m.pngCodecBytes != nil {
-		m.pngCodecBytes.Add(totalPayloadBytes(commands))
+	if bytes > 0 && m.pngCodecBytes != nil {
+		m.pngCodecBytes.Add(bytes)
 	}
 	if rawBytes > 0 && m.pngCodecRawBytes != nil {
 		m.pngCodecRawBytes.Add(rawBytes)
@@ -141,14 +153,18 @@ func (m serverMetrics) recordPNGCodecFrameSavings(commands [][]byte, rawBytes, s
 }
 
 func (m serverMetrics) recordRFXCodecFrame(commands [][]byte, rawBytes, savedBytes int64) {
+	m.recordRFXCodecFrameBytes(totalPayloadBytes(commands), rawBytes, savedBytes)
+}
+
+func (m serverMetrics) recordRFXCodecFrameBytes(bytes, rawBytes, savedBytes int64) {
 	if m.framesSent != nil {
 		m.framesSent.Add(1)
 	}
 	if m.rfxCodecFrames != nil {
 		m.rfxCodecFrames.Add(1)
 	}
-	if m.rfxCodecBytes != nil {
-		m.rfxCodecBytes.Add(totalPayloadBytes(commands))
+	if bytes > 0 && m.rfxCodecBytes != nil {
+		m.rfxCodecBytes.Add(bytes)
 	}
 	if rawBytes > 0 && m.rfxCodecRawBytes != nil {
 		m.rfxCodecRawBytes.Add(rawBytes)
