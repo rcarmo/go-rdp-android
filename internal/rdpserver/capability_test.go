@@ -7,6 +7,15 @@ import (
 	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
+func BenchmarkBuildServerCapabilityLeaves(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if len(buildGeneralCapability()) != 20 || len(buildPointerCapability()) != 6 || len(buildInputCapability()) != 88 || len(buildFontCapability()) != 4 || len(buildShareCapability()) != 4 {
+			b.Fatal("bad capability length")
+		}
+	}
+}
+
 func TestBuildDemandActivePDU(t *testing.T) {
 	pdu := buildDemandActivePDU(800, 600)
 	if len(pdu) < 32 {

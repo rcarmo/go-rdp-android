@@ -180,80 +180,66 @@ func capabilitySet(capType uint16, payload []byte) []byte {
 	return buf.Bytes()
 }
 
-func buildGeneralCapability() []byte {
-	buf := new(bytes.Buffer)
-	for _, v := range []uint16{
-		1,      // osMajorType: OSMAJORTYPE_WINDOWS
-		3,      // osMinorType: OSMINORTYPE_WINDOWS_NT
-		0x0200, // protocolVersion
-		0,      // pad2octetsA
-		0,      // generalCompressionTypes
-		0,      // extraFlags
-		0,      // updateCapabilityFlag
-		0,      // remoteUnshareFlag
-		0,      // generalCompressionLevel
-	} {
-		_ = binary.Write(buf, binary.LittleEndian, v)
+var (
+	generalCapability = [...]byte{
+		1, 0, // osMajorType: OSMAJORTYPE_WINDOWS
+		3, 0, // osMinorType: OSMINORTYPE_WINDOWS_NT
+		0, 2, // protocolVersion
+		0, 0, // pad2octetsA
+		0, 0, // generalCompressionTypes
+		0, 0, // extraFlags
+		0, 0, // updateCapabilityFlag
+		0, 0, // remoteUnshareFlag
+		0, 0, // generalCompressionLevel
+		0, // refreshRectSupport
+		0, // suppressOutputSupport
 	}
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // refreshRectSupport
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0)) // suppressOutputSupport
-	return buf.Bytes()
+	pointerCapability = [...]byte{0, 0, 24, 0, 24, 0}
+	inputCapability   = buildInputCapabilityTemplate()
+	fontCapability    = [...]byte{1, 0, 0, 0}
+	shareCapability   = [...]byte{byte(serverChannelID & 0xff), byte((serverChannelID >> 8) & 0xff), 0, 0}
+)
+
+func buildInputCapabilityTemplate() [88]byte {
+	var out [88]byte
+	binary.LittleEndian.PutUint16(out[0:2], 0x0001|0x0004|0x0008) // keyboard + unicode + mouseX
+	binary.LittleEndian.PutUint32(out[8:12], 4)                   // keyboardType
+	binary.LittleEndian.PutUint32(out[16:20], 12)
+	return out
+}
+
+func buildGeneralCapability() []byte {
+	return generalCapability[:]
 }
 
 func buildBitmapCapability(width, height int) []byte {
-	buf := new(bytes.Buffer)
-	for _, v := range []uint16{
-		32,             // preferredBitsPerPixel
-		1,              // receive1BitPerPixel
-		1,              // receive4BitsPerPixel
-		1,              // receive8BitsPerPixel
-		uint16(width),  // desktopWidth
-		uint16(height), // desktopHeight
-		0,              // pad2octets
-		1,              // desktopResizeFlag
-		1,              // bitmapCompressionFlag
-	} {
-		_ = binary.Write(buf, binary.LittleEndian, v)
-	}
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0))  // highColorFlags
-	_ = binary.Write(buf, binary.LittleEndian, uint8(0))  // drawingFlags
-	_ = binary.Write(buf, binary.LittleEndian, uint16(1)) // multipleRectangleSupport
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0)) // pad2octetsB
-	return buf.Bytes()
+	out := make([]byte, 24)
+	binary.LittleEndian.PutUint16(out[0:2], 32) // preferredBitsPerPixel
+	binary.LittleEndian.PutUint16(out[2:4], 1)  // receive1BitPerPixel
+	binary.LittleEndian.PutUint16(out[4:6], 1)  // receive4BitsPerPixel
+	binary.LittleEndian.PutUint16(out[6:8], 1)  // receive8BitsPerPixel
+	binary.LittleEndian.PutUint16(out[8:10], uint16(width))
+	binary.LittleEndian.PutUint16(out[10:12], uint16(height))
+	binary.LittleEndian.PutUint16(out[14:16], 1) // desktopResizeFlag
+	binary.LittleEndian.PutUint16(out[16:18], 1) // bitmapCompressionFlag
+	binary.LittleEndian.PutUint16(out[20:22], 1) // multipleRectangleSupport
+	return out
 }
 
 func buildPointerCapability() []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))  // colorPointerFlag
-	_ = binary.Write(buf, binary.LittleEndian, uint16(24)) // colorPointerCacheSize
-	_ = binary.Write(buf, binary.LittleEndian, uint16(24)) // pointerCacheSize
-	return buf.Bytes()
+	return pointerCapability[:]
 }
 
 func buildInputCapability() []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0x0001|0x0004|0x0008)) // keyboard + unicode + mouseX
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))
-	_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // keyboardLayout
-	_ = binary.Write(buf, binary.LittleEndian, uint32(4)) // keyboardType
-	_ = binary.Write(buf, binary.LittleEndian, uint32(0)) // keyboardSubType
-	_ = binary.Write(buf, binary.LittleEndian, uint32(12))
-	buf.Write(make([]byte, 64)) // imeFileName
-	return buf.Bytes()
+	return inputCapability[:]
 }
 
 func buildFontCapability() []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(1))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))
-	return buf.Bytes()
+	return fontCapability[:]
 }
 
 func buildShareCapability() []byte {
-	buf := new(bytes.Buffer)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(serverChannelID))
-	_ = binary.Write(buf, binary.LittleEndian, uint16(0))
-	return buf.Bytes()
+	return shareCapability[:]
 }
 
 func buildMCSSendDataIndication(initiator, channelID uint16, data []byte) []byte {
