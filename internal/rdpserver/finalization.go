@@ -99,20 +99,24 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 					if rawBytes > len(update) {
 						savedBytes = rawBytes - len(update)
 					}
-					tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(update), rawBytes, savedBytes)
+					if traceEnabled {
+						tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(update), rawBytes, savedBytes)
+					}
 					if err := writeShareDataPDU(conn, pduType2Update, update); err != nil {
 						return err
 					}
 					metrics.recordBitmapFrame([][]byte{update})
 					return nil
 				}
-				tracef("bitmap_planar_selected", "emission=deferred reason=encoder-rejected-frame")
+				if traceEnabled {
+					tracef("bitmap_planar_selected", "emission=deferred reason=encoder-rejected-frame")
+				}
 			}
 			bitmapBPP := preferredBitmapBPP(caps)
 			cache := newBitmapTileCache()
 			if updates, ok := buildFrameBitmapUpdatesForDesktopBPP(fr, cache, false, width, height, bitmapBPP); ok {
 				updates = prependPaletteUpdateIfNeeded(updates, bitmapBPP)
-				if bitmapBPP == bitmapBPP8 && len(updates) > 0 {
+				if traceEnabled && bitmapBPP == bitmapBPP8 && len(updates) > 0 {
 					tracef("bitmap_palette_write", "colors=256 bytes=%d", len(updates[0]))
 				}
 				if err := writeBitmapUpdates(conn, updates); err != nil {
@@ -140,7 +144,9 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 			if rawBytes > len(planar) {
 				savedBytes = rawBytes - len(planar)
 			}
-			tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(planar), rawBytes, savedBytes)
+			if traceEnabled {
+				tracef("bitmap_planar_write", "bytes=%d raw_bytes=%d saved_bytes=%d", len(planar), rawBytes, savedBytes)
+			}
 			update = planar
 		}
 	}
@@ -148,7 +154,7 @@ func writeInitialBitmapUpdate(conn net.Conn, frames frame.Source, width, height 
 		update = buildSolidBitmapUpdateBPP(minPositive(width, 64), minPositive(height, 64), 0xff336699, bitmapBPP)
 	}
 	updates := prependPaletteUpdateIfNeeded([][]byte{update}, bitmapBPP)
-	if bitmapBPP == bitmapBPP8 && len(updates) > 1 {
+	if traceEnabled && bitmapBPP == bitmapBPP8 && len(updates) > 1 {
 		tracef("bitmap_palette_write", "colors=256 bytes=%d", len(updates[0]))
 	}
 	if err := writeBitmapUpdates(conn, updates); err != nil {
@@ -217,7 +223,9 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 	var h264State h264StreamState
 	h264Ready, h264Version, h264Flags, h264Reason := dvc.rdpgfxH264Status()
 	metrics.recordH264Status(h264Reason)
-	tracef("rdpgfx_h264_status", "ready=%t version=0x%08x flags=0x%08x reason=%s source=%t", h264Ready, h264Version, h264Flags, h264Reason, h264 != nil)
+	if traceEnabled {
+		tracef("rdpgfx_h264_status", "ready=%t version=0x%08x flags=0x%08x reason=%s source=%t", h264Ready, h264Version, h264Flags, h264Reason, h264 != nil)
+	}
 	traceDeferredRDPGFXCodecSelection(dvc.rdpgfxCapability)
 	if h264 != nil && h264Ready {
 		select {
@@ -233,7 +241,9 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 						}
 					}
 					metrics.recordH264Frame([][]byte{wireUnit.Data})
-					tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
+					if traceEnabled {
+						tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
+					}
 					go streamRDPGFXH264Updates(conn, h264, dvc, width, height, metrics, nextFrameID+1, h264State)
 					return nil
 				}
@@ -253,7 +263,9 @@ func writeInitialRDPGFXUpdate(conn net.Conn, frames frame.Source, h264 H264Sourc
 					}
 				}
 				metrics.recordRDPGFXFramePath(pdus, path)
-				tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
+				if traceEnabled {
+					tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
+				}
 				if rdpgfxStreamingEnabledFromEnv() {
 					go streamRDPGFXFrameUpdates(conn, frames, dvc, width, height, metrics, nextFrameID+1)
 				}
@@ -276,7 +288,9 @@ func buildRDPGFXFrameUpdatePDUs(surfaceID uint16, frameID uint32, fr frame.Frame
 	if rdpgfxUncompressedEnabledFromEnv() {
 		pdus, ok := buildRDPGFXUncompressedFramePDUs(surfaceID, frameID, fr, width, height)
 		if ok {
-			tracef("rdpgfx_uncompressed_selected", "frame_id=%d pdus=%d", frameID, len(pdus))
+			if traceEnabled {
+				tracef("rdpgfx_uncompressed_selected", "frame_id=%d pdus=%d", frameID, len(pdus))
+			}
 			return pdus, "rdpgfx-uncompressed", true
 		}
 	}
@@ -301,12 +315,16 @@ func streamRDPGFXFrameUpdates(conn net.Conn, frames frame.Source, dvc *drdynvcMa
 		for _, pdu := range pdus {
 			if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
 				metrics.recordRDPGFXStreamStop()
-				tracef("rdpgfx_frame_stream_stop", "err=%v", err)
+				if traceEnabled {
+					tracef("rdpgfx_frame_stream_stop", "err=%v", err)
+				}
 				return
 			}
 		}
 		metrics.recordRDPGFXFramePath(pdus, path)
-		tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
+		if traceEnabled {
+			tracef("rdpgfx_frame_write", "frame_id=%d path=%s pdus=%d bytes=%d", nextFrameID, path, len(pdus), totalPayloadBytes(pdus))
+		}
 		nextFrameID++
 	}
 }
@@ -328,12 +346,16 @@ func streamRDPGFXH264Updates(conn net.Conn, h264 H264Source, dvc *drdynvcManager
 		}
 		for _, pdu := range pdus {
 			if err := dvc.writeRDPGFXPayload(conn, pdu); err != nil {
-				tracef("rdpgfx_h264_stream_stop", "err=%v", err)
+				if traceEnabled {
+					tracef("rdpgfx_h264_stream_stop", "err=%v", err)
+				}
 				return
 			}
 		}
 		metrics.recordH264Frame([][]byte{wireUnit.Data})
-		tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
+		if traceEnabled {
+			tracef("rdpgfx_h264_write", "frame_id=%d pts=%d key=%t config=%t bytes=%d", nextFrameID, wireUnit.PresentationTimeUS, wireUnit.KeyFrame, wireUnit.CodecConfig, len(wireUnit.Data))
+		}
 		nextFrameID++
 	}
 }
@@ -350,7 +372,9 @@ func streamFrameUpdates(conn net.Conn, frames frame.Source, cache *bitmapTileCac
 			continue
 		}
 		if err := writeBitmapUpdates(conn, updates); err != nil {
-			tracef("frame_stream_stop", "err=%v", err)
+			if traceEnabled {
+				tracef("frame_stream_stop", "err=%v", err)
+			}
 			return
 		}
 		metrics.recordBitmapFrame(updates)
