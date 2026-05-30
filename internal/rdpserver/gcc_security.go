@@ -16,17 +16,24 @@ const (
 // ENCRYPTION_LEVEL_NONE because transport security is provided by the selected
 // external protocol.
 func buildServerUserData(selectedProtocol uint32, channels []clientChannel) []byte {
+	out := make([]byte, serverUserDataLen(channels))
+	writeServerUserDataAt(out, selectedProtocol, channels)
+	return out
+}
+
+func serverUserDataLen(channels []clientChannel) int {
 	networkPayloadLen := 4 + 2*len(channels)
 	if len(channels)%2 == 1 {
 		networkPayloadLen += 2
 	}
-	totalLen := 4 + 12 + 4 + 8 + 4 + networkPayloadLen
-	out := make([]byte, totalLen)
+	return 4 + 12 + 4 + 8 + 4 + networkPayloadLen
+}
+
+func writeServerUserDataAt(out []byte, selectedProtocol uint32, channels []clientChannel) {
 	off := 0
 	off += writeServerCoreDataAt(out[off:], selectedProtocol)
 	off += writeServerSecurityDataAt(out[off:], selectedProtocol)
 	writeServerNetworkDataAt(out[off:], channels)
-	return out
 }
 
 func writeServerCoreDataAt(out []byte, selectedProtocol uint32) int {

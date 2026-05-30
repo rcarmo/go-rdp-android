@@ -29,9 +29,10 @@ var (
 )
 
 func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []clientChannel) error {
-	gcc := buildGCCConferenceCreateResponse(buildServerUserData(selectedProtocol, channels))
+	userDataLen := serverUserDataLen(channels)
+	gccLen := gccConferenceCreateResponseLen(userDataLen)
 	params := defaultDomainParameters().serialize()
-	bodyLen := 3 + 4 + 1 + berLengthSize(len(params)) + len(params) + 1 + berLengthSize(len(gcc)) + len(gcc)
+	bodyLen := 3 + 4 + 1 + berLengthSize(len(params)) + len(params) + 1 + berLengthSize(gccLen) + gccLen
 	mcsLen := 2 + berLengthSize(bodyLen) + bodyLen
 	totalLen := 4 + 3 + mcsLen
 	if totalLen > 0xffff {
@@ -62,8 +63,10 @@ func writeMCSConnectResponse(conn net.Conn, selectedProtocol uint32, channels []
 	off += copy(out[off:], params)
 	out[off] = 0x04 // OCTET STRING GCC Conference Create Response
 	off++
-	off += writeBERLength(out[off:], len(gcc))
-	copy(out[off:], gcc)
+	off += writeBERLength(out[off:], gccLen)
+	writeGCCConferenceCreateResponseAt(out[off:off+gccLen], userDataLen, func(userDataOut []byte) {
+		writeServerUserDataAt(userDataOut, selectedProtocol, channels)
+	})
 	_, err := conn.Write(out)
 	if err == nil && traceEnabled {
 		tracef("tpkt_write", "payload_len=%d", totalLen-4)
@@ -137,9 +140,20 @@ func (p domainParameters) serialize() []byte {
 }
 
 func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
-	innerLen := 13 + encodedPERLengthSize(len(serverUserData)) + len(serverUserData)
-	totalLen := 1 + 6 + encodedPERLengthSize(innerLen) + innerLen
-	out := make([]byte, totalLen)
+	out := make([]byte, gccConferenceCreateResponseLen(len(serverUserData)))
+	writeGCCConferenceCreateResponseAt(out, len(serverUserData), func(userDataOut []byte) {
+		copy(userDataOut, serverUserData)
+	})
+	return out
+}
+
+func gccConferenceCreateResponseLen(userDataLen int) int {
+	innerLen := 13 + encodedPERLengthSize(userDataLen) + userDataLen
+	return 1 + 6 + encodedPERLengthSize(innerLen) + innerLen
+}
+
+func writeGCCConferenceCreateResponseAt(out []byte, userDataLen int, writeUserData func([]byte)) {
+	innerLen := 13 + encodedPERLengthSize(userDataLen) + userDataLen
 	off := 0
 	out[off] = 0 // choice
 	off++
@@ -159,9 +173,8 @@ func buildGCCConferenceCreateResponse(serverUserData []byte) []byte {
 	out[off] = 0 // octet-stream length for "McDn" relative to min 4.
 	copy(out[off+1:off+5], "McDn")
 	off += 5
-	off += writePERLength(out[off:], len(serverUserData))
-	copy(out[off:], serverUserData)
-	return out
+	off += writePERLength(out[off:], userDataLen)
+	writeUserData(out[off : off+userDataLen])
 }
 
 func writePERObjectIdentifier(out []byte, oid [6]byte) int {
