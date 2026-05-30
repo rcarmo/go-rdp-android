@@ -255,6 +255,13 @@ func encodeRFXRLGR(coeff []int16, mode rfxRLGRMode) ([]byte, bool) {
 	if len(coeff) != rfxTilePixels {
 		return nil, false
 	}
+	return appendRFXRLGR(make([]byte, 0, len(coeff)/2), coeff, mode)
+}
+
+func appendRFXRLGR(out []byte, coeff []int16, mode rfxRLGRMode) ([]byte, bool) {
+	if len(coeff) != rfxTilePixels {
+		return nil, false
+	}
 	const (
 		kpMax = 80
 		lsgr  = 3
@@ -265,7 +272,7 @@ func encodeRFXRLGR(coeff []int16, mode rfxRLGRMode) ([]byte, bool) {
 	)
 	k, kp := uint32(1), uint32(8)
 	kr, krp := uint32(1), uint32(8)
-	bw := rfxBitWriter{buf: make([]byte, 0, len(coeff)/2)}
+	bw := rfxBitWriter{buf: out}
 	idx := 0
 	for idx < len(coeff) {
 		if k != 0 {
@@ -510,18 +517,25 @@ func buildRFXEncodedTileParts(src frame.Frame, tileX, tileY int, quantRaw []byte
 	yp := serializeRFXComponentForRLGR(&y)
 	cop := serializeRFXComponentForRLGR(&co)
 	cgp := serializeRFXComponentForRLGR(&cg)
-	yData, ok := encodeRFXRLGR(yp[:], rfxRLGR1)
+	encoded := make([]byte, 0, rfxTilePixels*3/2)
+	start := len(encoded)
+	encoded, ok = appendRFXRLGR(encoded, yp[:], rfxRLGR1)
 	if !ok {
 		return nil, nil, nil, false
 	}
-	coData, ok := encodeRFXRLGR(cop[:], rfxRLGR3)
+	yData := encoded[start:len(encoded):len(encoded)]
+	start = len(encoded)
+	encoded, ok = appendRFXRLGR(encoded, cop[:], rfxRLGR3)
 	if !ok {
 		return nil, nil, nil, false
 	}
-	cgData, ok := encodeRFXRLGR(cgp[:], rfxRLGR3)
+	coData := encoded[start:len(encoded):len(encoded)]
+	start = len(encoded)
+	encoded, ok = appendRFXRLGR(encoded, cgp[:], rfxRLGR3)
 	if !ok {
 		return nil, nil, nil, false
 	}
+	cgData := encoded[start:len(encoded):len(encoded)]
 	return yData, coData, cgData, true
 }
 
