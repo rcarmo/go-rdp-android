@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-30
-Current evidence commit: `5706331`
-Latest referenced CI run: `26695038143` (`main` CI; production-readiness status refresh passed)
+Current evidence commit: `276c79d`
+Latest referenced CI run: `26696260736` (`main` CI; release-preflight GitHub API fallback passed)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -21,7 +21,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | FreeRDP `/sec:nla /gfx` | Blocking/pass | RDPGFX proof gate with `rdpgfx_seen=true`, `active_seen=true`, `fastpath_seen=true`, screenshot present, and `exit_code=131`; CI disables RDPGFX only for the three bitmap fallback gates. |
-| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26695038143` for commit `5706331`, with artifact inspection confirming the matrix summary and codec coverage files are present. Local matrix execution still requires FreeRDP/Xvfb tooling and may be unavailable in minimal API containers. |
+| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26696260736` for commit `276c79d`, with artifact inspection confirming the matrix summary and codec coverage files are present. Local matrix execution still requires FreeRDP/Xvfb tooling and may be unavailable in minimal API containers. |
 | CI diagnostic artifacts | Passing | Mock/probe, auth, FreeRDP, Android build, gomobile, and emulator/UX paths emit or preserve relevant mock-server/client logs, JSON/Markdown summaries, screenshots, and inspection artifacts where applicable. Server trace logs can be enabled with legacy `GO_RDP_ANDROID_TRACE=1` or `GO_RDP_ANDROID_LOG_LEVEL=trace/debug`. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
 | Protocol regression fixtures | Covered in unit/probe tests | Explicit fixtures now lock in prior bugfix behavior for licensing skip (including NLA path), Client Info external terminators, Fast-Path vs slow-path input equivalence, CredSSP server-nonce `PubKeyAuth`, auth success/failure smoke outcomes, and `drdynvc` DATA_FIRST fragmentation reassembly plus DVC fragment counter accounting. |
@@ -34,7 +34,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26695038143`:
+Latest checked artifact from CI run `26696260736`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
