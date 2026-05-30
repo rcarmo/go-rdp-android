@@ -21,6 +21,7 @@ func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]
 		return nil, false
 	}
 	var buf bytes.Buffer
+	buf.Grow(surfaceBitsHeaderLen + jpegSurfaceBitsCapacityHint(src.Width, src.Height))
 	_, _ = buf.Write(emptySurfaceBitsHeader[:])
 	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, false
@@ -32,4 +33,19 @@ func buildJPEGSurfaceBitsCommand(src frame.Frame, codecID byte, quality int) ([]
 	}
 	writeSurfaceBitsHeader(out[:surfaceBitsHeaderLen], src.Width, src.Height, codecID, encodedLen)
 	return out, true
+}
+
+func jpegSurfaceBitsCapacityHint(width, height int) int {
+	if width <= 0 || height <= 0 {
+		return 4096
+	}
+	maxInt := int(^uint(0) >> 1)
+	if width > maxInt/height {
+		return 4096
+	}
+	hint := width * height / 4
+	if hint < 4096 {
+		return 4096
+	}
+	return hint
 }
