@@ -291,9 +291,11 @@ func buildRDPGFXFrameBoundaryPDUs(frameID uint32) ([]byte, []byte) {
 func buildRDPGFXPlanarWireToSurfacePDU(surfaceID uint16, src frame.Frame, stride int) ([]byte, bool) {
 	bitmapStart := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen
 	planeSize := src.Width * src.Height
-	wire := make([]byte, bitmapStart, bitmapStart+1+planeSize*3)
+	payloadCap := 1 + planeSize*3
+	wire := make([]byte, bitmapStart, bitmapStart+payloadCap+planeSize)
+	plane := wire[bitmapStart+payloadCap : bitmapStart+payloadCap+planeSize]
 	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(src.Width), uint16(src.Height), 0) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
-	wire, ok := appendPlanarRLEPayload(wire, src, stride)
+	wire, ok := appendPlanarRLEPayloadWithPlane(wire, src, stride, plane)
 	if !ok {
 		return nil, false
 	}
@@ -316,8 +318,16 @@ func appendPlanarRLEPayload(out []byte, src frame.Frame, stride int) ([]byte, bo
 	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
 		return nil, false
 	}
-	planeSize := src.Width * src.Height
-	plane := make([]byte, planeSize)
+	plane := make([]byte, src.Width*src.Height)
+	return appendPlanarRLEPayloadWithPlane(out, src, stride, plane)
+}
+
+func appendPlanarRLEPayloadWithPlane(out []byte, src frame.Frame, stride int, plane []byte) ([]byte, bool) {
+	maxInt := int(^uint(0) >> 1)
+	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height || len(plane) < src.Width*src.Height {
+		return nil, false
+	}
+	plane = plane[:src.Width*src.Height]
 	out = append(out, 0x30) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
 	for i := 0; i < 3; i++ {
 		component := "rgb"[i]
