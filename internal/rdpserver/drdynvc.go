@@ -388,17 +388,17 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 	if !m.rdpgfxReady() {
 		return fmt.Errorf("RDPGFX channel is not ready")
 	}
-	wrapped := append([]byte{0xe0, 0x00}, payload...)
-	if len(wrapped) <= drdynvcWriteChunkSize {
-		return m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, wrapped))
+	wrappedLen := 2 + len(payload)
+	if wrappedLen <= drdynvcWriteChunkSize {
+		return m.writeStaticDRDYNVCDataPayload(conn, m.rdpgfxChannelID, []byte{0xe0, 0x00}, payload)
 	}
-	first := minInt(len(wrapped), drdynvcWriteChunkSize)
-	if err := m.writeStaticPayload(conn, buildDRDYNVCDataFirstPDU(m.rdpgfxChannelID, uint32(len(wrapped)), wrapped[:first])); err != nil { // #nosec G115 -- wrapped length is bounded by allocation.
+	firstPayloadLen := drdynvcWriteChunkSize - 2
+	if err := m.writeStaticDRDYNVCDataFirstPayload(conn, m.rdpgfxChannelID, uint32(wrappedLen), []byte{0xe0, 0x00}, payload[:firstPayloadLen]); err != nil { // #nosec G115 -- wrapped length is bounded by allocation.
 		return err
 	}
-	for offset := first; offset < len(wrapped); offset += drdynvcWriteChunkSize {
-		end := minInt(len(wrapped), offset+drdynvcWriteChunkSize)
-		if err := m.writeStaticPayload(conn, buildDRDYNVCDataPDU(m.rdpgfxChannelID, wrapped[offset:end])); err != nil {
+	for offset := firstPayloadLen; offset < len(payload); offset += drdynvcWriteChunkSize {
+		end := minInt(len(payload), offset+drdynvcWriteChunkSize)
+		if err := m.writeStaticDRDYNVCDataPayload(conn, m.rdpgfxChannelID, nil, payload[offset:end]); err != nil {
 			return err
 		}
 	}
@@ -406,15 +406,45 @@ func (m *drdynvcManager) writeRDPGFXPayload(conn net.Conn, payload []byte) error
 }
 
 func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error {
+	return m.writeStaticPayloadParts(conn, len(payload), func(out []byte) {
+		copy(out, payload)
+	})
+}
+
+func (m *drdynvcManager) writeStaticDRDYNVCDataPayload(conn net.Conn, channelID uint32, prefix []byte, payload []byte) error {
+	cb := drdynvcCbChID(channelID)
+	drdynvcLen := 1 + dvcChannelIDLen(cb) + len(prefix) + len(payload)
+	return m.writeStaticPayloadParts(conn, drdynvcLen, func(out []byte) {
+		out[0] = (drdynvcHeader{CbChID: cb, Cmd: drdynvcCmdData}).serialize()
+		off := writeDVCChannelID(out[1:], cb, channelID) + 1
+		copy(out[off:], prefix)
+		copy(out[off+len(prefix):], payload)
+	})
+}
+
+func (m *drdynvcManager) writeStaticDRDYNVCDataFirstPayload(conn net.Conn, channelID uint32, length uint32, prefix []byte, payload []byte) error {
+	cb := drdynvcCbChID(channelID)
+	sp := drdynvcSpLength(length)
+	drdynvcLen := 1 + dvcChannelIDLen(cb) + dvcLengthLen(sp) + len(prefix) + len(payload)
+	return m.writeStaticPayloadParts(conn, drdynvcLen, func(out []byte) {
+		out[0] = (drdynvcHeader{CbChID: cb, Sp: sp, Cmd: drdynvcCmdDataFirst}).serialize()
+		off := writeDVCChannelID(out[1:], cb, channelID) + 1
+		off += writeDVCLength(out[off:], sp, length)
+		copy(out[off:], prefix)
+		copy(out[off+len(prefix):], payload)
+	})
+}
+
+func (m *drdynvcManager) writeStaticPayloadParts(conn net.Conn, payloadLen int, writePayload func([]byte)) error {
 	if !m.enabled() {
 		return nil
 	}
-	staticLen := 8 + len(payload)
+	staticLen := 8 + payloadLen
 	perLen := encodedPERLengthSize(staticLen)
 	bodyLen := 2 + 2 + 1 + perLen + staticLen
 	totalLen := 4 + 3 + 1 + bodyLen
 	if staticLen > drdynvcMaxStaticPayload || totalLen > 0xffff {
-		return fmt.Errorf("drdynvc static payload too large: %d", len(payload))
+		return fmt.Errorf("drdynvc static payload too large: %d", payloadLen)
 	}
 	out := make([]byte, totalLen)
 	writeTPKTX224MCSHeader(out, mcsSendDataIndicationApp, bodyLen)
@@ -422,9 +452,9 @@ func (m *drdynvcManager) writeStaticPayload(conn net.Conn, payload []byte) error
 	binary.BigEndian.PutUint16(out[10:12], m.staticChannelID)
 	out[12] = 0x70
 	staticOff := 13 + writePERLength(out[13:], staticLen)
-	binary.LittleEndian.PutUint32(out[staticOff:staticOff+4], uint32(len(payload))) // #nosec G115 -- payload length is bounded above.
+	binary.LittleEndian.PutUint32(out[staticOff:staticOff+4], uint32(payloadLen)) // #nosec G115 -- payload length is bounded above.
 	binary.LittleEndian.PutUint32(out[staticOff+4:staticOff+8], channelFlagFirst|channelFlagLast)
-	copy(out[staticOff+8:], payload)
+	writePayload(out[staticOff+8 : staticOff+8+payloadLen])
 	_, err := conn.Write(out)
 	if err == nil && traceEnabled {
 		tracef("tpkt_write", "payload_len=%d", totalLen-4)
