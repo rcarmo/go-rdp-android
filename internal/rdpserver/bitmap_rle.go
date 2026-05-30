@@ -27,6 +27,14 @@ func encodeBitmapRLECopyOnly(rect bitmapRect) ([]byte, bool) {
 	if visibleRowBytes <= 0 || rowBytes < visibleRowBytes || len(rect.Data) < required {
 		return nil, false
 	}
+	if pixel, ok := bitmapRLESolidPixel(rect, rowBytes, visibleRowBytes, bytesPerPixel); ok {
+		orderLen := bitmapRLEColorOrderLen(int(rect.Width), bytesPerPixel)
+		out := make([]byte, 0, orderLen*int(rect.Height))
+		for y := 0; y < int(rect.Height); y++ {
+			out = appendBitmapRLEColorOrder(out, int(rect.Width), pixel)
+		}
+		return out, len(out) > 0
+	}
 	out := make([]byte, 0, visibleRowBytes*int(rect.Height)+int(rect.Height))
 	for y := int(rect.Height) - 1; y >= 0; y-- {
 		row := rect.Data[y*rowBytes : y*rowBytes+visibleRowBytes]
@@ -79,6 +87,36 @@ func appendBitmapRLECopyOrder(out []byte, pixels, bytesPerPixel int, data []byte
 		out = binary.LittleEndian.AppendUint16(out, uint16(pixels))
 	}
 	return append(out, data[:pixels*bytesPerPixel]...)
+}
+
+func bitmapRLESolidPixel(rect bitmapRect, rowBytes, visibleRowBytes, bytesPerPixel int) ([]byte, bool) {
+	if len(rect.Data) < rowBytes*int(rect.Height) || visibleRowBytes < bytesPerPixel {
+		return nil, false
+	}
+	first := rect.Data[:bytesPerPixel]
+	for y := 0; y < int(rect.Height); y++ {
+		row := rect.Data[y*rowBytes : y*rowBytes+visibleRowBytes]
+		for x := 0; x < int(rect.Width); x++ {
+			off := x * bytesPerPixel
+			for b := 0; b < bytesPerPixel; b++ {
+				if row[off+b] != first[b] {
+					return nil, false
+				}
+			}
+		}
+	}
+	return first, true
+}
+
+func bitmapRLEColorOrderLen(pixels, bytesPerPixel int) int {
+	switch {
+	case pixels < 32:
+		return 1 + bytesPerPixel
+	case pixels < 32+256:
+		return 2 + bytesPerPixel
+	default:
+		return 3 + bytesPerPixel
+	}
 }
 
 func appendBitmapRLEColorOrder(out []byte, pixels int, pixel []byte) []byte {

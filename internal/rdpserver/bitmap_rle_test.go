@@ -7,6 +7,17 @@ import (
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
+func BenchmarkEncodeBitmapRLESolid64x64(b *testing.B) {
+	rect := buildSolidBitmapRectForBPP(64, 64, 0xff336699, bitmapBPP24)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		encoded, ok := encodeBitmapRLECopyOnly(rect)
+		if !ok || len(encoded) == 0 {
+			b.Fatal("bad RLE encoding")
+		}
+	}
+}
+
 func TestEncodeBitmapRLECopyOnlyRoundTripAllClassicDepths(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
