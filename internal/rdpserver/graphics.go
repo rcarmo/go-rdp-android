@@ -110,7 +110,9 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 				hash = tileHash
 				update = buildBitmapUpdateSingle(tile)
 				if compressed, ok := buildCompressedBitmapRLEUpdateSingle(tile); ok && len(compressed) < len(update) {
-					tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
+					if traceEnabled {
+						tracef("bitmap_rle_tile", "x=%d y=%d width=%d height=%d bytes=%d uncompressed_bytes=%d", x, y, tileWidth, tileHeight, len(compressed), len(update))
+					}
 					update = compressed
 				}
 			} else {
@@ -123,12 +125,16 @@ func buildFrameBitmapUpdatesWithCacheBPP(src frame.Frame, cache *bitmapTileCache
 			key := bitmapTileKey{x: x, y: y, width: tileWidth, height: tileHeight}
 			if cache != nil {
 				if dirtyOnly && cache.hashes[key] == hash {
-					tracef("bitmap_tile_skip", "x=%d y=%d width=%d height=%d", x, y, tileWidth, tileHeight)
+					if traceEnabled {
+						tracef("bitmap_tile_skip", "x=%d y=%d width=%d height=%d", x, y, tileWidth, tileHeight)
+					}
 					continue
 				}
 				cache.hashes[key] = hash
 			}
-			tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
+			if traceEnabled {
+				tracef("bitmap_tile", "x=%d y=%d width=%d height=%d bpp=%d bytes=%d", x, y, tileWidth, tileHeight, bpp, len(update))
+			}
 			updates = append(updates, update)
 		}
 	}
@@ -347,7 +353,9 @@ func normalizeFrameForDesktop(src frame.Frame, width, height int) frame.Frame {
 	if !ok {
 		return src
 	}
-	tracef("frame_resize", "source=%dx%d target=%dx%d", src.Width, src.Height, width, height)
+	if traceEnabled {
+		tracef("frame_resize", "source=%dx%d target=%dx%d", src.Width, src.Height, width, height)
+	}
 	return scaled
 }
 
@@ -397,11 +405,15 @@ func buildSolidBitmapUpdateBPP(width, height int, argb uint32, bpp uint16) []byt
 	rect := buildSolidBitmapRectForBPP(width, height, argb, bpp)
 	if bitmapRLEEnabledFromEnv() {
 		if compressed, ok := buildCompressedBitmapRLEUpdate([]bitmapRect{rect}); ok {
-			tracef("bitmap_rle_solid", "width=%d height=%d bytes=%d uncompressed_bytes=%d", rect.Width, rect.Height, len(compressed), len(buildBitmapUpdate([]bitmapRect{rect})))
+			if traceEnabled {
+				tracef("bitmap_rle_solid", "width=%d height=%d bytes=%d uncompressed_bytes=%d", rect.Width, rect.Height, len(compressed), len(buildBitmapUpdate([]bitmapRect{rect})))
+			}
 			return compressed
 		}
 	}
-	tracef("bitmap_tile", "x=0 y=0 width=%d height=%d bpp=%d bytes=%d", rect.Width, rect.Height, rect.BPP, len(rect.Data)+22)
+	if traceEnabled {
+		tracef("bitmap_tile", "x=0 y=0 width=%d height=%d bpp=%d bytes=%d", rect.Width, rect.Height, rect.BPP, len(rect.Data)+22)
+	}
 	return buildBitmapUpdate([]bitmapRect{rect})
 }
 
