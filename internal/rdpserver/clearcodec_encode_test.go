@@ -7,6 +7,18 @@ import (
 	"github.com/rcarmo/go-rdp-android/internal/frame"
 )
 
+func BenchmarkClearCodecEncoderSolidRect(b *testing.B) {
+	enc := clearCodecEncoder{}
+	src := frame.Frame{Width: 64, Height: 64, Stride: 64 * 4, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(64, 64, 0x11, 0x22, 0x33, 0xff)}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		payload, ok := enc.EncodeRDPGFX(src, src.Width, src.Height)
+		if !ok || len(payload) != 22 {
+			b.Fatalf("EncodeRDPGFX solid len=%d ok=%t", len(payload), ok)
+		}
+	}
+}
+
 func TestClearCodecEncoderSolidRect(t *testing.T) {
 	enc := clearCodecEncoder{}
 	src := frame.Frame{Width: 8, Height: 8, Stride: 32, Format: frame.PixelFormatRGBA8888, Data: solidRGBA(8, 8, 0x11, 0x22, 0x33, 0xff)}

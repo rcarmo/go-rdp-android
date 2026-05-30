@@ -34,17 +34,15 @@ func (clearCodecEncoder) EncodeRDPGFX(src frame.Frame, width, height int) ([]byt
 	}
 
 	if r, g, b, solid := clearCodecSolidRGB(src, stride); solid {
-		payload := make([]byte, 0, 4+2+2+2+1+8+3)
-		payload = append(payload, clearCodecMagic...)
-		payload = appendLE16Bytes(payload, uint16(src.Width))
-		payload = appendLE16Bytes(payload, uint16(src.Height))
-		payload = appendLE16Bytes(payload, 1) // rect count
-		payload = append(payload, clearCodecOpSolidRect)
-		payload = appendLE16Bytes(payload, 0)
-		payload = appendLE16Bytes(payload, 0)
-		payload = appendLE16Bytes(payload, uint16(src.Width))
-		payload = appendLE16Bytes(payload, uint16(src.Height))
-		payload = append(payload, r, g, b)
+		payload := make([]byte, 22)
+		copy(payload[0:4], clearCodecMagic)
+		binary.LittleEndian.PutUint16(payload[4:6], uint16(src.Width))
+		binary.LittleEndian.PutUint16(payload[6:8], uint16(src.Height))
+		binary.LittleEndian.PutUint16(payload[8:10], 1) // rect count
+		payload[10] = clearCodecOpSolidRect
+		binary.LittleEndian.PutUint16(payload[15:17], uint16(src.Width))
+		binary.LittleEndian.PutUint16(payload[17:19], uint16(src.Height))
+		payload[19], payload[20], payload[21] = r, g, b
 		if len(payload) >= rawBytes || len(payload) > rdpgfxMaxPDUSize {
 			return nil, false
 		}
