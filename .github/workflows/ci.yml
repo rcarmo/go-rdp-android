@@ -307,11 +307,39 @@ jobs:
         with:
           name: go-rdp-android-go-backed-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
-      - name: Upload Go-backed debug AAB
+      - name: Build release APK/AAB with Go AAR
+        if: ${{ startsWith(github.ref_name, 'v') }}
+        working-directory: android
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease :app:bundleRelease | tee ../gomobile-android-release-build.log
+      - name: Inspect Go-backed release APK/AAB
+        if: ${{ startsWith(github.ref_name, 'v') }}
+        run: |
+          cp gomobile-android-release-build.log test-artifacts/gomobile/
+          APK_PATH="$(find android/app/build/outputs/apk/release -type f -name '*.apk' | sort | head -n1)"
+          AAB_PATH="$(find android/app/build/outputs/bundle/release -type f -name '*.aab' | sort | head -n1)"
+          test -n "$APK_PATH"
+          test -n "$AAB_PATH"
+          unzip -l "$APK_PATH" >test-artifacts/gomobile/go-backed-release-apk-contents.txt
+          unzip -l "$AAB_PATH" >test-artifacts/gomobile/go-backed-release-aab-contents.txt
+          mkdir -p .gotmp
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go apk "$APK_PATH" test-artifacts/gomobile/go-backed-release-apk-summary.md
+          GOTMPDIR="$PWD/.gotmp" go run ./scripts/summarize-android-artifact.go aab "$AAB_PATH" test-artifacts/gomobile/go-backed-release-aab-summary.md
+          grep -q 'Go JNI ABIs.*arm64-v8a' test-artifacts/gomobile/go-backed-release-apk-summary.md
+          grep -q 'Go JNI ABIs.*arm64-v8a' test-artifacts/gomobile/go-backed-release-aab-summary.md
+      - name: Upload Go-backed release APK
+        if: ${{ startsWith(github.ref_name, 'v') }}
         uses: actions/upload-artifact@v7
         with:
-          name: go-rdp-android-go-backed-debug-aab
-          path: android/app/build/outputs/bundle/debug/*.aab
+          name: go-rdp-android-go-backed-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+      - name: Upload Go-backed release AAB
+        if: ${{ startsWith(github.ref_name, 'v') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: go-rdp-android-go-backed-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
 
   freerdp-compat:
     name: FreeRDP compatibility probe
@@ -612,12 +640,12 @@ jobs:
       - name: Download release APK artifact
         uses: actions/download-artifact@v8
         with:
-          name: go-rdp-android-go-backed-debug-apk
+          name: go-rdp-android-go-backed-release-apk
           path: downloaded/go-backed-apk
       - name: Download release AAB artifact
         uses: actions/download-artifact@v8
         with:
-          name: go-rdp-android-go-backed-debug-aab
+          name: go-rdp-android-go-backed-release-aab
           path: downloaded/go-backed-aab
       - name: Download release UX report artifact
         uses: actions/download-artifact@v8
