@@ -13,14 +13,14 @@ The repository uses tag suffixes to select CI/CD depth.
 Examples:
 
 ```sh
-git tag 0.1.1-ux
-git push origin 0.1.1-ux
+git tag 0.1.2-ux
+git push origin 0.1.2-ux
 
-git tag 0.1.1-build
-git push origin 0.1.1-build
+git tag 0.1.2-build
+git push origin 0.1.2-build
 
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 ## Release artifact cleanup
@@ -72,13 +72,13 @@ If these are missing, the `release-files` job fails before publishing artifacts.
 
 ## Current identifiers
 
-- SemVer: `0.1.1`
-- `VERSION`: `0.1.1`
-- Android `versionName`: `0.1.1`
+- SemVer: `0.1.2`
+- `VERSION`: `0.1.2`
+- Android `versionName`: `0.1.2`
 - Android package/application ID: `io.carmo.go.rdp.android`
-- Android versionCode: `2`
+- Android versionCode: `3`
 
-Checked on 2026-05-29: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.1` / `versionCode=2`. RDPGFX release-gate expectations remain covered by the blocking `/sec:nla /gfx` proof gate. H.264/AVC release wording keeps forced AVC420 CI artifacts explicitly non-blocking until true client support is proven. Bitmap RLE, NSCodec/JPEG/PNG/RemoteFX SurfaceBits, and RDPGFX ClearCodec/Progressive/ProgressiveV2/AVC444/AVC444v2 partial production or fixture-hook paths remain opt-in diagnostic/transport experiments rather than release-default graphics paths.
+Checked on 2026-05-31: `VERSION`, Android `versionName`, README package/version notes, and this release policy are aligned for `0.1.2` / `versionCode=3`. RDPGFX release-gate expectations remain covered by the blocking `/sec:nla /gfx` proof gate. H.264/AVC release wording keeps forced AVC420 CI artifacts explicitly non-blocking until true client support is proven. Bitmap RLE, NSCodec/JPEG/PNG/RemoteFX SurfaceBits, and RDPGFX ClearCodec/Progressive/ProgressiveV2/AVC444/AVC444v2 partial production or fixture-hook paths remain opt-in diagnostic/transport experiments rather than release-default graphics paths.
 
 ## Notes
 

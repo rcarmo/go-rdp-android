@@ -43,9 +43,9 @@ Partially implemented / experimental:
 
 ## Package and version
 
-- SemVer: `0.1.1`
+- SemVer: `0.1.2`
 - Android namespace/application ID: `io.carmo.go.rdp.android`
-- Android `versionCode`: `2`
+- Android `versionCode`: `3`
 - Go module: `github.com/rcarmo/go-rdp-android`
 
 Android package IDs cannot contain hyphens. The project name `go-rdp-android` is represented as the Android package `io.carmo.go.rdp.android`.

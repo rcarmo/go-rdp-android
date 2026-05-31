@@ -1,8 +1,8 @@
 # Project status
 
 Last updated: 2026-05-31
-Current evidence commit: `92f60aa`
-Latest referenced CI run: `26696835311` (`main` CI; release-tag availability preflight check passed)
+Current evidence commit: `d6466f7`
+Latest referenced CI run: `26708238067` (`main` CI; Go-backed release artifact tag path wired, default-tag-only release jobs skipped on main)
 
 This page is the compact, human-readable status matrix for production readiness. Keep it updated whenever protocol, input, capture, CI, or release-readiness behavior changes.
 
@@ -21,7 +21,7 @@ This page is the compact, human-readable status matrix for production readiness.
 | FreeRDP `/sec:tls` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present. |
 | FreeRDP `/sec:nla` | Blocking/pass | `exit_code=131` (non-timeout clean stop), `active_seen=true`, `bitmap_seen=true`, `fastpath_seen=true`, screenshot present; exercises CredSSP/NTLMv2. |
 | FreeRDP `/sec:nla /gfx` | Blocking/pass | RDPGFX proof gate with `rdpgfx_seen=true`, `active_seen=true`, `fastpath_seen=true`, screenshot present, and `exit_code=131`; CI disables RDPGFX only for the three bitmap fallback gates. |
-| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26696835311` for commit `23aea59`, with artifact inspection confirming the matrix summary and codec coverage files are present. Local matrix execution still requires FreeRDP/Xvfb tooling and may be unavailable in minimal API containers. |
+| Encoding matrix (CI/local) | Passing | Dedicated `encoding-matrix` job runs `make encoding-matrix` on Ubuntu with FreeRDP/Xvfb tooling and uploads `encoding-matrix-artifacts`; latest referenced CI success: run `26708238067` for commit `d6466f7`, with artifact inspection confirming the matrix summary and codec coverage files are present. Local matrix execution still requires FreeRDP/Xvfb tooling and may be unavailable in minimal API containers. |
 | CI diagnostic artifacts | Passing | Mock/probe, auth, FreeRDP, Android build, gomobile, and emulator/UX paths emit or preserve relevant mock-server/client logs, JSON/Markdown summaries, screenshots, and inspection artifacts where applicable. Server trace logs can be enabled with legacy `GO_RDP_ANDROID_TRACE=1` or `GO_RDP_ANDROID_LOG_LEVEL=trace/debug`. |
 | RDPEI parser | Unit/fuzz covered | RDPEI header, ready PDUs, touch frames/contacts, optional fields, malformed packets, fuzz seed, PDU/frame/contact count bounds; CI now emits `rdpei-test-summary.md`. |
 | Protocol regression fixtures | Covered in unit/probe tests | Explicit fixtures now lock in prior bugfix behavior for licensing skip (including NLA path), Client Info external terminators, Fast-Path vs slow-path input equivalence, CredSSP server-nonce `PubKeyAuth`, auth success/failure smoke outcomes, and `drdynvc` DATA_FIRST fragmentation reassembly plus DVC fragment counter accounting. |
@@ -34,7 +34,7 @@ This page is the compact, human-readable status matrix for production readiness.
 
 ## FreeRDP compatibility snapshot
 
-Latest checked artifact from CI run `26696835311`:
+Latest checked artifact from CI run `26708238067`:
 
 | Mode | TCP | X.224 | MCS | Active | Bitmap/update | RDPGFX | Fast-Path input | Screenshot | Exit code |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -64,7 +64,7 @@ The compatibility gate now performs a non-timeout clean stop of the FreeRDP clie
 - Security defaults are not fully production-safe yet: release docs now recommend `nla-required` first, `tls-only` for non-NLA clients, and `rdp-only` only for isolated compatibility testing; allowlists are server-core/mock-server-only for the first polished APK, and Android TLS certificate rotation remains pending.
 - Android Accessibility gesture behavior needs real-device validation, especially for drags, long gestures, text input, and multi-touch degradation.
 - Graphics now has a default RDPGFX Planar path plus explicit slow-path bitmap fallback evidence in CI. Remaining graphics blockers are physical-device/constrained-network validation, Microsoft-client validation, and performance comparison on target hardware.
-- Release preflight clean/synced/version/latest-CI checks pass, but strict release preflight now also verifies that the target `vVERSION` tag is available for the current HEAD. Current identifiers are still `VERSION=0.1.1`, Android `versionName=0.1.1`, `versionCode=2`, while `v0.1.1` already exists on an older commit; bump `VERSION`, Android `versionName`, Android `versionCode`, and release docs before a new `v*` release tag. Release-tag staging now consumes Go-backed release APK/AAB artifacts instead of debug variants, but that path still needs a controlled `v*` dry-run after the version bump and signing secrets are present. When `gh` is missing, `scripts/release-preflight.go` falls back to the GitHub REST API with `GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_PICLAW_BOT`. Signing secret presence still cannot be confirmed from this automation token (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are not visible through the available API token). Controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets and version identifiers are bumped.
+- Release preflight clean/synced/version/latest-CI checks pass, and strict release preflight now verifies that the target `vVERSION` tag is available for the current HEAD. Current identifiers are `VERSION=0.1.2`, Android `versionName=0.1.2`, `versionCode=3`, and no `v0.1.2` tag currently exists upstream. Release-tag staging now consumes Go-backed release APK/AAB artifacts instead of debug variants, but that path still needs a controlled `v*` dry-run after signing secrets are present. When `gh` is missing, `scripts/release-preflight.go` falls back to the GitHub REST API with `GITHUB_TOKEN`/`GH_TOKEN`/`GITHUB_PICLAW_BOT`. Signing secret presence still cannot be confirmed from this automation token (`RELEASE_KEYSTORE_BASE64`, `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` are not visible through the available API token). Controlled `v*` release-candidate/dry-run tagging remains blocked until the repository owner confirms those secrets.
 - Coverage is scoped to core runtime packages (`./internal/... ./mobile`) and enforced with `set -o pipefail` in CI so the threshold cannot be masked by `tee`; local `make coverage` on 2026-05-30 reports 78.1% against the configured 75.0% threshold.
 
 ## Documentation update policy
