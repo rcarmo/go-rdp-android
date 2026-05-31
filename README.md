@@ -6,7 +6,7 @@ A native Android RDP server experiment written in Kotlin and Go.
 
 `go-rdp-android` is exploring how far a normal installed Android app can go toward exposing the Android screen over RDP **without using ADB as the runtime architecture**, building on [`rcarmo/go-rdp`](https://github.com/rcarmo/go-rdp) as the original core protocol implementation and reference. The app uses Android `MediaProjection` for screen capture, an `AccessibilityService` landing path for input, and a Go RDP server core bridged into Android with `gomobile`.
 
-The current implementation is a CI-first prototype: it can build a Go-backed APK, launch it in an Android emulator, grant MediaProjection, connect to the embedded Go RDP server over forwarded TCP, render RDP screenshots, exercise keyboard/mouse/touch input scripts, and generate a Gherkin/Playwright UX PDF report.
+The current implementation is a CI-first prototype: it can build Go-backed APK/AAB artifacts, launch the APK in an Android emulator, grant MediaProjection, connect to the embedded Go RDP server over forwarded TCP, render RDP screenshots, exercise keyboard/mouse/touch input scripts, and generate a Gherkin/Playwright UX PDF report.
 
 ## Feature list
 
@@ -132,7 +132,7 @@ Default push/PR CI runs:
 - Race tests and parser fuzz smoke.
 - Mock server + probe artifact generation.
 - Android debug APK build and inspection.
-- gomobile AAR build, API verification, and Go-backed APK build.
+- gomobile AAR build, API verification, and Go-backed APK/AAB builds with standalone artifact uploads.
 - Blocking FreeRDP compatibility probe requiring bitmap/update streaming evidence.
 
 Current blocking FreeRDP compatibility signals are tracked in [docs/STATUS.md](docs/STATUS.md):
@@ -168,7 +168,7 @@ Tag behavior:
 | --- | --- |
 | `*-ux` | Full emulator UX validation and Playwright PDF report. |
 | `*-build` | Build/test/artifact production. |
-| `vX.X.X` | Release tag: build artifacts plus UX PDF report staged for release files. |
+| `vX.X.X` | Release tag: Go-backed release APK/AAB artifacts plus UX PDF report staged for signed release files. |
 
 ## Feature roadmap
 
@@ -194,7 +194,7 @@ Tag behavior:
    - Security mode, failed-auth backoff controls, and copyable TLS fingerprint are now surfaced in Android UI; release guidance recommends `nla-required` first and reserves `rdp-only` for isolated compatibility testing. CIDR/user allowlists remain server-core/mock-server-only for the first polished APK; continue with TLS rotation controls.
    - Continue hardening TLS Client Info and Hybrid/NLA CredSSP authentication paths against real clients.
    - Validate signed release APK/AAB staging with production secrets.
-   - Validate version/tag consistency for `vX.X.X` releases.
+   - Version/tag consistency is enforced by release preflight; validate the controlled `vX.X.X` tag path after production signing secrets are confirmed.
 
 5. **Physical-device validation**
    - Validate MediaProjection, AccessibilityService behavior, network reachability, rotation, latency, and sustained capture on real Android devices.

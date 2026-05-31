@@ -39,7 +39,7 @@ make release-preflight
 
 The preflight checks that the working tree is clean, the local branch is synced with upstream, release version identifiers are aligned, the target `vVERSION` tag is either absent or points at the current HEAD, the latest `main` CI run is green, and the GitHub Actions release-signing secrets are visible. It uses `gh` when available and falls back to the GitHub REST API when `GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_PICLAW_BOT` is set. The latest `main` CI evidence should show:
 
-- Go checks, race/fuzz smoke, Android debug build, gomobile/AAR/API, and release cleanup all green.
+- Go checks, race/fuzz smoke, Android debug build, gomobile/AAR/API, Go-backed debug APK/AAB artifact uploads, and release cleanup all green.
 - FreeRDP `/sec:rdp`, `/sec:tls`, and `/sec:nla` bitmap fallback gates green with active streaming, screenshot capture, Fast-Path input, and non-timeout client shutdown.
 - FreeRDP `/sec:nla /gfx` RDPGFX gate green with `rdpgfx_seen=true`, active streaming, screenshot capture, and non-timeout client shutdown.
 - H.264/AVC remains experimental until a real client advertises AVC420 and reaches active streaming without `GO_RDP_ANDROID_FORCE_H264=1`; the non-blocking `h264-gfx` CI artifact may show server-side forced AVC420 emission, but it is not a release compatibility gate.

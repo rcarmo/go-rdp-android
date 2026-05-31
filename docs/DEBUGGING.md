@@ -98,7 +98,7 @@ make android-build
 make check-apk-artifact
 ```
 
-Go-backed Android APK:
+Go-backed Android APK/AAB:
 
 ```bash
 make gomobile-init
@@ -106,6 +106,7 @@ make android-build-go
 make check-aar-api
 make check-aar-artifact
 make check-apk-artifact REQUIRE_GO_LIBS=1
+make check-aab-artifact REQUIRE_GO_LIBS=1
 ```
 
 CI artifacts to inspect:
@@ -114,13 +115,15 @@ CI artifacts to inspect:
 - `android-build-artifacts/apk-contents.txt`
 - `gomobile-build-artifacts/aar-api.log`
 - `gomobile-build-artifacts/go-backed-apk-summary.md`
+- `gomobile-build-artifacts/go-backed-aab-summary.md`
+- standalone `go-rdp-android-go-backed-debug-apk` and `go-rdp-android-go-backed-debug-aab` artifacts
 
 Common issues:
 
 - Android 16 KB page-size warnings such as `lib/arm64-v8a/libgojni.so: LOAD segment not aligned` mean the gomobile native library was not linked with 16 KB-compatible ELF segment alignment. The Makefile passes `-ldflags="-extldflags=-Wl,-z,max-page-size=16384"`, and `check-android-artifact.go` fails CI if bundled `libgojni.so` PT_LOAD alignments are below `0x4000`.
 - Missing `mobile.aar` means the app falls back to `LoggingRdpBackend`.
 - Generated gomobile API drift is caught by `make check-aar-api`.
-- Native library packaging issues are caught by `make check-aar-artifact` and `make check-apk-artifact REQUIRE_GO_LIBS=1`.
+- Native library packaging issues are caught by `make check-aar-artifact`, `make check-apk-artifact REQUIRE_GO_LIBS=1`, and `make check-aab-artifact REQUIRE_GO_LIBS=1`.
 - Kotlin/Java toolchain mismatches should keep Java/Kotlin at JVM 17.
 
 ## Emulator capture debugging
