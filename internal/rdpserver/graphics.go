@@ -6,16 +6,17 @@ import (
 	"strings"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 const (
 	pduType2Update = 0x02
 
-	updateTypeBitmap       = 0x0001
-	bitmapBPP8             = 8
-	bitmapBPP15            = 15
-	bitmapBPP16            = 16
-	bitmapBPP24            = 24
+	updateTypeBitmap       = rdpcodec.UpdateTypeBitmap
+	bitmapBPP8             = rdpcodec.BitmapBPP8
+	bitmapBPP15            = rdpcodec.BitmapBPP15
+	bitmapBPP16            = rdpcodec.BitmapBPP16
+	bitmapBPP24            = rdpcodec.BitmapBPP24
 	maxInitialBitmapUpdate = 80
 
 	fnv64Offset = 14695981039346656037
@@ -30,6 +31,7 @@ type bitmapRect struct {
 	Width  uint16
 	Height uint16
 	BPP    uint16
+	Flags  uint16
 	Data   []byte
 }
 
@@ -312,15 +314,12 @@ func buildFrameBitmapTileUpdateForBPP(src frame.Frame, stride, x0, y0, width, he
 		Height: uint16(height),
 		BPP:    bpp,
 	}
-	dataLen := rowBytes * height
-	out := makeBitmapUpdateHeader(4+18+dataLen, 1)
-	out = appendBitmapRectHeader(out, rect, 0, dataLen)
+	data := make([]byte, rowBytes*height)
 	hash := uint64(fnv64Offset)
 	for y := 0; y < height; y++ {
 		rowOffset := (y0 + y) * stride
 		row := src.Data[rowOffset:]
-		dst := out[len(out) : len(out)+rowBytes]
-		out = out[:len(out)+rowBytes]
+		dst := data[y*rowBytes : y*rowBytes+rowBytes]
 		for x := 0; x < width; x++ {
 			si := (x0 + x) * 4
 			di := x * bytesPerPixel
@@ -338,20 +337,16 @@ func buildFrameBitmapTileUpdateForBPP(src frame.Frame, stride, x0, y0, width, he
 			hash *= fnv64Prime
 		}
 	}
+	rect.Data = data
+	out, err := rdpcodec.BuildBitmapUpdate(upstreamBitmapRects([]bitmapRect{rect}))
+	if err != nil {
+		return nil, 0, false
+	}
 	return out, hash, true
 }
 
 func rawBitmapBytesPerPixel(bpp uint16) (int, bool) {
-	switch bpp {
-	case bitmapBPP8:
-		return 1, true
-	case bitmapBPP15, bitmapBPP16:
-		return 2, true
-	case bitmapBPP24:
-		return 3, true
-	default:
-		return 0, false
-	}
+	return rdpcodec.BitmapBytesPerPixel(bpp)
 }
 
 func frameRGB(row []byte, offset int, format frame.PixelFormat) (r, g, b byte, ok bool) {
@@ -396,13 +391,14 @@ func bitmapRLEEnabledFromEnv() bool {
 }
 
 func alignedBitmapRowBytes(width int, bpp uint16) int {
-	bitsPerPixel := int(bpp)
-	// 15-bpp RGB555 is carried in 16-bit pixels on the wire.
-	if bpp == bitmapBPP15 {
-		bitsPerPixel = 16
+	if bpp == 32 {
+		return width * 4
 	}
-	bits := width * bitsPerPixel
-	return ((bits + 31) / 32) * 4
+	rowBytes, ok := rdpcodec.AlignedBitmapRowBytes(width, bpp)
+	if !ok {
+		return 0
+	}
+	return rowBytes
 }
 
 func hashBytes(data []byte) uint64 {
@@ -558,51 +554,60 @@ func buildSolidBitmapRectForBPP(width, height int, argb uint32, bpp uint16) bitm
 }
 
 func buildBitmapUpdate(rects []bitmapRect) []byte {
-	capHint := 4
-	for _, rect := range rects {
-		capHint += 18 + len(rect.Data)
-	}
-	out := makeBitmapUpdateHeader(capHint, len(rects))
-	for _, rect := range rects {
-		out = appendBitmapRect(out, rect, 0, rect.Data)
+	out, err := rdpcodec.BuildBitmapUpdate(upstreamBitmapRects(rects))
+	if err != nil {
+		return nil
 	}
 	return out
 }
 
 func buildBitmapUpdateSingle(rect bitmapRect) []byte {
-	out := makeBitmapUpdateHeader(4+18+len(rect.Data), 1)
-	return appendBitmapRect(out, rect, 0, rect.Data)
+	return buildBitmapUpdate([]bitmapRect{rect})
 }
 
 func buildCompressedBitmapRLEUpdate(rects []bitmapRect) ([]byte, bool) {
-	capHint := 4
-	for _, rect := range rects {
-		capHint += 18 + len(rect.Data)
-	}
-	out := makeBitmapUpdateHeader(capHint, len(rects))
-	for _, rect := range rects {
-		encoded, ok := encodeBitmapRLECopyOnly(rect)
-		if !ok || len(encoded) == 0 || len(encoded) >= len(rect.Data) || len(encoded) > int(^uint16(0)) {
-			return nil, false
-		}
-		out = appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded)
+	out, err := rdpcodec.BuildCompressedBitmapRLEUpdate(upstreamBitmapRects(rects))
+	if err != nil {
+		return nil, false
 	}
 	return out, true
 }
 
 func buildCompressedBitmapRLEUpdateSingle(rect bitmapRect) ([]byte, bool) {
-	encoded, ok := encodeBitmapRLECopyOnly(rect)
-	if !ok || len(encoded) == 0 || len(encoded) >= len(rect.Data) || len(encoded) > int(^uint16(0)) {
-		return nil, false
-	}
-	out := makeBitmapUpdateHeader(4+18+len(encoded), 1)
-	return appendBitmapRect(out, rect, bitmapCompressionFlag|noBitmapCompressionHeader, encoded), true
+	return buildCompressedBitmapRLEUpdate([]bitmapRect{rect})
 }
 
-func makeBitmapUpdateHeader(capHint int, rectCount int) []byte {
-	out := make([]byte, 0, capHint)
-	out = appendLE16Bytes(out, updateTypeBitmap)
-	return appendLE16Bytes(out, uint16(rectCount))
+func upstreamBitmapRects(rects []bitmapRect) []rdpcodec.BitmapUpdateRect {
+	out := make([]rdpcodec.BitmapUpdateRect, 0, len(rects))
+	for _, rect := range rects {
+		if rect.Right < rect.Left && rect.Width > 0 {
+			rect.Right = rect.Left + rect.Width - 1
+		}
+		if rect.Bottom < rect.Top && rect.Height > 0 {
+			rect.Bottom = rect.Top + rect.Height - 1
+		}
+		// Preserve older Android-local shorthand tests that set Width/Height only.
+		if rect.Left == 0 && rect.Top == 0 && rect.Right == 0 && rect.Bottom == 0 {
+			if rect.Width > 0 {
+				rect.Right = rect.Width - 1
+			}
+			if rect.Height > 0 {
+				rect.Bottom = rect.Height - 1
+			}
+		}
+		out = append(out, rdpcodec.BitmapUpdateRect{
+			Left:         rect.Left,
+			Top:          rect.Top,
+			Right:        rect.Right,
+			Bottom:       rect.Bottom,
+			Width:        rect.Width,
+			Height:       rect.Height,
+			BitsPerPixel: rect.BPP,
+			Flags:        rect.Flags,
+			Data:         rect.Data,
+		})
+	}
+	return out
 }
 
 func appendBitmapRect(out []byte, rect bitmapRect, flags uint16, data []byte) []byte {

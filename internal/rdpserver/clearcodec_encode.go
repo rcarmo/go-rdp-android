@@ -4,12 +4,13 @@ import (
 	"encoding/binary"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 const (
-	clearCodecMagic            = "CLR0"
-	clearCodecOpSolidRect byte = 1
-	clearCodecOpRawRect   byte = 2
+	clearCodecMagic            = rdpcodec.ClearCodecMagic
+	clearCodecOpSolidRect byte = rdpcodec.ClearCodecOpSolidRect
+	clearCodecOpRawRect   byte = rdpcodec.ClearCodecOpRawRect
 
 	clearCodecMaxRawRectBytes = 256 * 1024
 )
@@ -17,40 +18,16 @@ const (
 type clearCodecEncoder struct{}
 
 func (clearCodecEncoder) EncodeRDPGFX(src frame.Frame, width, height int) ([]byte, bool) {
-	if src.Width <= 0 || src.Height <= 0 || src.Width > 8192 || src.Height > 8192 {
-		return nil, false
-	}
 	stride, ok := normalizedFrameStride(src)
 	if !ok {
 		return nil, false
 	}
-	rawBytes := src.Width * src.Height * 4
-	if rawBytes <= 0 || rawBytes > rdpgfxMaxPDUSize {
-		return nil, false
-	}
-	raw565Bytes := src.Width * src.Height * 2
-	if raw565Bytes <= 0 {
-		return nil, false
-	}
-
-	if r, g, b, solid := clearCodecSolidRGB(src, stride); solid {
-		payload := make([]byte, 22)
-		copy(payload[0:4], clearCodecMagic)
-		binary.LittleEndian.PutUint16(payload[4:6], uint16(src.Width))
-		binary.LittleEndian.PutUint16(payload[6:8], uint16(src.Height))
-		binary.LittleEndian.PutUint16(payload[8:10], 1) // rect count
-		payload[10] = clearCodecOpSolidRect
-		binary.LittleEndian.PutUint16(payload[15:17], uint16(src.Width))
-		binary.LittleEndian.PutUint16(payload[17:19], uint16(src.Height))
-		payload[19], payload[20], payload[21] = r, g, b
-		if len(payload) >= rawBytes || len(payload) > rdpgfxMaxPDUSize {
-			return nil, false
-		}
-		return payload, true
-	}
-
-	payload, ok := buildClearCodecRects(src, stride, rawBytes)
+	format, ok := planarPixelFormat(src.Format)
 	if !ok {
+		return nil, false
+	}
+	payload, err := rdpcodec.EncodeClearCodecMinimal(rdpcodec.BitmapInput{Pixels: src.Data, Width: src.Width, Height: src.Height, Stride: stride, Format: format})
+	if err != nil {
 		return nil, false
 	}
 	return payload, true

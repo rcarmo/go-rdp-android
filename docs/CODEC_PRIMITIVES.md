@@ -35,19 +35,19 @@ This note records which graphics codec primitives should live in `github.com/rca
 
 `go-rdp-android` should import these rather than duplicating GUID/ID/name tables, protocol-only payload builders, or reusable codec primitives. Android-specific frame capture, `MediaCodec` policy, diagnostics, release-default gates, negotiated fallback behavior, and compatibility evidence remain local.
 
-## Upstream replacement follow-up
+## Upstream replacement status
 
-After `go-rdp-android` updates its `github.com/rcarmo/go-rdp` dependency to include the upstream helper series, replace local protocol-only code with `go-rdp/pkg/codec` APIs in small reviewable changes:
+`go-rdp-android` now depends on the pushed `github.com/rcarmo/go-rdp/pkg/codec` helper series and uses those APIs for protocol-only helpers. The Android server keeps platform capture, diagnostics, fallback, release-default gating, and client policy local.
 
-- [ ] Replace local Bitmap Codecs/RDPGFX capability parsing, AVC flag formatting, SetSurfaceBits, WireToSurface, StartFrame, EndFrame, CreateSurface, and MapSurface helpers with upstream equivalents.
-- [ ] Replace local raw/compressed classic Bitmap Update envelope and conservative RLE/tile-splitting helpers with upstream equivalents while preserving Android-local encoder selection/fallback policy.
-- [ ] Replace local Planar payload encoding and frame PDU assembly helpers with upstream Planar and RDPGFX frame helpers; keep Android capture normalization and release gating local.
-- [ ] Replace local uncompressed diagnostic payload conversion with upstream uncompressed helpers.
-- [ ] Replace local JPEG payload/SurfaceBits wire construction with upstream JPEG helpers; keep Android quality policy and diagnostic gates local.
-- [ ] Replace reusable RemoteFX/RFX primitives and single-tile message construction with upstream RFX helpers; keep compatibility gating and client evidence local.
-- [ ] Replace local minimal ClearCodec solid/raw payload builder with the upstream documented subset; keep operation enablement policy local.
-- [ ] Replace local Progressive/ProgressiveV2 payload parse/build utilities with upstream helpers; keep any diagnostic/fixture forcing local.
-- [ ] Replace AVC420 bitmap stream and AVC444/AVC444v2 stream wrapper validation with upstream wire helpers; keep Android `MediaCodec` feeding, access-unit queueing, and encoder policy local.
+- [x] Replaced local Bitmap Codecs/RDPGFX capability parsing, AVC flag formatting, SetSurfaceBits, WireToSurface, StartFrame, EndFrame, CreateSurface, and MapSurface helpers with upstream equivalents.
+- [x] Replaced local raw/compressed classic Bitmap Update envelope and conservative RLE helpers with upstream equivalents while preserving Android-local encoder selection/fallback policy and classic Planar’s 32-bpp Bitmap Update exception.
+- [x] Replaced local Planar payload encoding and frame PDU assembly helpers with upstream Planar and RDPGFX frame helpers; Android capture normalization and release gating remain local.
+- [x] Replaced local uncompressed diagnostic payload conversion with upstream uncompressed helpers.
+- [x] Replaced local JPEG payload/SurfaceBits wire construction with upstream JPEG helpers; Android quality policy and diagnostic gates remain local.
+- [x] Replaced production RemoteFX/RFX single-tile message construction with upstream RFX helpers; compatibility gating and client evidence remain local.
+- [x] Replaced local minimal ClearCodec solid/raw payload builder with the upstream documented subset; operation enablement policy remains local.
+- [x] Replaced local Progressive/ProgressiveV2 payload parse/build utilities with upstream helpers; diagnostic/fixture forcing remains local.
+- [x] Replaced AVC420 bitmap stream and AVC444/AVC444v2 stream wrapper validation/builders with upstream wire helpers; Android `MediaCodec` feeding, access-unit queueing, SPS/PPS handling, and encoder fallback remain local.
 
 ## Keep Android-local for now
 
@@ -69,13 +69,8 @@ A primitive is ready to move into `go-rdp/pkg/codec` only when all of the follow
 4. The API can be expressed as a small data-in/data-out package function without requiring server negotiation state.
 5. The Android server can depend on the exported function without losing its current fallback, bounds, and diagnostic behavior.
 
-Likely future promotion candidates are:
-
-- RFX tile/message encoding once multi-tile semantics and client proof are stronger.
-- ClearCodec payload building once the supported operation subset is larger and spec-aligned.
-- Progressive payload parsing/building if `go-rdp` gains a real progressive decode path.
-- AVC444/AVC444v2 payload helpers only after real auxiliary-plane generation replaces deterministic placeholder access units.
+Likely future promotion candidates are any remaining codec features that are still Android-policy-coupled today, such as multi-tile RFX scheduling, richer ClearCodec operations, real Progressive encoding, or AVC444 auxiliary-plane generation once they can be expressed as deterministic data-in/data-out helpers.
 
 ## Current decision
 
-No additional codec primitives should be moved during the current parity slice. The stable shared surface remains `go-rdp/pkg/codec`; experimental production encoders and Android-specific transport/gating remain in `go-rdp-android/internal/rdpserver` until the promotion criteria above are met.
+Reusable protocol primitives should live in `go-rdp/pkg/codec`; Android-specific transport, capture, `MediaCodec` orchestration, diagnostics, fallback, compatibility evidence, and release gates remain in `go-rdp-android/internal/rdpserver`.

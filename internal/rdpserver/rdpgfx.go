@@ -213,40 +213,26 @@ func buildRDPGFXH264FramePDUs(surfaceID uint16, frameID uint32, unit h264AccessU
 	if err := validateH264AccessUnit(unit); err != nil {
 		return nil, false
 	}
-	bitmapLen := 4 + 8 + 2 + len(unit.Data)
-	wireLen := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen + bitmapLen
-	backing := make([]byte, 16+wireLen+12)
-	start := backing[:16]
-	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
-	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
-	binary.LittleEndian.PutUint32(start[12:16], frameID)
-	wire := backing[16 : 16+wireLen]
-	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecAVC420, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(width), uint16(height), bitmapLen) // #nosec G115 -- dimensions bounded above.
-	bitmap := wire[rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen:]
-	binary.LittleEndian.PutUint32(bitmap[0:4], 1) // numRegionRects
-	binary.LittleEndian.PutUint16(bitmap[4:6], 0) // left
-	binary.LittleEndian.PutUint16(bitmap[6:8], 0) // top
-	binary.LittleEndian.PutUint16(bitmap[8:10], uint16(width))
-	binary.LittleEndian.PutUint16(bitmap[10:12], uint16(height))
-	bitmap[12] = 0 // qpVal
-	bitmap[13] = 0 // qualityVal
-	copy(bitmap[14:], unit.Data)
-	end := backing[16+wireLen:]
-	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
-	binary.LittleEndian.PutUint32(end[8:12], frameID)
+	start, err := rdpcodec.BuildRDPGFXStartFrame(frameID)
+	if err != nil {
+		return nil, false
+	}
+	wire, err := rdpcodec.BuildAVC420WireToSurface(surfaceID, rdpgfxPixelFormatXRGB8888, rdpcodec.Rect{Right: uint16(width - 1), Bottom: uint16(height - 1)}, unit.Data, uint16(width), uint16(height)) // #nosec G115 -- dimensions bounded above.
+	if err != nil {
+		return nil, false
+	}
+	end, err := rdpcodec.BuildRDPGFXEndFrame(frameID)
+	if err != nil {
+		return nil, false
+	}
 	return [][]byte{start, wire, end}, true
 }
 
 func buildRDPGFXAVC420BitmapStream(accessUnit []byte, width, height uint16) []byte {
-	payload := make([]byte, 0, 4+8+2+len(accessUnit))
-	payload = appendLE32Bytes(payload, 1) // numRegionRects
-	payload = appendLE16Bytes(payload, 0) // left
-	payload = appendLE16Bytes(payload, 0) // top
-	payload = appendLE16Bytes(payload, width)
-	payload = appendLE16Bytes(payload, height)
-	payload = append(payload, 0) // qpVal
-	payload = append(payload, 0) // qualityVal
-	payload = append(payload, accessUnit...)
+	payload, err := rdpcodec.BuildAVC420BitmapStream(accessUnit, width, height)
+	if err != nil {
+		return nil
+	}
 	return payload
 }
 
@@ -268,27 +254,22 @@ func buildRDPGFXPlanarFramePDUs(surfaceID uint16, frameID uint32, src frame.Fram
 }
 
 func buildRDPGFXPlanarFramePDUBacking(surfaceID uint16, frameID uint32, src frame.Frame, stride int) ([]byte, []byte, []byte, bool) {
-	bitmapStart := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen
-	planeSize := src.Width * src.Height
-	payloadCap := 1 + planeSize*3 + planeSize/4 + 64
-	backing := make([]byte, 16+bitmapStart, 16+bitmapStart+payloadCap+planeSize+12)
-	start := backing[:16]
-	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
-	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
-	binary.LittleEndian.PutUint32(start[12:16], frameID)
-	wire := backing[16 : 16+bitmapStart : 16+bitmapStart+payloadCap]
-	plane := backing[16+bitmapStart+payloadCap : 16+bitmapStart+payloadCap+planeSize]
-	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(src.Width), uint16(src.Height), 0) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
-	wire, ok := appendPlanarRLEPayloadWithPlane(wire, src, stride, plane)
+	payload, ok := buildPlanarRLEPayload(src, stride)
 	if !ok {
 		return nil, nil, nil, false
 	}
-	binary.LittleEndian.PutUint32(wire[21:25], uint32(len(wire)-bitmapStart)) // #nosec G115 -- payload length is bounded by allocation.
-	binary.LittleEndian.PutUint32(wire[4:8], uint32(len(wire)))               // #nosec G115 -- PDU length is bounded by allocation.
-	endStart := 16 + len(wire)
-	end := backing[endStart : endStart+12]
-	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
-	binary.LittleEndian.PutUint32(end[8:12], frameID)
+	start, err := rdpcodec.BuildRDPGFXStartFrame(frameID)
+	if err != nil {
+		return nil, nil, nil, false
+	}
+	wire, err := rdpcodec.BuildRDPGFXWireToSurface1(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, rdpcodec.Rect{Right: uint16(src.Width - 1), Bottom: uint16(src.Height - 1)}, payload) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+	if err != nil {
+		return nil, nil, nil, false
+	}
+	end, err := rdpcodec.BuildRDPGFXEndFrame(frameID)
+	if err != nil {
+		return nil, nil, nil, false
+	}
 	return start, wire, end, true
 }
 
@@ -305,154 +286,60 @@ func buildRDPGFXFrameBoundaryPDUs(frameID uint32) ([]byte, []byte) {
 }
 
 func buildRDPGFXPlanarWireToSurfacePDU(surfaceID uint16, src frame.Frame, stride int) ([]byte, bool) {
-	bitmapStart := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen
-	planeSize := src.Width * src.Height
-	payloadCap := 1 + planeSize*3
-	wire := make([]byte, bitmapStart, bitmapStart+payloadCap+planeSize)
-	plane := wire[bitmapStart+payloadCap : bitmapStart+payloadCap+planeSize]
-	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(src.Width), uint16(src.Height), 0) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
-	wire, ok := appendPlanarRLEPayloadWithPlane(wire, src, stride, plane)
+	payload, ok := buildPlanarRLEPayload(src, stride)
 	if !ok {
 		return nil, false
 	}
-	binary.LittleEndian.PutUint32(wire[21:25], uint32(len(wire)-bitmapStart)) // #nosec G115 -- payload length is bounded by allocation.
-	binary.LittleEndian.PutUint32(wire[4:8], uint32(len(wire)))               // #nosec G115 -- PDU length is bounded by allocation.
+	wire, err := rdpcodec.BuildRDPGFXWireToSurface1(surfaceID, rdpgfxCodecPlanar, rdpgfxPixelFormatXRGB8888, rdpcodec.Rect{Right: uint16(src.Width - 1), Bottom: uint16(src.Height - 1)}, payload) // #nosec G115 -- dimensions validated by normalizedFrameStride and desktop clamp.
+	if err != nil {
+		return nil, false
+	}
 	return wire, true
 }
 
 func buildPlanarRLEPayload(src frame.Frame, stride int) ([]byte, bool) {
-	maxInt := int(^uint(0) >> 1)
-	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
+	format, ok := planarPixelFormat(src.Format)
+	if !ok {
 		return nil, false
 	}
-	out := make([]byte, 0, 1+src.Width*src.Height*3)
-	return appendPlanarRLEPayload(out, src, stride)
+	payload, err := rdpcodec.EncodePlanarNoAlpha(rdpcodec.PlanarInput{
+		Pixels: src.Data,
+		Width:  src.Width,
+		Height: src.Height,
+		Stride: stride,
+		Format: format,
+	})
+	if err != nil {
+		return nil, false
+	}
+	return payload, true
 }
 
 func appendPlanarRLEPayload(out []byte, src frame.Frame, stride int) ([]byte, bool) {
-	maxInt := int(^uint(0) >> 1)
-	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height {
+	payload, ok := buildPlanarRLEPayload(src, stride)
+	if !ok {
 		return nil, false
 	}
-	plane := make([]byte, src.Width*src.Height)
-	return appendPlanarRLEPayloadWithPlane(out, src, stride, plane)
+	return append(out, payload...), true
 }
 
-func appendPlanarRLEPayloadWithPlane(out []byte, src frame.Frame, stride int, plane []byte) ([]byte, bool) {
-	maxInt := int(^uint(0) >> 1)
-	if src.Width <= 0 || src.Height <= 0 || src.Width > maxInt/src.Height || len(plane) < src.Width*src.Height {
-		return nil, false
-	}
-	plane = plane[:src.Width*src.Height]
-	out = append(out, 0x30) // PLANAR_FORMAT_HEADER_NA | PLANAR_FORMAT_HEADER_RLE.
-	for i := 0; i < 3; i++ {
-		component := "rgb"[i]
-		if !fillPlanarColorPlane(plane, src, stride, component) {
-			return nil, false
-		}
-		out = appendPlanarDeltaRLEPlane(out, plane, src.Width, src.Height)
-	}
-	return out, true
+func appendPlanarRLEPayloadWithPlane(out []byte, src frame.Frame, stride int, _ []byte) ([]byte, bool) {
+	return appendPlanarRLEPayload(out, src, stride)
 }
 
-func fillPlanarColorPlane(plane []byte, src frame.Frame, stride int, component byte) bool {
-	for y := 0; y < src.Height; y++ {
-		for x := 0; x < src.Width; x++ {
-			si := y*stride + x*4
-			di := y*src.Width + x
-			switch src.Format {
-			case frame.PixelFormatBGRA8888:
-				switch component {
-				case 'r':
-					plane[di] = src.Data[si+2]
-				case 'g':
-					plane[di] = src.Data[si+1]
-				case 'b':
-					plane[di] = src.Data[si+0]
-				default:
-					return false
-				}
-			case frame.PixelFormatRGBA8888:
-				switch component {
-				case 'r':
-					plane[di] = src.Data[si+0]
-				case 'g':
-					plane[di] = src.Data[si+1]
-				case 'b':
-					plane[di] = src.Data[si+2]
-				default:
-					return false
-				}
-			default:
-				return false
-			}
-		}
+func planarPixelFormat(format frame.PixelFormat) (rdpcodec.PixelFormat, bool) {
+	switch format {
+	case frame.PixelFormatRGBA8888:
+		return rdpcodec.PixelFormatRGBA, true
+	case frame.PixelFormatBGRA8888:
+		return rdpcodec.PixelFormatBGRA, true
+	default:
+		return 0, false
 	}
-	return true
-}
-
-func appendPlanarDeltaRLEPlane(out, plane []byte, width, height int) []byte {
-	for y := height - 1; y > 0; y-- {
-		row := plane[y*width : y*width+width]
-		prev := plane[(y-1)*width : (y-1)*width+width]
-		for x := 0; x < width; x++ {
-			row[x] = planarDeltaByte(int(row[x]) - int(prev[x]))
-		}
-	}
-	for y := 0; y < height; y++ {
-		out = appendPlanarRLELine(out, plane[y*width:y*width+width])
-	}
-	return out
 }
 
 func planarDeltaByte(delta int) byte {
-	if delta > 127 {
-		delta -= 256
-	} else if delta < -128 {
-		delta += 256
-	}
-	if delta >= 0 {
-		return byte(delta << 1)
-	}
-	return byte(((-delta) << 1) - 1)
-}
-
-func appendPlanarRLELine(out []byte, row []byte) []byte {
-	for x := 0; x < len(row); {
-		if row[x] == 0 {
-			run := 1
-			for x+run < len(row) && row[x+run] == 0 && run < 47 {
-				run++
-			}
-			if run >= 16 {
-				if run < 32 {
-					out = append(out, byte(((run-16)&0x0f)<<4|0x01))
-				} else {
-					out = append(out, byte(((run-32)&0x0f)<<4|0x02))
-				}
-				x += run
-				continue
-			}
-		}
-		rawStart := x
-		rawLen := 0
-		for x < len(row) && rawLen < 15 {
-			if row[x] == 0 {
-				run := 1
-				for x+run < len(row) && row[x+run] == 0 && run < 16 {
-					run++
-				}
-				if run >= 16 {
-					break
-				}
-			}
-			x++
-			rawLen++
-		}
-		out = append(out, byte(rawLen<<4))
-		out = append(out, row[rawStart:rawStart+rawLen]...)
-	}
-	return out
+	return rdpcodec.PlanarDeltaByte(delta)
 }
 
 func buildRDPGFXPDU(cmdID, flags uint16, payload []byte) []byte {

@@ -1,52 +1,23 @@
 package rdpserver
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
+)
 
 const (
-	bitmapCompressionFlag     = 0x0001
-	noBitmapCompressionHeader = 0x0400
+	bitmapCompressionFlag     = rdpcodec.BitmapCompressionFlag
+	noBitmapCompressionHeader = rdpcodec.NoBitmapCompressionHeader
 	bitmapRLEMaxLiteralPixels = 0xffff
 )
 
-// encodeBitmapRLECopyOnly encodes an 8/15/16/24-bpp bitmap rectangle using only
-// RDP bitmap compression COPY orders, plus COLOR orders for solid spans. It is
-// intentionally conservative: it does not attempt fill/mix/bicolor optimization
-// yet, but it produces standards-shaped compressed streams for every classic RLE
-// bpp that go-rdp's client decoder supports and that a server may negotiate.
-//
-// The input rectangle data is padded, top-down bitmap data. RDP bitmap
-// compression streams are emitted bottom-up and omit scanline padding.
+// encodeBitmapRLECopyOnly keeps Android's test/local call surface while delegating
+// the protocol-level conservative RLE stream to go-rdp/pkg/codec.
 func encodeBitmapRLECopyOnly(rect bitmapRect) ([]byte, bool) {
-	bytesPerPixel, ok := bitmapRLEBytesPerPixel(rect.BPP)
-	if !ok || rect.Width == 0 || rect.Height == 0 {
+	out, err := rdpcodec.EncodeBitmapRLECopy(rect.Data, int(rect.Width), int(rect.Height), rect.BPP)
+	if err != nil {
 		return nil, false
-	}
-	rowBytes := alignedBitmapRowBytes(int(rect.Width), rect.BPP)
-	visibleRowBytes := int(rect.Width) * bytesPerPixel
-	required := rowBytes * int(rect.Height)
-	if visibleRowBytes <= 0 || rowBytes < visibleRowBytes || len(rect.Data) < required {
-		return nil, false
-	}
-	if pixel, ok := bitmapRLESolidPixel(rect, rowBytes, visibleRowBytes, bytesPerPixel); ok {
-		orderLen := bitmapRLEColorOrderLen(int(rect.Width), bytesPerPixel)
-		out := make([]byte, 0, orderLen*int(rect.Height))
-		for y := 0; y < int(rect.Height); y++ {
-			out = appendBitmapRLEColorOrder(out, int(rect.Width), pixel)
-		}
-		return out, len(out) > 0
-	}
-	out := make([]byte, 0, visibleRowBytes*int(rect.Height)+int(rect.Height))
-	for y := int(rect.Height) - 1; y >= 0; y-- {
-		row := rect.Data[y*rowBytes : y*rowBytes+visibleRowBytes]
-		for offset := 0; offset < len(row); {
-			pixels := (len(row) - offset) / bytesPerPixel
-			if pixels > bitmapRLEMaxLiteralPixels {
-				pixels = bitmapRLEMaxLiteralPixels
-			}
-			span := row[offset : offset+pixels*bytesPerPixel]
-			out = appendBitmapRLECopyOrder(out, pixels, bytesPerPixel, span)
-			offset += pixels * bytesPerPixel
-		}
 	}
 	return out, len(out) > 0
 }

@@ -1,11 +1,11 @@
 package rdpserver
 
 import (
-	"encoding/binary"
 	"os"
 	"strings"
 
 	"github.com/rcarmo/go-rdp-android/internal/frame"
+	rdpcodec "github.com/rcarmo/go-rdp/pkg/codec"
 )
 
 func rdpgfxUncompressedEnabledFromEnv() bool {
@@ -30,35 +30,25 @@ func buildRDPGFXUncompressedFramePDUs(surfaceID uint16, frameID uint32, src fram
 	if normalized.Width > maxInt/4 || normalized.Height > maxInt/(normalized.Width*4) {
 		return nil, false
 	}
-	bitmapLen := normalized.Width * normalized.Height * 4
-	wireLen := rdpgfxHeaderLen + rdpgfxWireToSurface1PayloadHeaderLen + bitmapLen
-	backing := make([]byte, 16+wireLen+12)
-	start := backing[:16]
-	writeRDPGFXPDUHeader(start, rdpgfxCmdStartFrame, 0)
-	binary.LittleEndian.PutUint32(start[8:12], uint32(0))
-	binary.LittleEndian.PutUint32(start[12:16], frameID)
-	wire := backing[16 : 16+wireLen]
-	writeRDPGFXWireToSurface1Header(wire, surfaceID, rdpgfxCodecUncompressed, rdpgfxPixelFormatXRGB8888, 0, 0, uint16(normalized.Width), uint16(normalized.Height), bitmapLen) // #nosec G115 dimensions bounded above.
-	pixels := wire[rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen:]
-	for y := 0; y < normalized.Height; y++ {
-		for x := 0; x < normalized.Width; x++ {
-			si := y*stride + x*4
-			di := (y*normalized.Width + x) * 4
-			switch normalized.Format {
-			case frame.PixelFormatBGRA8888:
-				pixels[di+0] = normalized.Data[si+0]
-				pixels[di+1] = normalized.Data[si+1]
-				pixels[di+2] = normalized.Data[si+2]
-			case frame.PixelFormatRGBA8888:
-				pixels[di+0] = normalized.Data[si+2]
-				pixels[di+1] = normalized.Data[si+1]
-				pixels[di+2] = normalized.Data[si+0]
-			}
-			pixels[di+3] = 0xff
-		}
+	format, ok := planarPixelFormat(normalized.Format)
+	if !ok {
+		return nil, false
 	}
-	end := backing[16+wireLen:]
-	writeRDPGFXPDUHeader(end, rdpgfxCmdEndFrame, 0)
-	binary.LittleEndian.PutUint32(end[8:12], frameID)
+	pixels, err := rdpcodec.EncodeRDPGFXUncompressed(rdpcodec.BitmapInput{Pixels: normalized.Data, Width: normalized.Width, Height: normalized.Height, Stride: stride, Format: format})
+	if err != nil {
+		return nil, false
+	}
+	start, err := rdpcodec.BuildRDPGFXStartFrame(frameID)
+	if err != nil {
+		return nil, false
+	}
+	wire, err := rdpcodec.BuildRDPGFXWireToSurface1(surfaceID, rdpgfxCodecUncompressed, rdpgfxPixelFormatXRGB8888, rdpcodec.Rect{Right: uint16(normalized.Width - 1), Bottom: uint16(normalized.Height - 1)}, pixels) // #nosec G115 dimensions bounded above.
+	if err != nil {
+		return nil, false
+	}
+	end, err := rdpcodec.BuildRDPGFXEndFrame(frameID)
+	if err != nil {
+		return nil, false
+	}
 	return [][]byte{start, wire, end}, true
 }
