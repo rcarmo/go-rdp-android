@@ -3,7 +3,7 @@ module github.com/rcarmo/go-rdp-android
 go 1.25.0
 
 require (
-	github.com/rcarmo/go-rdp v1.0.6-0.20260522150205-6ee726c6549b
+	github.com/rcarmo/go-rdp v1.0.6-0.20260610162726-e502551fe734
 	golang.org/x/crypto v0.51.0
 )
 
