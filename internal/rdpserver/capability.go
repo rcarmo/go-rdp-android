@@ -445,31 +445,13 @@ func parseSurfaceCommandsCapability(payload []byte, caps *confirmActiveCapabilit
 }
 
 func parseBitmapCodecsCapability(payload []byte, caps *confirmActiveCapabilities) {
-	if len(payload) < 1 {
+	upstreamCodecs, err := rdpcodec.ParseBitmapCodecCapabilities(payload)
+	if err != nil || len(upstreamCodecs) == 0 {
 		return
 	}
-	count := int(payload[0])
-	off := 1
-	codecs := make([]bitmapCodecInfo, 0, count)
-	for i := 0; i < count; i++ {
-		if off+19 > len(payload) {
-			break
-		}
-		var guid [16]byte
-		copy(guid[:], payload[off:off+16])
-		off += 16
-		codecID := payload[off]
-		off++
-		propsLen := binary.LittleEndian.Uint16(payload[off : off+2])
-		off += 2
-		if int(propsLen) > len(payload)-off {
-			break
-		}
-		codecs = append(codecs, bitmapCodecInfo{GUID: guid, ID: codecID, Name: rdpcodec.BitmapCodecGUIDName(guid), PropertiesSize: propsLen})
-		off += int(propsLen)
-	}
-	if len(codecs) == 0 {
-		return
+	codecs := make([]bitmapCodecInfo, 0, len(upstreamCodecs))
+	for _, codec := range upstreamCodecs {
+		codecs = append(codecs, bitmapCodecInfo{GUID: codec.GUID, ID: codec.ID, Name: codec.Name, PropertiesSize: uint16(len(codec.Properties))}) // #nosec G115 -- upstream parser bounds property slices by payload length.
 	}
 	caps.BitmapCodecs.Present = true
 	caps.BitmapCodecs.Codecs = codecs

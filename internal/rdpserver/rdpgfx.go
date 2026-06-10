@@ -11,14 +11,14 @@ import (
 const (
 	rdpgfxDynamicChannelName = "Microsoft::Windows::RDS::Graphics"
 
-	rdpgfxCmdWireToSurface1     uint16 = 0x0001
-	rdpgfxCmdCreateSurface      uint16 = 0x0009
-	rdpgfxCmdStartFrame         uint16 = 0x000b
-	rdpgfxCmdEndFrame           uint16 = 0x000c
-	rdpgfxCmdResetGraphics      uint16 = 0x000e
-	rdpgfxCmdMapSurfaceToOutput uint16 = 0x000f
-	rdpgfxCmdCapsAdvertise      uint16 = 0x0012
-	rdpgfxCmdCapsConfirm        uint16 = 0x0013
+	rdpgfxCmdWireToSurface1     uint16 = rdpcodec.RDPGFXCmdWireToSurface1
+	rdpgfxCmdCreateSurface      uint16 = rdpcodec.RDPGFXCmdCreateSurface
+	rdpgfxCmdStartFrame         uint16 = rdpcodec.RDPGFXCmdStartFrame
+	rdpgfxCmdEndFrame           uint16 = rdpcodec.RDPGFXCmdEndFrame
+	rdpgfxCmdResetGraphics      uint16 = rdpcodec.RDPGFXCmdResetGraphics
+	rdpgfxCmdMapSurfaceToOutput uint16 = rdpcodec.RDPGFXCmdMapSurfaceToOutput
+	rdpgfxCmdCapsAdvertise      uint16 = rdpcodec.RDPGFXCmdCapsAdvertise
+	rdpgfxCmdCapsConfirm        uint16 = rdpcodec.RDPGFXCmdCapsConfirm
 
 	rdpgfxCodecUncompressed    uint16 = rdpcodec.RDPGFXCodecUncompressed
 	rdpgfxCodecClearCodec      uint16 = rdpcodec.RDPGFXCodecClearCodec
@@ -29,19 +29,19 @@ const (
 	rdpgfxCodecAVC444          uint16 = rdpcodec.RDPGFXCodecAVC444
 	rdpgfxCodecAVC444v2        uint16 = rdpcodec.RDPGFXCodecAVC444v2
 
-	rdpgfxPixelFormatXRGB8888 byte = 0x20
+	rdpgfxPixelFormatXRGB8888 byte = rdpcodec.RDPGFXPixelFormatXRGB8888
 
-	rdpgfxCapsFlagAVC420Enabled uint32 = 0x00000010
-	rdpgfxCapsFlagAVCDisabled   uint32 = 0x00000020
+	rdpgfxCapsFlagAVC420Enabled uint32 = rdpcodec.RDPGFXCapsFlagAVC420Enabled
+	rdpgfxCapsFlagAVCDisabled   uint32 = rdpcodec.RDPGFXCapsFlagAVCDisabled
 
-	rdpgfxCapsVersion8   uint32 = 0x00080004
-	rdpgfxCapsVersion81  uint32 = 0x00080105
-	rdpgfxCapsVersion10  uint32 = 0x000A0002
-	rdpgfxCapsVersion102 uint32 = 0x000A0200
-	rdpgfxCapsVersion103 uint32 = 0x000A0301
-	rdpgfxCapsVersion104 uint32 = 0x000A0400
-	rdpgfxCapsVersion105 uint32 = 0x000A0502
-	rdpgfxCapsVersion106 uint32 = 0x000A0600
+	rdpgfxCapsVersion8   uint32 = rdpcodec.RDPGFXCapsVersion8
+	rdpgfxCapsVersion81  uint32 = rdpcodec.RDPGFXCapsVersion81
+	rdpgfxCapsVersion10  uint32 = rdpcodec.RDPGFXCapsVersion10
+	rdpgfxCapsVersion102 uint32 = rdpcodec.RDPGFXCapsVersion102
+	rdpgfxCapsVersion103 uint32 = rdpcodec.RDPGFXCapsVersion103
+	rdpgfxCapsVersion104 uint32 = rdpcodec.RDPGFXCapsVersion104
+	rdpgfxCapsVersion105 uint32 = rdpcodec.RDPGFXCapsVersion105
+	rdpgfxCapsVersion106 uint32 = rdpcodec.RDPGFXCapsVersion106
 
 	rdpgfxMaxPDUSize = 1024 * 1024
 )
@@ -86,35 +86,13 @@ func parseRDPGFXPDU(data []byte) (*rdpgfxPDU, error) {
 }
 
 func parseRDPGFXCapsAdvertise(data []byte) ([]rdpgfxCapabilitySet, error) {
-	if len(data) < 2 {
-		return nil, fmt.Errorf("short RDPGFX caps advertise")
+	upstreamCaps, err := rdpcodec.ParseRDPGFXCapsAdvertise(data)
+	if err != nil {
+		return nil, err
 	}
-	count := int(binary.LittleEndian.Uint16(data[0:2]))
-	data = data[2:]
-	if count == 0 {
-		return nil, fmt.Errorf("RDPGFX caps advertise contains no capability sets")
-	}
-	if count > 64 {
-		return nil, fmt.Errorf("RDPGFX caps count %d exceeds maximum 64", count)
-	}
-	caps := make([]rdpgfxCapabilitySet, 0, count)
-	offset := 0
-	for i := 0; i < count; i++ {
-		if len(data)-offset < 8 {
-			return nil, fmt.Errorf("short RDPGFX capability set header %d", i)
-		}
-		version := binary.LittleEndian.Uint32(data[offset : offset+4])
-		capsDataLength := binary.LittleEndian.Uint32(data[offset+4 : offset+8])
-		offset += 8
-		if capsDataLength > 64 || int(capsDataLength) > len(data)-offset {
-			return nil, fmt.Errorf("invalid RDPGFX capability set %d data length %d", i, capsDataLength)
-		}
-		var flags uint32
-		if capsDataLength >= 4 {
-			flags = binary.LittleEndian.Uint32(data[offset : offset+4])
-		}
-		offset += int(capsDataLength)
-		caps = append(caps, rdpgfxCapabilitySet{Version: version, CapsDataLength: capsDataLength, Flags: flags})
+	caps := make([]rdpgfxCapabilitySet, 0, len(upstreamCaps))
+	for _, cap := range upstreamCaps {
+		caps = append(caps, rdpgfxCapabilitySet{Version: cap.Version, CapsDataLength: cap.CapsDataLength, Flags: cap.Flags})
 	}
 	return caps, nil
 }
@@ -169,45 +147,45 @@ func buildRDPGFXCreateSurfacePDU(surfaceID uint16, width, height int) ([]byte, b
 	if width <= 0 || height <= 0 || width > 8192 || height > 8192 {
 		return nil, false
 	}
-	payload := make([]byte, 7)
-	binary.LittleEndian.PutUint16(payload[0:2], surfaceID)
-	binary.LittleEndian.PutUint16(payload[2:4], uint16(width))  // #nosec G115 -- bounded above.
-	binary.LittleEndian.PutUint16(payload[4:6], uint16(height)) // #nosec G115 -- bounded above.
-	payload[6] = rdpgfxPixelFormatXRGB8888
-	return buildRDPGFXPDU(rdpgfxCmdCreateSurface, 0, payload), true
+	pdu, err := rdpcodec.BuildRDPGFXCreateSurface(surfaceID, uint16(width), uint16(height), rdpgfxPixelFormatXRGB8888) // #nosec G115 -- dimensions bounded above.
+	if err != nil {
+		return nil, false
+	}
+	return pdu, true
 }
 
 func buildRDPGFXMapSurfaceToOutputPDU(surfaceID uint16, originX, originY int) ([]byte, bool) {
 	if originX < 0 || originY < 0 || originX > 32767 || originY > 32767 {
 		return nil, false
 	}
-	payload := make([]byte, 12)
-	binary.LittleEndian.PutUint16(payload[0:2], surfaceID)
-	binary.LittleEndian.PutUint16(payload[2:4], 0)                // reserved
-	binary.LittleEndian.PutUint32(payload[4:8], uint32(originX))  // #nosec G115 -- bounded above.
-	binary.LittleEndian.PutUint32(payload[8:12], uint32(originY)) // #nosec G115 -- bounded above.
-	return buildRDPGFXPDU(rdpgfxCmdMapSurfaceToOutput, 0, payload), true
+	pdu, err := rdpcodec.BuildRDPGFXMapSurfaceToOutput(surfaceID, uint32(originX), uint32(originY)) // #nosec G115 -- bounded above.
+	if err != nil {
+		return nil, false
+	}
+	return pdu, true
 }
 
 func buildRDPGFXStartFramePDU(frameID uint32) []byte {
-	out := make([]byte, 16)
-	writeRDPGFXPDUHeader(out, rdpgfxCmdStartFrame, 0)
-	binary.LittleEndian.PutUint32(out[8:12], uint32(0))
-	binary.LittleEndian.PutUint32(out[12:16], frameID)
+	out, err := rdpcodec.BuildRDPGFXStartFrame(frameID)
+	if err != nil {
+		return nil
+	}
 	return out
 }
 
 func buildRDPGFXEndFramePDU(frameID uint32) []byte {
-	out := make([]byte, 12)
-	writeRDPGFXPDUHeader(out, rdpgfxCmdEndFrame, 0)
-	binary.LittleEndian.PutUint32(out[8:12], frameID)
+	out, err := rdpcodec.BuildRDPGFXEndFrame(frameID)
+	if err != nil {
+		return nil
+	}
 	return out
 }
 
 func buildRDPGFXWireToSurface1PDU(surfaceID uint16, codecID uint16, pixelFormat byte, destLeft, destTop, destRight, destBottom uint16, bitmapData []byte) []byte {
-	out := make([]byte, rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen+len(bitmapData))
-	writeRDPGFXWireToSurface1Header(out, surfaceID, codecID, pixelFormat, destLeft, destTop, destRight, destBottom, len(bitmapData))
-	copy(out[rdpgfxHeaderLen+rdpgfxWireToSurface1PayloadHeaderLen:], bitmapData)
+	out, err := rdpcodec.BuildRDPGFXWireToSurface1(surfaceID, codecID, pixelFormat, rdpcodec.Rect{Left: destLeft, Top: destTop, Right: destRight, Bottom: destBottom}, bitmapData)
+	if err != nil {
+		return nil
+	}
 	return out
 }
 
@@ -478,16 +456,19 @@ func appendPlanarRLELine(out []byte, row []byte) []byte {
 }
 
 func buildRDPGFXPDU(cmdID, flags uint16, payload []byte) []byte {
-	out := make([]byte, 8+len(payload))
-	writeRDPGFXPDUHeader(out, cmdID, flags)
-	copy(out[8:], payload)
+	out, err := rdpcodec.BuildRDPGFXPDU(cmdID, flags, payload)
+	if err != nil {
+		return nil
+	}
 	return out
 }
 
 func writeRDPGFXPDUHeader(out []byte, cmdID, flags uint16) {
-	binary.LittleEndian.PutUint16(out[0:2], cmdID)
-	binary.LittleEndian.PutUint16(out[2:4], flags)
-	binary.LittleEndian.PutUint32(out[4:8], uint32(len(out))) // #nosec G115 -- PDU length is bounded by allocation.
+	pdu, err := rdpcodec.BuildRDPGFXPDU(cmdID, flags, out[8:])
+	if err != nil {
+		return
+	}
+	copy(out[:8], pdu[:8])
 }
 
 func traceRDPGFXPDU(pdu *rdpgfxPDU) {
