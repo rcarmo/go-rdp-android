@@ -106,6 +106,7 @@ jobs:
       - name: Upload Go test artifacts
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-test-artifacts
           path: test-artifacts/go/**
       - name: Build Go packages
@@ -164,6 +165,7 @@ jobs:
       - name: Upload protocol smoke artifacts
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: mock-probe-artifacts
           path: |
             test-artifacts/mock-probe/**
@@ -216,11 +218,13 @@ jobs:
       - name: Upload Android build artifacts
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: android-build-artifacts
           path: test-artifacts/android/**
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
 
@@ -295,21 +299,25 @@ jobs:
       - name: Upload gomobile build artifacts
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: gomobile-build-artifacts
           path: test-artifacts/gomobile/**
       - name: Upload mobile AAR
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-mobile-aar
           path: android/app/libs/mobile.aar
       - name: Upload Go-backed debug APK
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-go-backed-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
       - name: Upload Go-backed debug AAB
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-go-backed-debug-aab
           path: android/app/build/outputs/bundle/debug/*.aab
       - name: Build release APK/AAB with Go AAR
@@ -337,12 +345,14 @@ jobs:
         if: ${{ startsWith(github.ref_name, 'v') }}
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-go-backed-release-apk
           path: android/app/build/outputs/apk/release/*.apk
       - name: Upload Go-backed release AAB
         if: ${{ startsWith(github.ref_name, 'v') }}
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-go-backed-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
 
@@ -518,6 +528,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: freerdp-compat-probe
           path: freerdp-artifacts/**
 
@@ -544,6 +555,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: encoding-matrix-artifacts
           path: encoding-matrix-artifacts/**
 
@@ -612,12 +624,14 @@ jobs:
         if: ${{ startsWith(github.ref_name, 'v') }}
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: go-rdp-android-release-ux-report
           path: release-files/*.pdf
       - name: Upload emulator artifacts
         if: always()
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: android-emulator-artifacts
           path: emulator-artifacts/**
 
@@ -759,7 +773,7 @@ jobs:
         with:
           name: go-rdp-android-release-files
           path: release-files/*
-          retention-days: 180
+          retention-days: 7
       - name: Publish GitHub Release assets
         env:
           GH_TOKEN: ${{ github.token }}
