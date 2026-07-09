@@ -70,5 +70,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
+          retention-days: 7
           name: freerdp-soak-artifacts
           path: soak-artifacts/**
